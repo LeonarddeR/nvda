@@ -1779,9 +1779,6 @@ class BrailleHandler(baseObject.AutoPropertyObject):
 	def __init__(self):
 		louisHelper.initialize()
 		self.display: Optional[BrailleDisplayDriver] = None
-		#: Number of cells the connected device (or if no device connected, what braille viewer has)
-		#: Zero cells disables braille. See L{_get_enabled}
-		self._displaySize: int = 0
 		self.mainBuffer = BrailleBuffer(self)
 		self.messageBuffer = BrailleBuffer(self)
 		self._messageCallLater = None
@@ -1805,6 +1802,61 @@ class BrailleHandler(baseObject.AutoPropertyObject):
 		self._ackTimeoutResetterApc = winKernel.PAPCFUNC(self._ackTimeoutResetter)
 
 		brailleViewer.postBrailleViewerToolToggledAction.register(self._onBrailleViewerChangedState)
+
+		#: Notifies when cells are about to be written to a braille display.
+		#: This allows components and add-ons to perform an action.
+		#: For example, when a system is controlled by a braille enabled remote system,
+		#: the remote system should know what cells to show on its display.
+		#: @param cells: The list of braille cells.
+		#: @type cells: [int]
+		#: @param rawText: The raw text that corresponds with the cells.
+		#: @type rawText: str
+		self.pre_writeCells = extensionPoints.Action()
+
+		#: Filter that allows components or add-ons to change the display size used for braille output.
+		#: For example, when a system is controlled by a remote system while having a 80 cells display connected,
+		#: the display size should be lowered to 40 whenever the remote system has a 40 cells display connected.
+		#: @param value: the number of cells of the current display.
+		#: @type value: int
+		self.filter_displaySize = extensionPoints.Filter()
+
+		#: Allows components or add-ons to decide whether the braille handler should be forcefully disabled.
+		#: For example, when a system is controlling a remote system with braille,
+		#: the local braille handler should be disabled as long as the system is in control of the remote system.
+		#: Handlers are called without arguments.
+		self.decide_enabled = extensionPoints.Decider()
+
+	displaySize: int
+	_cache_displaySize = True
+	def _get_displaySize(self) -> int:
+		"""Returns the display size to use for braille output.
+		Handlers can register themselves to L{filter_displaySize} to change this value on the fly.
+		Therefore, this is a read only property and can't be set.
+		"""
+		numCells = self.display.numCells if self.display else 0
+		return self.filter_displaySize.apply(numCells)
+
+	def _set_displaySize(self, value):
+		raise AttributeError(
+			f"Can't set displaySize to {value}, consider registering a handler to filter_displaySize"
+		)
+	
+	enabled: bool
+	_cache_enabled = True
+	def _get_enabled(self) -> int:
+		"""Returns whether braille is enabled.
+		Handlers can register themselves to L{decide_enabled} and return C{False} to forcefully disable the braille handler.
+		If components need to change the state from disabled to enabled instead, they should register to L{filter_displaySize}.
+		By default, the enabled/disabled state is based on the boolean value of L{displaySize},
+		and thus is C{True} when the display size is greater than 0.
+		This is a read only property and can't be set.
+		"""
+		return bool(self.displaySize) and self.decide_enabled.decide()
+
+	def _set_enabled(self, value):
+		raise AttributeError(
+			f"Can't set enabled to {value}, consider registering a handler to decide_enabled or filter_displaySize"
+		)
 
 	def terminate(self):
 		self._disableDetection()
@@ -1840,24 +1892,6 @@ class BrailleHandler(baseObject.AutoPropertyObject):
 
 	def _get_shouldAutoTether(self) -> bool:
 		return self.enabled and config.conf["braille"]["tetherTo"] == TetherTo.AUTO.value
-
-	displaySize: int
-
-	def _get_displaySize(self):
-		if self._displaySize == 0 and brailleViewer.isBrailleViewerActive():
-			return brailleViewer.DEFAULT_NUM_CELLS
-		return self._displaySize
-
-	def _set_displaySize(self, numCells):
-		"""The display size can be changed while a display is connected, for instance
-			see L{brailleDisplayDrivers.alva.BrailleDisplayDriver} split point feature.
-		"""
-		self._displaySize = numCells
-
-	enabled: bool
-
-	def _get_enabled(self):
-		return bool(self.displaySize)
 
 	_lastRequestedDisplayName = None
 	"""The name of the last requested braille display driver with setDisplayByName,
@@ -1926,7 +1960,6 @@ class BrailleHandler(baseObject.AutoPropertyObject):
 						log.error("Error terminating previous display driver", exc_info=True)
 				self.display = newDisplay
 			newDisplay.initSettings()
-			self._displaySize = newDisplay.numCells
 			if isFallback:
 				if self._detectionEnabled and not self._detector:
 					# As this is the fallback display, which is usually noBraille,
@@ -1973,7 +2006,26 @@ class BrailleHandler(baseObject.AutoPropertyObject):
 			wx.CallAfter(self._cursorBlinkTimer.Start,blinkRate)
 
 	def _writeCells(self, cells: List[int]):
-		brailleViewer.update(cells, self._rawText)
+		self.pre_writeCells.notify(cells=cells, rawText=self._rawText)
+		displayCellCount = self.display.numCells
+		handlerCellCount = self.displaySize
+		if not displayCellCount:
+			# No physical display to write to
+			return
+		# Braille displays expect cells to be padded up to displayCellCount.
+		# However, the braille handler uses handlerCellCount to calculate the number of cells.
+		cellCountDif = displayCellCount - len(cells)
+		if cellCountDif < 0:
+			# There are more cells than the connected display could take.
+			log.warning(
+				"Connected display %s has %d cells, while braille handler is using %d cells" %
+				(self.display.name, displayCellCount, handlerCellCount)
+			)
+			cells = cells[:displayCellCount]
+		elif cellCountDif > 0:
+			# The connected display could take more cells than the braille handler produces.
+			# Displays expect cells to be padded up to the number of cells.
+			cells += [END_OF_BRAILLE_OUTPUT_SHAPE] + [0] * (cellCountDif - 1)
 		if not self.display.isThreadSafe:
 			try:
 				self.display.display(cells)
