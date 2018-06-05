@@ -63,6 +63,7 @@ def listTables():
 #: Maps old table names to new table names for tables renamed in newer versions of liblouis.
 RENAMED_TABLES = {
 	"ar-fa.utb" : "fa-ir-g1.utb",
+	"cz-cz-g1.utb" : "cs-g1.ctb",
 	"da-dk-g16.utb":"da-dk-g16.ctb",
 	"da-dk-g18.utb":"da-dk-g18.ctb",
 	"en-us-comp8.ctb" : "en-us-comp8-ext.utb",
@@ -100,7 +101,7 @@ addTable("cy-cy-g1.utb", _("Welsh grade 1"))
 addTable("cy-cy-g2.ctb", _("Welsh grade 2"), contracted=True)
 # Translators: The name of a braille table displayed in the
 # braille settings dialog.
-addTable("cz-cz-g1.utb", _("Czech grade 1"))
+addTable("cs-g1.ctb", _("Czech grade 1"))
 # Translators: The name of a braille table displayed in the
 # braille settings dialog.
 addTable("da-dk-g08.ctb", _("Danish 8 dot computer braille"))
