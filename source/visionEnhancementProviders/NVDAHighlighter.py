@@ -447,10 +447,9 @@ class NVDAHighlighter(providerBase.VisionEnhancementProvider):
 			timer = winUser.WinTimer(window.handle, 0, self._refreshInterval, None)
 			self._highlighterRunningEvent.set()  # notify main thread that initialisation was successful
 			msg = MSG()
-			# Python 3.8 note, Change this to use an Assignment expression to catch a return value of -1.
-			# See the remarks section of
-			# https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmessage
-			while winUser.getMessage(byref(msg), None, 0, 0) > 0:
+			while (bRet := winUser.getMessage(byref(msg), None, 0, 0)) != 0:
+				if bRet == -1:
+					raise WinError()
 				winUser.user32.TranslateMessage(byref(msg))
 				winUser.user32.DispatchMessageW(byref(msg))
 			if vision._isDebug():
