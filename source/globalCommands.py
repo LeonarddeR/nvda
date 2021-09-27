@@ -239,15 +239,17 @@ class GlobalCommands(ScriptableObject):
 	@script(
 		description=_(
 			# Translators: Input help mode message for report current selection command.
-			"Announces the current selection in edit controls and documents. "
+			"Announces the current selection in tables, lists, edit controls and documents. "
 			"If there is no selection it says so."
 		),
 		category=SCRCAT_SYSTEMCARET,
 		gestures=("kb(desktop):NVDA+shift+upArrow", "kb(laptop):NVDA+shift+s")
 	)
 	def script_reportCurrentSelection(self,gesture):
-		obj=api.getFocusObject()
-		treeInterceptor=obj.treeInterceptor
+		obj = api.getFocusObject()
+		if obj.selectionContainer and obj.selectionContainer.reportSelectedDescendants():
+			return
+		treeInterceptor = obj.treeInterceptor
 		if isinstance(treeInterceptor,treeInterceptorHandler.DocumentTreeInterceptor) and not treeInterceptor.passThrough:
 			obj=treeInterceptor
 		try:

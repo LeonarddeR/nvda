@@ -50,6 +50,7 @@ from .speech import (
 	speakObject,
 	speakObjectProperties,
 	speakPreselectedText,
+	speakSelectedObjects,
 	speakSelectionChange,
 	speakSelectionMessage,
 	speakSpelling,

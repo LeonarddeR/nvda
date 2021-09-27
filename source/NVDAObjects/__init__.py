@@ -1404,3 +1404,34 @@ This code is executed if a gain focus event is received by this object.
 		For performance, this method will only count up to the given maxCount number, and if there is one more above that, then sys.maxint is returned stating that many items are selected.
 		"""
 		return 0
+
+	#: Typing information for auto-property: _get_firstSelectedDescendant
+	firstSelectedDescendant: typing.Optional['NVDAObject']
+
+	def _get_firstSelectedDescendant(self):
+		""" The first descendant NVDAObject selected within this object."""
+		return None
+
+	#: Typing information for auto-property: _get_lastSelectedDescendant
+	lastSelectedDescendant: typing.Optional['NVDAObject']
+
+	def _get_lastSelectedDescendant(self):
+		""" The last descendant NVDAObject selected within this object."""
+		return None
+
+	def reportSelectedDescendants(self) -> bool:
+		"""Announces the first and last selected descendants within this object.
+		@returns: C{True} if anything has been reported, C{False} otherwise.
+		"""
+		if (
+			self.firstSelectedDescendant
+			and self.lastSelectedDescendant
+			and self.firstSelectedDescendant != self.lastSelectedDescendant
+		):
+			speech.speakSelectedObjects(
+				self.firstSelectedDescendant,
+				self.lastSelectedDescendant
+			)
+			return True
+		return False
+

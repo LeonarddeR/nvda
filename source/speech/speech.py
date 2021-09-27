@@ -1015,6 +1015,53 @@ def speakSelectionChange(  # noqa: C901
 				speakMessage(_("selection removed"),priority=priority)
 
 
+def getSelectedObjectsSPeech(
+		firstObj: "NVDAObjects.NVDAObject",
+		lastObj: "NVDAObjects.NVDAObject",
+		_prefixSpeechCommand: Optional[SpeechCommand] = None
+) -> SpeechSequence:
+	allowedProperties = {
+		"name": True,
+		"cellCoordsText": True,
+		"value": True,
+	}
+	reason = OutputReason.FOCUS
+	firstOBjSequence = getObjectPropertiesSpeech(
+		firstObj,
+		reason,
+		**allowedProperties,
+	)
+	lastOBjSequence = getObjectPropertiesSpeech(
+		lastObj,
+		reason,
+		**allowedProperties,
+	)
+	sequence = firstOBjSequence + [
+		# Translators: The word "through" in a selection message for objects,
+		# e.g. as in "A1 through E1 selected"
+		_("through")
+	] + lastOBjSequence + [
+		# Translators: The word "selected" in a selection message for objects,
+		# e.g. as in "A1 through E1 selected"
+		_("selected")
+	]
+	if _prefixSpeechCommand is not None:
+		assert isinstance(_prefixSpeechCommand, SpeechCommand)
+		sequence.insert(0, _prefixSpeechCommand)
+	return sequence
+
+
+def speakSelectedObjects(
+		firstObj,
+		lastObj,
+		_prefixSpeechCommand: Optional[SpeechCommand] = None,
+		priority: Optional[Spri] = None,
+):
+	speechSequence = getSelectedObjectsSPeech(firstObj, lastObj, _prefixSpeechCommand=_prefixSpeechCommand)
+	if speechSequence:
+		speak(speechSequence, priority=priority)
+
+
 def _suppressSpeakTypedCharacters(number: int):
 	"""Suppress speaking of typed characters.
 	This should be used when sending a string of characters to the system

@@ -21,7 +21,7 @@ from scriptHandler import script
 import ui
 from logHandler import log
 from . import UIA
-
+import eventHandler
 
 class ExcelCustomProperties:
 	""" UIA 'custom properties' specific to Excel.
@@ -97,9 +97,6 @@ class ExcelObject(UIA):
 
 
 class ExcelCell(ExcelObject):
-
-	# selecting cells causes duplicate focus events
-	shouldAllowDuplicateUIAFocusEvent = True
 
 	name = ""
 	role = controlTypes.Role.TABLECELL
@@ -284,17 +281,6 @@ class ExcelCell(ExcelObject):
 			)
 		)
 
-	def _hasSelection(self):
-		return (
-			self.selectionContainer
-			and 1 < self.selectionContainer.getSelectedItemsCount()
-		)
-
-	def _get_value(self):
-		if self._hasSelection():
-			return
-		return super().value
-
 	def _get_errorText(self):
 		for typeId, element in self.UIAAnnotationObjects.items():
 			if typeId in {
@@ -370,51 +356,19 @@ class ExcelCell(ExcelObject):
 		return states
 
 	def _get_cellCoordsText(self):
-		if self._hasSelection():
-			sc = self._getUIACacheablePropertyValue(
-				UIAHandler.UIA_SelectionItemSelectionContainerPropertyId
-			).QueryInterface(UIAHandler.IUIAutomationElement)
-
-			firstSelected = sc.GetCurrentPropertyValue(
-				UIAHandler.UIA_Selection2FirstSelectedItemPropertyId
-			).QueryInterface(UIAHandler.IUIAutomationElement)
-
-			firstAddress = firstSelected.GetCurrentPropertyValue(
-				UIAHandler.UIA_NamePropertyId
-			).replace('"', '')
-
-			firstValue = firstSelected.GetCurrentPropertyValue(
-				UIAHandler.UIA_ValueValuePropertyId
-			)
-
-			lastSelected = sc.GetCurrentPropertyValue(
-				UIAHandler.UIA_Selection2LastSelectedItemPropertyId
-			).QueryInterface(UIAHandler.IUIAutomationElement)
-
-			lastAddress = lastSelected.GetCurrentPropertyValue(
-				UIAHandler.UIA_NamePropertyId
-			).replace('"', '')
-
-			lastValue = lastSelected.GetCurrentPropertyValue(
-				UIAHandler.UIA_ValueValuePropertyId
-			)
-
-			cellCoordsTemplate = pgettext(
-				"excel-UIA",
-				# Translators: Excel, report range of cell coordinates
-				"{firstAddress} {firstValue} through {lastAddress} {lastValue}"
-			)
-			return cellCoordsTemplate.format(
-				firstAddress=firstAddress,
-				firstValue=firstValue,
-				lastAddress=lastAddress,
-				lastValue=lastValue
-			)
 		name = super().name
 		# Later builds of Excel 2016 quote the letter coordinate.
 		# We don't want the quotes.
 		name = name.replace('"', '')
 		return name
+
+	def event_selectionAdd(self):
+		if not eventHandler.isPendingEvents("selectionAdd"):
+			self.selectionContainer.reportSelectedDescendants()
+
+	def event_selectionRemove(self):
+		if not eventHandler.isPendingEvents("selectionRemove"):
+			self.selectionContainer.reportSelectedDescendants()
 
 	@script(
 		# Translators: the description  for a script for Excel
