@@ -1026,25 +1026,27 @@ def getSelectedObjectsSPeech(
 		"value": True,
 	}
 	reason = OutputReason.FOCUS
-	firstOBjSequence = getObjectPropertiesSpeech(
+	sequence = getObjectPropertiesSpeech(
 		firstObj,
 		reason,
 		**allowedProperties,
 	)
-	lastOBjSequence = getObjectPropertiesSpeech(
-		lastObj,
-		reason,
-		**allowedProperties,
-	)
-	sequence = firstOBjSequence + [
-		# Translators: The word "through" in a selection message for objects,
-		# e.g. as in "A1 through E1 selected"
-		_("through")
-	] + lastOBjSequence + [
+	if lastObj != firstObj:
+		sequence.append(
+			# Translators: The word "through" in a selection message for objects,
+			# e.g. as in "A1 through E1 selected"
+			_("through")
+		)
+		sequence.extend(getObjectPropertiesSpeech(
+			lastObj,
+			reason,
+			**allowedProperties,
+		))
+	sequence.append(
 		# Translators: The word "selected" in a selection message for objects,
 		# e.g. as in "A1 through E1 selected"
 		_("selected")
-	]
+	)
 	if _prefixSpeechCommand is not None:
 		assert isinstance(_prefixSpeechCommand, SpeechCommand)
 		sequence.insert(0, _prefixSpeechCommand)

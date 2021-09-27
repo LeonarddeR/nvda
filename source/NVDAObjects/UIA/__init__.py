@@ -1220,7 +1220,7 @@ class UIA(Window):
 			self.UIASelectionPattern2 = None
 		return self.UIASelectionPattern2
 
-	def getSelectedItemsCount(self, maxItems=None):
+	def getSelectedItemsCount(self, maxCount=None):
 		p = self.UIASelectionPattern2
 		if p:
 			return p.currentItemCount

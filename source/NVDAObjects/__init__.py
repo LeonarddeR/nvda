@@ -1421,17 +1421,12 @@ This code is executed if a gain focus event is received by this object.
 
 	def reportSelectedDescendants(self) -> bool:
 		"""Announces the first and last selected descendants within this object.
-		@returns: C{True} if anything has been reported, C{False} otherwise.
 		"""
 		if (
 			self.firstSelectedDescendant
 			and self.lastSelectedDescendant
-			and self.firstSelectedDescendant != self.lastSelectedDescendant
 		):
 			speech.speakSelectedObjects(
 				self.firstSelectedDescendant,
 				self.lastSelectedDescendant
 			)
-			return True
-		return False
-

@@ -247,8 +247,6 @@ class GlobalCommands(ScriptableObject):
 	)
 	def script_reportCurrentSelection(self,gesture):
 		obj = api.getFocusObject()
-		if obj.selectionContainer and obj.selectionContainer.reportSelectedDescendants():
-			return
 		treeInterceptor = obj.treeInterceptor
 		if isinstance(treeInterceptor,treeInterceptorHandler.DocumentTreeInterceptor) and not treeInterceptor.passThrough:
 			obj=treeInterceptor
@@ -256,10 +254,16 @@ class GlobalCommands(ScriptableObject):
 			info=obj.makeTextInfo(textInfos.POSITION_SELECTION)
 		except (RuntimeError, NotImplementedError):
 			info=None
-		if not info or info.isCollapsed:
-			speech.speakMessage(_("No selection"))
-		else:
+		if info and not info.isCollapsed:
 			speech.speakTextSelected(info.text)
+		elif (
+			obj is  not treeInterceptor
+			and obj.selectionContainer
+			and obj.selectionContainer.getSelectedItemsCount() >= 1
+		):
+			obj.selectionContainer.reportSelectedDescendants()
+		else:
+			speech.speakMessage(_("No selection"))
 
 	@script(
 		# Translators: Input help mode message for report date and time command.
