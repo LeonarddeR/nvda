@@ -151,7 +151,8 @@ UIALiveSettingtoNVDAAriaLivePoliteness: Dict[str, aria.AriaLivePoliteness] = {
 
 UIAPropertyIdsToNVDAEventNames={
 	UIA_NamePropertyId:"nameChange",
-	UIA_HelpTextPropertyId:"descriptionChange",
+	UIA.UIA_FullDescriptionPropertyId: "helpTextChange",
+	UIA.UIA_HelpTextPropertyId: "helpTextChange",
 	UIA_ExpandCollapseExpandCollapseStatePropertyId:"stateChange",
 	UIA_ToggleToggleStatePropertyId:"stateChange",
 	UIA_IsEnabledPropertyId:"stateChange",

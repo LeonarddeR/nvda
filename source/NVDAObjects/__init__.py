@@ -1205,6 +1205,12 @@ This code is executed if a gain focus event is received by this object.
 		braille.handler.handleUpdate(self)
 		vision.handler.handleUpdate(self, property="description")
 
+	def event_helpTextChange(self):
+		if self is api.getFocusObject():
+			speech.speakObjectProperties(self, helpText=True, reason=controlTypes.OutputReason.CHANGE)
+		braille.handler.handleUpdate(self)
+		vision.handler.handleUpdate(self, property="description")
+
 	def event_caret(self):
 		if self is api.getFocusObject() and not eventHandler.isPendingEvents("gainFocus"):
 			braille.handler.handleCaretMove(self)
