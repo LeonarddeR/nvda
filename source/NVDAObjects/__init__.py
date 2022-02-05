@@ -496,6 +496,10 @@ class NVDAObject(documentBase.TextContainerObject, baseObject.ScriptableObject, 
 		"""Retrieves the object/s that this object controls."""
 		return []
 
+	def _get_controlledBy(self):
+		"""Retrieves the object/s this object is controlled by."""
+		raise NotImplementedError
+
 	def _get_actionCount(self):
 		"""Retrieves the number of actions supported by this object."""
 		return 0
@@ -1004,6 +1008,7 @@ Tries to force this object to take the focus.
 		@raise NotImplementedError: If not supported by the underlying object.
 		"""
 		raise NotImplementedError
+
 
 	def _get_isPresentableFocusAncestor(self):
 		"""Determine if this object should be presented to the user in the focus ancestry.

@@ -1568,6 +1568,18 @@ the NVDAObject for IAccessible
 	def _get_flowsFrom(self) -> typing.Optional["IAccessible"]:
 		return self._getIA2RelationFirstTarget(IAccessibleHandler.RelationType.FLOWS_FROM)
 
+	#: Type definition for auto prop '_get_controllerFor'
+	controllerFor: typing.Optional["IAccessible"]
+
+	def _get_controllerFor(self):
+		return self._getIA2RelationFirstTarget(IAccessibleHandler.RelationType.CONTROLLER_FOR)
+
+	#: Type definition for auto prop '_get_controlledBy'
+	controlledBy: typing.Optional["IAccessible"]
+
+	def _get_controlledBy(self):
+		return self._getIA2RelationFirstTarget(IAccessibleHandler.RelationType.CONTROLLED_BY)
+
 	def event_valueChange(self):
 		if isinstance(self, EditableTextWithAutoSelectDetection):
 			self.hasContentChangedSinceLastSelection = True
