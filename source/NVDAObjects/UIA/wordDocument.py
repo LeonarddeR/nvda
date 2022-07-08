@@ -101,38 +101,9 @@ def getCommentInfoFromPosition(position):
 		UIAElement=UIAElement.buildUpdatedCache(UIAHandler.handler.baseCacheRequest)
 		typeID = UIAElement.GetCurrentPropertyValue(UIAHandler.UIA_AnnotationAnnotationTypeIdPropertyId)
 		# Use Annotation Type Comment if available
-		if typeID == UIAHandler.AnnotationType_Comment:
-			# Newer versions of Word present the comment text in the FullDescription property
-			try:
-				comment = UIAElement.GetCurrentPropertyValue(UIAHandler.UIA.UIA_FullDescriptionPropertyId)
-			except COMError:
-				comment = None
-			if not comment:
-				# Fall back to the name of the UIAElement
-				comment = UIAElement.GetCurrentPropertyValue(UIAHandler.UIA.UIA_NamePropertyId)
-			author = UIAElement.GetCurrentPropertyValue(UIAHandler.UIA_AnnotationAuthorPropertyId)
-			date = UIAElement.GetCurrentPropertyValue(UIAHandler.UIA_AnnotationDateTimePropertyId)
-			return dict(comment=comment, author=author, date=date)
-		else:
-			obj = UIA(UIAElement=UIAElement)
-			if (
-				not obj.parent
-				# Because the name of this object is language sensetive check if it has UIA Annotation Pattern
-				or not obj.parent.UIAElement.getCurrentPropertyValue(
-					UIAHandler.UIA_IsAnnotationPatternAvailablePropertyId
-				)
-			):
-				continue
-			comment = obj.makeTextInfo(textInfos.POSITION_ALL).text
-			tempObj = obj.previous.previous
-			authorObj = tempObj or obj.previous
-			author = authorObj.name
-			if not tempObj:
-				return dict(comment=comment, author=author)
-			dateObj = obj.previous
-			date = dateObj.name
-			return dict(comment=comment, author=author, date=date)
-
+		if typeID != UIAHandler.AnnotationType_Comment:
+			continue
+		return
 
 def getPresentableCommentInfoFromPosition(commentInfo):
 	if "date" not in commentInfo:
@@ -147,7 +118,10 @@ class CommentUIATextInfoQuickNavItem(TextAttribUIATextInfoQuickNavItem):
 
 	@property
 	def label(self):
-		commentInfo=getCommentInfoFromPosition(self.textInfo)
+		comment = self.obj.UIAFullDescription
+		author = self.obj._getUIACacheablePropertyValue(UIAHandler.UIA_AnnotationAuthorPropertyId)
+		date = self.obj._getUIACacheablePropertyValue(UIAHandler.UIA_AnnotationDateTimePropertyId)
+		commentInfo = dict(comment=comment, author=author, date=date)
 		return getPresentableCommentInfoFromPosition(commentInfo)
 
 class WordDocumentTextInfo(UIATextInfo):
