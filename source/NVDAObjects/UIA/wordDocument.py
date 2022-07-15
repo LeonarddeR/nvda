@@ -1,7 +1,7 @@
 # This file is covered by the GNU General Public License.
 # A part of NonVisual Desktop Access (NVDA)
 # See the file COPYING for more details.
-# Copyright (C) 2016-2022 NV Access Limited, Joseph Lee, Jakub Lukowicz
+# Copyright (C) 2016-2022 NV Access Limited, Joseph Lee, Jakub Lukowicz, Leonard de Ruijter
 
 from typing import (
 	Optional,
@@ -36,6 +36,7 @@ from NVDAObjects.window.winword import (
 )
 from NVDAObjects import NVDAObject
 from scriptHandler import script
+from dataclasses import dataclass
 
 
 """Support for Microsoft Word via UI Automation."""
@@ -51,6 +52,29 @@ class UIACustomAttributeID(enum.IntEnum):
 
 #: the non-printable unicode character that represents the end of cell or end of row mark in Microsoft Word
 END_OF_ROW_MARK = '\x07'
+
+
+@dataclass
+class CommentInfo:
+	comment: str
+	author: str
+	date: str
+
+	@classmethod
+	def fromUIAObject(cls, obj):
+		comment = obj.UIAFullDescription
+		author = obj._getUIACacheablePropertyValue(UIAHandler.UIA_AnnotationAuthorPropertyId)
+		date = obj._getUIACacheablePropertyValue(UIAHandler.UIA_AnnotationDateTimePropertyId)
+		return cls(comment, author, date)
+
+	@property
+	def presentableString(self):
+		# Translators: The message reported for a comment in Microsoft Word
+		return _("Comment: {comment} by {author} on {date}").format(
+			comment=self.comment,
+			author=self.author,
+			date=self.date
+		)
 
 
 class ElementsListDialog(browseMode.ElementsListDialog):
@@ -81,13 +105,11 @@ class RevisionUIATextInfoQuickNavItem(TextAttribUIATextInfoQuickNavItem):
 			# Translators: The general label shown for track changes 
 			return _(u"track change: {text}").format(text=text)
 
-def getCommentInfoFromPosition(position):
+
+def getCommentInfoFromPosition(position: UIATextInfo) -> CommentInfo:
 	"""
 	Fetches information about the comment located at the given position in a word document.
 	@param position: a TextInfo representing the span of the comment in the word document.
-	@type L{TextInfo}
-	@return: A dictionary containing keys of comment, author and date
-	@rtype: dict
 	"""
 	val=position._rangeObj.getAttributeValue(UIAHandler.UIA_AnnotationObjectsAttributeId)
 	if not val:
@@ -103,14 +125,9 @@ def getCommentInfoFromPosition(position):
 		# Use Annotation Type Comment if available
 		if typeID != UIAHandler.AnnotationType_Comment:
 			continue
-		return
+		obj = UIA(UIAElement=UIAElement)
+		return CommentInfo.fromUIAObject(obj)
 
-def getPresentableCommentInfoFromPosition(commentInfo):
-	if "date" not in commentInfo:
-		# Translators: The message reported for a comment in Microsoft Word
-		return _("Comment: {comment} by {author}").format(**commentInfo)
-	# Translators: The message reported for a comment in Microsoft Word
-	return _("Comment: {comment} by {author} on {date}").format(**commentInfo)
 
 class CommentUIATextInfoQuickNavItem(TextAttribUIATextInfoQuickNavItem):
 	attribID=UIAHandler.UIA_AnnotationTypesAttributeId
@@ -118,11 +135,23 @@ class CommentUIATextInfoQuickNavItem(TextAttribUIATextInfoQuickNavItem):
 
 	@property
 	def label(self):
-		comment = self.obj.UIAFullDescription
-		author = self.obj._getUIACacheablePropertyValue(UIAHandler.UIA_AnnotationAuthorPropertyId)
-		date = self.obj._getUIACacheablePropertyValue(UIAHandler.UIA_AnnotationDateTimePropertyId)
-		commentInfo = dict(comment=comment, author=author, date=date)
-		return getPresentableCommentInfoFromPosition(commentInfo)
+		commentInfo = CommentInfo.fromUIAObject(self.obj)
+		return commentInfo.presentableString
+
+	@property
+	def obj(self):
+		UIAElement = self.textInfo._rangeObj.GetEnclosingElement()
+		UIAElement=UIAElement.buildUpdatedCache(UIAHandler.handler.baseCacheRequest)
+		obj = UIA(UIAElement=UIAElement)
+		return obj
+
+	@property
+	def level(self):
+		return self.obj._getUIACacheablePropertyValue(UIAHandler.UIA_LevelPropertyId)
+
+	def isChild(self, parent):
+		return self.level > parent.level
+
 
 class WordDocumentTextInfo(UIATextInfo):
 
@@ -565,7 +594,7 @@ class WordDocument(UIADocumentWithTableNavigation,WordDocumentNode,WordDocumentB
 		caretInfo=self.makeTextInfo(textInfos.POSITION_CARET)
 		commentInfo = getCommentInfoFromPosition(caretInfo)
 		if commentInfo is not None:
-			ui.message(getPresentableCommentInfoFromPosition(commentInfo))
+			ui.message(commentInfo.presentableString)
 		else:
 			# Translators: a message when there is no comment to report in Microsoft Word
 			ui.message(_("No comments"))
