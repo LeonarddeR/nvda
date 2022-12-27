@@ -51,6 +51,8 @@ def reloadGlobalPlugins():
 	for mod in mods:
 		del sys.modules[mod]
 	import globalPlugins
+	from addonHandler.packaging import addDirsToPythonPackagePath
+	addDirsToPythonPackagePath(globalPlugins)
 	initialize()
 
 class GlobalPlugin(baseObject.ScriptableObject):
@@ -82,3 +84,6 @@ class GlobalPlugin(baseObject.ScriptableObject):
 		@param clsList: The list of classes, which will be modified by this method if appropriate.
 		@type clsList: list of L{NVDAObjects.NVDAObject}
 		"""
+
+	def __repr__(self):
+		return f"{self.__class__.__name__} ({self.__class__.__module__!r})"

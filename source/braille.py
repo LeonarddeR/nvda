@@ -1,7 +1,8 @@
 # A part of NonVisual Desktop Access (NVDA)
 # This file is covered by the GNU General Public License.
 # See the file COPYING for more details.
-# Copyright (C) 2008-2022 NV Access Limited, Joseph Lee, Babbage B.V., Davy Kager, Bram Duvigneau
+# Copyright (C) 2008-2022 NV Access Limited, Joseph Lee, Babbage B.V., Davy Kager, Bram Duvigneau,
+# Leonard de Ruijter
 
 import itertools
 import os
@@ -785,6 +786,8 @@ def getControlFieldBraille(  # noqa: C901
 			text.append(getPropertiesBraille(description=description))
 		if current:
 			text.append(getPropertiesBraille(current=current))
+		if hasDetails:
+			text.append(getPropertiesBraille(hasDetails=hasDetails, detailsRole=detailsRole))
 		if role == controlTypes.Role.GRAPHIC and content:
 			text.append(content)
 		return TEXT_SEPARATOR.join(text) if len(text) != 0 else None
@@ -2495,6 +2498,9 @@ class BrailleDisplayDriver(driverHandler.Driver):
 		@return: The number of cells.
 		"""
 		return 0
+
+	def __repr__(self):
+		return f"{self.__class__.__name__}({self.name!r}, numCells={self.numCells!r})"
 
 	def display(self, cells):
 		"""Display the given braille cells.

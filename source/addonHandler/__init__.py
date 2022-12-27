@@ -550,6 +550,10 @@ class Addon(AddonBase):
 				return docFile
 		return None
 
+	def __repr__(self):
+		return f"{self.__class__.__name__} ({self.name!r}, running={self.isRunning!r})"
+
+
 def getCodeAddon(obj=None, frameDist=1):
 	""" Returns the L{Addon} where C{obj} is defined. If obj is None the caller code frame is assumed to allow simple retrieval of "current calling addon".
 	@param obj: python object or None for default behaviour.
