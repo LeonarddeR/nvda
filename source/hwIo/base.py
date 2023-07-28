@@ -187,13 +187,11 @@ class IoBase(object):
 	def _ioDone(self, error, numberOfBytes: int, overlapped):
 		if not self._onReceive:
 			# close has been called.
-			self._ioDone = None
 			return
 		elif error != 0:
 			if not self._onReadError or not self._onReadError(error):
 				raise ctypes.WinError(error)
 			else:
-				self._ioDone = None
 				return
 		self._notifyReceive(self._readBuf[:numberOfBytes])
 		winKernel.kernel32.SetEvent(self._recvEvt)
