@@ -1,27 +1,27 @@
 # This file is covered by the GNU General Public License.
 # A part of NonVisual Desktop Access (NVDA)
 # See the file COPYING for more details.
-# Copyright (C) 2016-2021 NV Access Limited, Joseph Lee, Jakub Lukowicz
+# Copyright (C) 2016-2023 NV Access Limited, Joseph Lee, Jakub Lukowicz, Cyrille Bougot
 
 from typing import (
 	Optional,
 	Dict,
 )
 
+import enum
 from comtypes import COMError
-from collections import defaultdict
+import winVersion
 import mathPres
 from scriptHandler import isScriptWaiting
 import textInfos
-import eventHandler
 import UIAHandler
+import UIAHandler.remote as UIARemote
 from logHandler import log
 import controlTypes
 import ui
 import speech
 import review
 import braille
-import api
 import browseMode
 from UIAHandler.browseMode import (
 	UIABrowseModeDocument,
@@ -39,6 +39,15 @@ from scriptHandler import script
 
 
 """Support for Microsoft Word via UI Automation."""
+
+
+class UIACustomAttributeID(enum.IntEnum):
+	LINE_NUMBER = 0
+	PAGE_NUMBER = 1
+	COLUMN_NUMBER = 2
+	SECTION_NUMBER = 3
+	BOOKMARK_NAME = 4
+
 
 #: the non-printable unicode character that represents the end of cell or end of row mark in Microsoft Word
 END_OF_ROW_MARK = '\x07'
@@ -92,12 +101,7 @@ def getCommentInfoFromPosition(position):
 		UIAElement=UIAElement.buildUpdatedCache(UIAHandler.handler.baseCacheRequest)
 		typeID = UIAElement.GetCurrentPropertyValue(UIAHandler.UIA_AnnotationAnnotationTypeIdPropertyId)
 		# Use Annotation Type Comment if available
-		cats = position.obj._UIACustomAnnotationTypes
-		if (
-			typeID == UIAHandler.AnnotationType_Comment
-			or (typeID and typeID == cats.microsoftWord_draftComment)
-			or (typeID and typeID == cats.microsoftWord_resolvedComment)
-		):
+		if typeID == UIAHandler.AnnotationType_Comment:
 			comment = UIAElement.GetCurrentPropertyValue(UIAHandler.UIA_NamePropertyId)
 			author = UIAElement.GetCurrentPropertyValue(UIAHandler.UIA_AnnotationAuthorPropertyId)
 			date = UIAElement.GetCurrentPropertyValue(UIAHandler.UIA_AnnotationDateTimePropertyId)
@@ -197,15 +201,15 @@ class WordDocumentTextInfo(UIATextInfo):
 
 	def _getControlFieldForUIAObject(self, obj, isEmbedded=False, startOfNode=False, endOfNode=False):
 		# Ignore strange editable text fields surrounding most inner fields (links, table cells etc) 
-		automationID=obj.UIAElement.cachedAutomationID
+		automationId = obj.UIAAutomationId
 		field = super(WordDocumentTextInfo, self)._getControlFieldForUIAObject(
 			obj,
 			isEmbedded=isEmbedded,
 			startOfNode=startOfNode,
 			endOfNode=endOfNode
 		)
-		if automationID.startswith('UIA_AutomationId_Word_Page_'):
-			field['page-number']=automationID.rsplit('_',1)[-1]
+		if automationId.startswith('UIA_AutomationId_Word_Page_'):
+			field['page-number'] = automationId.rsplit('_', 1)[-1]
 		elif obj.UIAElement.cachedControlType==UIAHandler.UIA_GroupControlTypeId and obj.name:
 			field['role']=controlTypes.Role.EMBEDDEDOBJECT
 			field['alwaysReportName']=True
@@ -318,7 +322,6 @@ class WordDocumentTextInfo(UIATextInfo):
 		# But, we therefore need to remove the inner math content if reading by line
 		if not formatConfig or not formatConfig.get('extraDetail'):
 			# We really only want to remove content if we can guarantee that mathPlayer is available.
-			mathPres.ensureInit()
 			if mathPres.speechProvider or mathPres.brailleProvider:
 				curLevel = 0
 				mathLevel = None
@@ -417,11 +420,62 @@ class WordDocumentTextInfo(UIATextInfo):
 				index+=1
 		return fields
 
+	def _getFormatFieldAtRange(self, textRange, formatConfig, ignoreMixedValues=False):
+		formatField = super()._getFormatFieldAtRange(textRange, formatConfig, ignoreMixedValues=ignoreMixedValues)
+		if not formatField:
+			return formatField
+		if winVersion.getWinVer() >= winVersion.WIN11:
+			docElement = self.obj.UIAElement
+			if formatConfig['reportLineNumber']:
+				lineNumber = UIARemote.msWord_getCustomAttributeValue(
+					docElement, textRange, UIACustomAttributeID.LINE_NUMBER
+				)
+				if isinstance(lineNumber, int):
+					formatField.field['line-number'] = lineNumber
+			if formatConfig['reportPage']:
+				sectionNumber = UIARemote.msWord_getCustomAttributeValue(
+					docElement, textRange, UIACustomAttributeID.SECTION_NUMBER
+				)
+				if isinstance(sectionNumber, int):
+					formatField.field['section-number'] = sectionNumber
+				if False:
+					# #13511: Fetching of text-column-number is disabled
+					# as it causes Microsoft Word 16.0.1493 and newer to crash!!
+					# This should only be reenabled for versions identified not to crash.
+					textColumnNumber = UIARemote.msWord_getCustomAttributeValue(
+						docElement, textRange, UIACustomAttributeID.COLUMN_NUMBER
+					)
+					if isinstance(textColumnNumber, int):
+						formatField.field['text-column-number'] = textColumnNumber
+		return formatField
+	
+	def _getIndentValueDisplayString(self, val: float) -> str:
+		"""A function returning the string to display in formatting info in Word documents.
+		@param val: an indent value measured in points, fetched via
+			an UIAHandler.UIA_Indentation*AttributeId attribute.
+		@return: The string used in formatting information to report the length of an indentation.
+		"""
+		
+		if self.obj.WinwordApplicationObject:
+			# When Word object model is available we honour Word's options to report distances so that what is
+			# reported by NVDA matches Word's UI (rulers, paragraph formatting dialog, etc.)
+			# Default seem to be inch or centimeters for Western countries localization of Word and characters for
+			# east Asian localisations.
+			return self.obj.getLocalizedMeasurementTextForPointSize(val)
+		
+		# If Word object model is not available, we just fallback to general UIA case, i.e. use Windows regional
+		# settings.
+		return super()._getIndentValueDisplayString(val)
+
+
 class WordBrowseModeDocument(UIABrowseModeDocument):
 
 	def _shouldSetFocusToObj(self, obj: NVDAObject) -> bool:
 		# Ignore strange editable text fields surrounding most inner fields (links, table cells etc) 
-		if obj.role==controlTypes.Role.EDITABLETEXT and obj.UIAElement.cachedAutomationID.startswith('UIA_AutomationId_Word_Content'):
+		if (
+			obj.role == controlTypes.Role.EDITABLETEXT
+			and obj.UIAAutomationId.startswith('UIA_AutomationId_Word_Content')
+		):
 			return False
 		elif obj.role == controlTypes.Role.MATH:
 			# Don't set focus to math equations otherwise they cannot be interacted  with mathPlayer.
@@ -430,7 +484,10 @@ class WordBrowseModeDocument(UIABrowseModeDocument):
 
 	def shouldPassThrough(self,obj,reason=None):
 		# Ignore strange editable text fields surrounding most inner fields (links, table cells etc) 
-		if obj.role==controlTypes.Role.EDITABLETEXT and obj.UIAElement.cachedAutomationID.startswith('UIA_AutomationId_Word_Content'):
+		if (
+			obj.role == controlTypes.Role.EDITABLETEXT
+			and obj.UIAAutomationId.startswith('UIA_AutomationId_Word_Content')
+		):
 			return False
 		elif obj.role == controlTypes.Role.MATH:
 			# Don't  activate focus mode for math equations otherwise they cannot be interacted  with mathPlayer.
