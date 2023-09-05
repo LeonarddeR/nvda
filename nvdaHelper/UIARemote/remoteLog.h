@@ -16,9 +16,9 @@ http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 
 // Converts a utf8 encoded string into a utf16 encoded wstring
 std::wstring stringToWstring(const std::string& from) {
-	int wideLen = MultiByteToWideChar(CP_UTF8, 0, from.c_str(), from.length(), nullptr, 0);
+	int wideLen = MultiByteToWideChar(CP_UTF8, 0, from.c_str(), (int)from.length(), nullptr, 0);
 	std::wstring wideBuf (wideLen, L'\0');
-	MultiByteToWideChar(CP_UTF8, 0, from.c_str(), from.length(), wideBuf.data(), wideLen);
+	MultiByteToWideChar(CP_UTF8, 0, from.c_str(), (int)from.length(), wideBuf.data(), wideLen);
 	return wideBuf;
 }
 

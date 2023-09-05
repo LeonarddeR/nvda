@@ -17,6 +17,8 @@ import shutil
 
 Import(
 	'env',
+	"hostArch",
+	"hostArchWindows",
 	'sourceDir',
 	'sourceTypelibDir',
 	'libInstallDir',
@@ -175,10 +177,11 @@ else:
 
 Export('thirdPartyEnv')
 Export('env')
+Export('hostArchWindows')
 
 acrobatAccessRPCStubs=env.SConscript('acrobatAccess_sconscript')
 Export('acrobatAccessRPCStubs')
-if TARGET_ARCH=='x86':
+if TARGET_ARCH == hostArch:
 	env.Install(sourceTypelibDir,acrobatAccessRPCStubs[0]) #typelib
 
 ia2RPCStubs=env.SConscript('ia2_sconscript')
@@ -186,18 +189,18 @@ Export('ia2RPCStubs')
 if signExec:
 	env.AddPostAction(ia2RPCStubs[0],[signExec])
 env.Install(libInstallDir,ia2RPCStubs[0]) #proxy dll
-if TARGET_ARCH=='x86':
+if TARGET_ARCH == hostArch:
 	env.Install(sourceTypelibDir,ia2RPCStubs[1]) #typelib
 
 iSimpleDomRPCStubs=env.SConscript('ISimpleDOM_sconscript')
 if signExec:
 	env.AddPostAction(iSimpleDomRPCStubs[0],[signExec])
 env.Install(libInstallDir,iSimpleDomRPCStubs[0]) #proxy dll
-if TARGET_ARCH=='x86':
+if TARGET_ARCH == hostArch:
 	env.Install(sourceTypelibDir,iSimpleDomRPCStubs[1]) #typelib
 
 mathPlayerRPCStubs=env.SConscript('mathPlayer_sconscript')
-if TARGET_ARCH=='x86':
+if TARGET_ARCH == hostArch:
 	env.Install(sourceTypelibDir,mathPlayerRPCStubs[0]) #typelib
 
 detoursLib = env.SConscript('detours/sconscript')
@@ -206,7 +209,7 @@ Export('detoursLib')
 apiHookObj = env.Object("apiHook","common/apiHook.cpp")
 Export('apiHookObj')
 
-if TARGET_ARCH=='x86':
+if TARGET_ARCH == hostArch:
 	localLib=env.SConscript('local/sconscript')
 	Export('localLib')
 	if signExec:
@@ -216,13 +219,13 @@ if TARGET_ARCH=='x86':
 	if signExec:
 		env.AddPostAction(win10localLib[0],[signExec])
 	env.Install(libInstallDir,win10localLib)
-	MSUIA_lib_outDir,MSUIA_include_outDir = thirdPartyEnv.SConscript('microsoft-ui-uiautomation/sconscript')
-	Export('MSUIA_lib_outDir')
-	Export('MSUIA_include_outDir')
-	UIARemoteLib=env.SConscript('UIARemote/sconscript')
-	if signExec:
-		env.AddPostAction(UIARemoteLib[0],[signExec])
-	env.Install(libInstallDir,UIARemoteLib)
+	#MSUIA_lib_outDir,MSUIA_include_outDir = thirdPartyEnv.SConscript('microsoft-ui-uiautomation/sconscript')
+	#Export('MSUIA_lib_outDir')
+	#Export('MSUIA_include_outDir')
+	#UIARemoteLib=env.SConscript('UIARemote/sconscript')
+	#if signExec:
+	#	env.AddPostAction(UIARemoteLib[0],[signExec])
+	#env.Install(libInstallDir,UIARemoteLib)
 
 clientLib=env.SConscript('client/sconscript')
 Export('clientLib')
@@ -236,12 +239,12 @@ if signExec:
 	env.AddPostAction(remoteLib[0],[signExec])
 env.Install(libInstallDir,remoteLib)
 
-if TARGET_ARCH in ('x86_64', 'arm64'):
+if TARGET_ARCH != hostArch:
 	remoteLoaderProgram=env.SConscript('remoteLoader/sconscript')
 	if signExec:
 		env.AddPostAction(remoteLoaderProgram,[signExec])
 	env.Install(libInstallDir,remoteLoaderProgram)
 
-if TARGET_ARCH=='x86':
+if TARGET_ARCH == hostArch:
 	thirdPartyEnv.SConscript('espeak/sconscript')
 	thirdPartyEnv.SConscript('liblouis/sconscript')

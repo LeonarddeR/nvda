@@ -32,6 +32,7 @@ The outputs of this sconscript are:
 
 Import(
 	'env',
+	"hostArchWindows",
 	'sourceDir',
 	'sourceLibDir',
 )
@@ -72,12 +73,13 @@ MSUIA_wrapper_libs = env.Command(
 	],
 	action = [
 		# Fetch any required NuGet packages
-		f"msbuild {MSUIA_solutionFile} /t:Restore /p:RestorePackagesConfig=true,Configuration=Release,Platform=x86,PlatformToolset={platformToolset}",
+		f"msbuild {MSUIA_solutionFile} /t:Restore /p:RestorePackagesConfig=true,Configuration=Release,Platform={hostArchWindows},PreferredToolArchitecture={hostArchWindows},PlatformToolset={platformToolset}",
 		# Remove any old generated files
 		Delete(MSUIA_sourceDir.Dir('microsoft.ui.uiautomation/Generated Files')),
 		# Do the actual build
-		"msbuild /t:Build /p:Configuration=Release,Platform=x86,PlatformToolset={platformToolset},OutDir={outDir}/ $SOURCE".format(
+		"msbuild /t:Build /p:Configuration=Release,Platform={platform},PreferredToolArchitecture={platform},PlatformToolset={platformToolset},OutDir={outDir}/ $SOURCE".format(
 			outDir=MSUIA_lib_outDir.abspath,
+			platform=hostArchWindows,
 			platformToolset=platformToolset
 		)
 	],
@@ -97,8 +99,9 @@ MSUIA_abstraction_libs = env.Command(
 		glob.glob(os.path.join(MSUIA_sourceDir.abspath, 'UiaOperationAbstraction', '*.h')),
 	],
 	action = [
-		"msbuild /t:Build /p:Configuration=Release,Platform=x86,PlatformToolset={platformToolset},OutDir={outDir}/ $SOURCE".format(
+		"msbuild /t:Build /p:Configuration=Release,Platform={platform},PreferredToolArchitecture={platform},PlatformToolset={platformToolset},OutDir={outDir}/ $SOURCE".format(
 			outDir=MSUIA_lib_outDir.abspath,
+			platform=hostArchWindows,
 			platformToolset=platformToolset
 		),
 	]

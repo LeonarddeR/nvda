@@ -22,10 +22,13 @@ if not virtualEnv or not os.path.isdir(virtualEnv):
 if nvdaVenv != virtualEnv:
 	print("Warning: SCons launched within a custom Python virtual environment.")
 
+# Variables for build architectures
+hostArch = "x86_64"
+hostArchWindows = "x64"
 # Variables for storing required version of Python, and the version which is used to run this script.
 requiredPythonMajor ="3"
 requiredPythonMinor = "7"
-requiredPythonArchitecture = "32bit"
+requiredPythonArchitecture = "64bit"
 installedPythonMajor = str(sys.version_info.major)
 installedPythonMinor = str(sys.version_info.minor)
 installedPythonArchitecture = platform.architecture()[0]
@@ -114,14 +117,18 @@ vars.Add(ListVariable("nvdaHelperDebugFlags", "a list of debugging features you 
 vars.Add(EnumVariable('nvdaHelperLogLevel','The level of logging you wish to see, lower is more verbose','15',allowed_values=[str(x) for x in range(60)]))
 
 #Base environment for this and sub sconscripts
-env = Environment(variables=vars,HOST_ARCH='x86',tools=[
-	"textfile",
-	"gettextTool",
-	"t2t"
-	,keyCommandsDocTool,
-	"doxygen",
-	"recursiveInstall"
-])
+env = Environment(
+	variables=vars,
+	HOST_ARCH=hostArch,
+	tools=[
+		"textfile",
+		"gettextTool",
+		"t2t"
+		,keyCommandsDocTool,
+		"doxygen",
+		"recursiveInstall"
+	]
+)
 
 # speed up subsequent runs by checking timestamps of targets and dependencies, and only using md5 if timestamps differ.
 env.Decider('MD5-timestamp')
@@ -211,7 +218,7 @@ env32['STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME'] = 1
 env64['STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME'] = 1
 envArm64['STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME'] = 1
 
-env=env32
+env=env64
 
 projectRCSubstDict={
 	'%version_year%':env['version_year'],
@@ -239,10 +246,40 @@ Command(sourceLibDir.File(jabDll),
 
 env.SConscript('source/comInterfaces_sconscript',exports=['env'])
 
-#Process nvdaHelper scons files
-env32.SConscript('nvdaHelper/archBuild_sconscript',exports={'env':env32,'clientInstallDir':clientDir.Dir('x86'),'libInstallDir':sourceLibDir},variant_dir='build/x86')
-env64.SConscript('nvdaHelper/archBuild_sconscript',exports={'env':env64,'clientInstallDir':clientDir.Dir('x64'),'libInstallDir':sourceLibDir64},variant_dir='build/x86_64')
-envArm64.SConscript('nvdaHelper/archBuild_sconscript',exports={'env':envArm64,'clientInstallDir':clientDir.Dir('arm64'),'libInstallDir':sourceLibDirArm64},variant_dir='build/arm64')
+# Process nvdaHelper scons files
+env32.SConscript(
+	'nvdaHelper/archBuild_sconscript',
+	exports={
+		'env': env32,
+		'hostArch': hostArch,
+		'hostArchWindows': hostArchWindows,
+		'clientInstallDir': clientDir.Dir('x86'),
+		'libInstallDir': sourceLibDir
+	},
+	variant_dir='build/x86'
+)
+env64.SConscript(
+	'nvdaHelper/archBuild_sconscript',
+	exports={
+		'env': env64,
+		'hostArch': hostArch,
+		'hostArchWindows': hostArchWindows,
+		'clientInstallDir': clientDir.Dir('x64'),
+		'libInstallDir': sourceLibDir64
+	},
+	variant_dir='build/x86_64'
+)
+envArm64.SConscript(
+	'nvdaHelper/archBuild_sconscript',
+	exports={
+		'env': envArm64,
+		'hostArch': hostArch,
+		'hostArchWindows': hostArchWindows,
+		'clientInstallDir': clientDir.Dir('arm64'),
+		'libInstallDir': sourceLibDirArm64
+	},
+	variant_dir='build/arm64'
+)
 
 #Allow all NVDA's gettext po files to be compiled in source/locale
 for po in env.Glob(sourceDir.path+'/locale/*/lc_messages/*.po'):
@@ -335,9 +372,9 @@ def NVDADistGenerator(target, source, env, for_signature):
 	# But usually has a '.0' appended after the productVersion found in the registry. 
 	# E.g. 10.0.1941 might e actually 10.0.1941.0.
 	# Thus try both.
-	CRTDir = os.path.join(sdk_installationFolder, "Redist", sdk_productVersion+".0", "ucrt", "DLLs", "x86")
+	CRTDir = os.path.join(sdk_installationFolder, "Redist", sdk_productVersion + ".0", "ucrt", "DLLs", hostArchWindows )
 	if not os.path.isdir(CRTDir):
-		CRTDir = os.path.join(sdk_installationFolder, "Redist", sdk_productVersion, "ucrt", "DLLs", "x86")
+		CRTDir = os.path.join(sdk_installationFolder, "Redist", sdk_productVersion, "ucrt", "DLLs", hostArchWindows )
 		if not os.path.isdir(CRTDir):
 			raise RuntimeError(f"Could not locate CRT dlls in SDK at {CRTDir}")
 	with os.scandir(CRTDir) as dir:
