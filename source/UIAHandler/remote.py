@@ -22,7 +22,7 @@ def initialize(doRemote: bool, UIAClient: POINTER(UIA.IUIAutomation)):
 	@param UIAClient: the current instance of the UI Automation client library running in NVDA.
 	"""
 	global _dll
-	_dll = windll[os.path.join(NVDAHelper.versionedLibPath, "UIARemote.dll")]
+	_dll = windll[os.path.join(NVDAHelper.versionedLibX86Path, "UIARemote.dll")]
 	_dll.initialize(doRemote, UIAClient)
 
 

@@ -32,20 +32,20 @@ from logHandler import log
 import NVDAState
 from utils.security import isLockScreenModeActive
 
-versionedLibPath = os.path.join(globalVars.appDir, 'lib')
+versionedLibX86Path = os.path.join(globalVars.appDir, 'lib')
 versionedLibARM64Path = os.path.join(globalVars.appDir, 'libArm64')
 versionedLibAMD64Path = os.path.join(globalVars.appDir, 'lib64')
 
 
 if not NVDAState.isRunningAsSource():
 	# When running as a py2exe build, libraries are in a version-specific directory
-	versionedLibPath=os.path.join(versionedLibPath,versionInfo.version)
+	versionedLibX86Path=os.path.join(versionedLibX86Path,versionInfo.version)
 	versionedLibAMD64Path = os.path.join(versionedLibAMD64Path, versionInfo.version)
 	versionedLibARM64Path = os.path.join(versionedLibARM64Path, versionInfo.version)
 
 
 _remoteLib=None
-_remoteLoaderAMD64: "Optional[_RemoteLoader]" = None
+_remoteLoaderX86: "Optional[_RemoteLoader]" = None
 _remoteLoaderARM64: "Optional[_RemoteLoader]" = None
 localLib=None
 generateBeep=None
@@ -536,7 +536,7 @@ class _RemoteLoader:
 
 
 def initialize() -> None:
-	global _remoteLib, _remoteLoaderAMD64, _remoteLoaderARM64
+	global _remoteLib, _remoteLoaderX86, _remoteLoaderARM64
 	global localLib, generateBeep, VBuf_getTextInRange, lastLanguageID, lastLayoutString
 	hkl=c_ulong(windll.User32.GetKeyboardLayout(0)).value
 	lastLanguageID=winUser.LOWORD(hkl)
@@ -545,7 +545,9 @@ def initialize() -> None:
 	res=windll.User32.GetKeyboardLayoutNameW(buf)
 	if res:
 		lastLayoutString=buf.value
-	localLib=cdll.LoadLibrary(os.path.join(versionedLibPath,'nvdaHelperLocal.dll'))
+	localLib = cdll.LoadLibrary(
+		os.path.join(versionedLibAMD64Path, 'nvdaHelperLocal.dll')
+	)
 	for name,func in [
 		("nvdaController_speakText",nvdaController_speakText),
 		("nvdaController_cancelSpeech",nvdaController_cancelSpeech),
@@ -584,7 +586,7 @@ def initialize() -> None:
 		return
 	# Load nvdaHelperRemote.dll
 	h = windll.kernel32.LoadLibraryExW(
-		os.path.join(versionedLibPath, "nvdaHelperRemote.dll"),
+		os.path.join(versionedLibAMD64Path, "nvdaHelperRemote.dll"),
 		0,
 		# Using an altered search path is necessary here
 		# As NVDAHelperRemote needs to locate dependent dlls in the same directory
@@ -595,26 +597,20 @@ def initialize() -> None:
 		log.critical("Error loading nvdaHelperRemote.dll: %s" % WinError())
 		return
 	_remoteLib=CDLL("nvdaHelperRemote",handle=h)
-	if _remoteLib.injection_initialize() == 0:
-		raise RuntimeError("Error initializing NVDAHelperRemote")
-	if not _remoteLib.installIA2Support():
-		log.error("Error installing IA2 support")
+	#if _remoteLib.injection_initialize() == 0:
+	#	raise RuntimeError("Error initializing NVDAHelperRemote")
+	#if not _remoteLib.installIA2Support():
+	#	log.error("Error installing IA2 support")
 	#Manually start the in-process manager thread for this NVDA main thread now, as a slow system can cause this action to confuse WX
-	_remoteLib.initInprocManagerThreadIfNeeded()
-	versionedLibARM64Path
+	#_remoteLib.initInprocManagerThreadIfNeeded()
+	_remoteLoaderX86 = _RemoteLoader(versionedLibX86Path)
 	arch = winVersion.getWinVer().processorArchitecture
-	if arch == 'AMD64':
-		_remoteLoaderAMD64 = _RemoteLoader(versionedLibAMD64Path)
-	elif arch == 'ARM64':
+	if arch == 'ARM64':
 		_remoteLoaderARM64 = _RemoteLoader(versionedLibARM64Path)
-		# Windows on ARM from Windows 11 supports running AMD64 apps.
-		# Thus we also need to be able to inject into these.
-		if winVersion.getWinVer() >= winVersion.WIN11:
-			_remoteLoaderAMD64 = _RemoteLoader(versionedLibAMD64Path)
 
 
 def terminate():
-	global _remoteLib, _remoteLoaderAMD64, _remoteLoaderARM64
+	global _remoteLib, _remoteLoaderX86, _remoteLoaderARM64
 	global localLib, generateBeep, VBuf_getTextInRange
 	if not config.isAppX:
 		if not _remoteLib.uninstallIA2Support():
@@ -622,9 +618,9 @@ def terminate():
 		if _remoteLib.injection_terminate() == 0:
 			raise RuntimeError("Error terminating NVDAHelperRemote")
 		_remoteLib=None
-		if _remoteLoaderAMD64:
-			_remoteLoaderAMD64.terminate()
-			_remoteLoaderAMD64 = None
+		if _remoteLoaderX86:
+			_remoteLoaderX86.terminate()
+			_remoteLoaderX86 = None
 		if _remoteLoaderARM64:
 			_remoteLoaderARM64.terminate()
 			_remoteLoaderARM64 = None
@@ -633,7 +629,7 @@ def terminate():
 	localLib.nvdaHelperLocal_terminate()
 	localLib=None
 
-LOCAL_WIN10_DLL_PATH = os.path.join(versionedLibPath,"nvdaHelperLocalWin10.dll")
+LOCAL_WIN10_DLL_PATH = os.path.join(versionedLibAMD64Path,"nvdaHelperLocalWin10.dll")
 def getHelperLocalWin10Dll():
 	"""Get a ctypes WinDLL instance for the nvdaHelperLocalWin10 dll.
 	This is a C++/CX dll used to provide access to certain UWP functionality.
