@@ -5,7 +5,7 @@ SCons==4.3.0
 comtypes==1.1.11
 pyserial==3.5
 wxPython==4.1.1
-git+https://github.com/DiffSK/configobj@3e2f4cc#egg=configobj
+configobj==5.0.8
 requests==2.31.0
 # Required to use a pinned old version for requests.
 # py2exe fails to compile properly without this.
