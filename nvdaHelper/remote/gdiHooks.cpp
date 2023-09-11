@@ -532,7 +532,7 @@ void ExtTextOutHelper(
 	LOG_DEBUG(L"using offset of "<<textLeft<<L","<<textTop);
 	RECT textRect={textLeft,textTop,textLeft+resultTextSize->cx,textTop+resultTextSize->cy};
 	//We must store chunks using device coordinates, not logical coordinates, as its possible for the DC's viewport to move or resize.
-	//For example, in Windows 7, menu items are always drawn at the same DC coordinates, but the DC is moved downward each time.
+	//For example, menu items could always be drawn at the same DC coordinates, but the DC is moved downward each time.
 	POINT baselinePoint={textRect.left,textRect.top+tm.tmAscent};
 	dcPointsToScreenPoints(hdc,&baselinePoint,1,false);
 	dcPointsToScreenPoints(hdc,(LPPOINT)&textRect,2,false);
