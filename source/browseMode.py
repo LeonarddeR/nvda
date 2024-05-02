@@ -488,16 +488,17 @@ class BrowseModeTreeInterceptor(treeInterceptorHandler.TreeInterceptor):
 					direction=_Movement(direction),
 					pos=pos,
 				)
-		elif itemType == "verticalParagraph":
+		elif itemType in ("verticalParagraph", "horizontalParagraph"):
 			def paragraphFunc(info: textInfos.TextInfo) -> int | None:
+				coordinate = 1 if itemType == "horizontalParagraph" else 0
 				try:
-					return info.location[0]
+					return info.location[coordinate]
 				except (AttributeError, TypeError):
 					return None
 
 			def iterFactory(direction: str, pos: textInfos.TextInfo) -> Generator[TextInfoQuickNavItem, None, None]:
 				return self._iterSimilarParagraph(
-					kind="verticalParagraph",
+					kind=itemType,
 					paragraphFunction=paragraphFunc,
 					desiredValue=None,
 					direction=_Movement(direction),
@@ -1098,6 +1099,19 @@ qn(
 	prevDoc=_("moves to the previous vertically aligned paragraph"),
 	# Translators: Message presented when the browse mode element is not found.
 	prevError=_("no previous vertically aligned paragraph"),
+	readUnit=textInfos.UNIT_PARAGRAPH,
+)
+qn(
+	"horizontalParagraph",
+	key=None,
+	# Translators: Input help message for a quick navigation command in browse mode.
+	nextDoc=_("moves to the next horizontally aligned paragraph"),
+	# Translators: Message presented when the browse mode element is not found.
+	nextError=_("no next horizontallly aligned paragraph"),
+	# Translators: Input help message for a quick navigation command in browse mode.
+	prevDoc=_("moves to the previous horizontallly aligned paragraph"),
+	# Translators: Message presented when the browse mode element is not found.
+	prevError=_("no previous horizontallly aligned paragraph"),
 	readUnit=textInfos.UNIT_PARAGRAPH,
 )
 qn(
