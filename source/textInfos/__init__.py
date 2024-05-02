@@ -10,7 +10,7 @@ A default implementation, L{NVDAObjects.NVDAObjectTextInfo}, is used to enable t
 """
 
 from abc import abstractmethod
-from enum import Enum
+from enum import Enum, StrEnum
 import weakref
 import re
 import typing
@@ -29,6 +29,7 @@ import config
 import controlTypes
 from controlTypes import OutputReason
 import locationHelper
+import NVDAState
 from logHandler import log
 
 if typing.TYPE_CHECKING:
@@ -262,31 +263,46 @@ class Bookmark(baseObject.AutoPropertyObject):
 		return not self==other
 
 
-#Unit constants
-UNIT_CHARACTER = "character"
-UNIT_WORD = "word"
-UNIT_LINE = "line"
-UNIT_SENTENCE = "sentence"
-UNIT_PARAGRAPH = "paragraph"
-UNIT_PAGE = "page"
-UNIT_TABLE = "table"
-UNIT_ROW = "row"
-UNIT_COLUMN = "column"
-UNIT_CELL = "cell"
-UNIT_SCREEN = "screen"
-UNIT_STORY = "story"
-UNIT_READINGCHUNK = "readingChunk"
-UNIT_OFFSET = "offset"
-UNIT_CONTROLFIELD = "controlField"
-UNIT_FORMATFIELD = "formatField"
+class Unit(StrEnum):
+	CHARACTER = "character"
+	WORD = "word"
+	LINE = "line"
+	SENTENCE = "sentence"
+	PARAGRAPH = "paragraph"
+	PAGE = "page"
+	TABLE = "table"
+	ROW = "row"
+	COLUMN = "column"
+	CELL = "cell"
+	SCREEN = "screen"
+	STORY = "story"
+	READINGCHUNK = "readingChunk"
+	OFFSET = "offset"
+	CONTROLFIELD = "controlField"
+	FORMATFIELD = "formatField"
 
-MOUSE_TEXT_RESOLUTION_UNITS = (UNIT_CHARACTER,UNIT_WORD,UNIT_LINE,UNIT_PARAGRAPH)
+
+def __getattr__(attrName: str) -> Any:
+	"""Module level `__getattr__` used to preserve backward compatibility."""
+	if attrName.startswith("UNIT_") and NVDAState._allowDeprecatedAPI():
+		unitStr = attrName.split("_", 1)[1]
+		unit = getattr(Unit, unitStr)
+		log.warning(
+			f"{attrName} is deprecated. "
+			f"Use Unit.{unitStr} instead",
+			stack_info=True,
+		)
+		return unit
+	raise AttributeError(f"module {repr(__name__)} has no attribute {repr(attrName)}")
+
+
+MOUSE_TEXT_RESOLUTION_UNITS = (Unit.CHARACTER, Unit.WORD, Unit.LINE, Unit.PARAGRAPH)
 
 unitLabels={
-	UNIT_CHARACTER:_("character"),
-	UNIT_WORD:_("word"),
-	UNIT_LINE:_("line"),
-	UNIT_PARAGRAPH:_("paragraph"),
+	Unit.CHARACTER:_("character"),
+	Unit.WORD:_("word"),
+	Unit.LINE:_("line"),
+	Unit.PARAGRAPH:_("paragraph"),
 }
 
 
@@ -304,7 +320,7 @@ class TextInfo(baseObject.AutoPropertyObject):
 		* Extend the constructor so that it can set up the range at the specified position.
 		* Implement the L{move}, L{expand}, L{compareEndPoints}, L{setEndPoint} and L{copy} methods.
 		* Implement the L{text} and L{bookmark} attributes.
-		* Support at least the L{UNIT_CHARACTER}, L{UNIT_WORD} and L{UNIT_LINE} units.
+		* Support at least the L{Unit.CHARACTER}, L{Unit.WORD} and L{Unit.LINE} units.
 		* Support at least the L{POSITION_FIRST}, L{POSITION_LAST} and L{POSITION_ALL} positions.
 	If an implementation should support tracking with the mouse,
 	L{Points} must be supported as a position.
@@ -542,7 +558,7 @@ class TextInfo(baseObject.AutoPropertyObject):
 		if self.isCollapsed:
 			copy = self.copy()
 			# Expand the copy to character.
-			copy.expand(UNIT_CHARACTER)
+			copy.expand(Unit.CHARACTER)
 			boundingRects = copy.boundingRects
 		else:
 			boundingRects = self.boundingRects
@@ -687,12 +703,12 @@ class TextInfo(baseObject.AutoPropertyObject):
 
 			Background:
 				In many applications there is no one-to-one mapping of codepoint characters and TextInfo characters,
-				e.g. when calling TextInfo.move(UNIT_CHARACTER, n).
+				e.g. when calling TextInfo.move(Unit.CHARACTER, n).
 				There are a couple of reasons for this discrepancy:
 				1. In Wide character encoding, some 4-byte unicode characters are represented as two surrogate characters,
 				whereas in Pythonic string they would be represented by a single character.
 				2. In non-offset TextInfos (e.g. UIATextInfo)
-				there is no guarantee on the fact that TextInfos.move(UNIT_CHARACTER, 1)would actually move by
+				there is no guarantee on the fact that TextInfos.move(Unit.CHARACTER, 1)would actually move by
 				exactly 1 character.
 				A good illustration of this is in Microsoft Word with UIA enabled always,
 				the first character of a bullet list item would be represented by three pythonic codepoint characters:
@@ -702,7 +718,7 @@ class TextInfo(baseObject.AutoPropertyObject):
 
 				In many use cases (e.g., sentence navigation, style navigation),
 				we identify pythonic codepoint character that we would like to move our TextInfo to.
-				TextInfos.move(UNIT_CHARACTER, n) would cause many side effects.
+				TextInfos.move(Unit.CHARACTER, n) would cause many side effects.
 				This function provides a clean and reliable way to jump to a given codepoint offset.
 
 			Assumptions:
@@ -793,7 +809,7 @@ class TextInfo(baseObject.AutoPropertyObject):
 						raise RuntimeError("Unable to find desired offset in TextInfo.")
 				else:
 					moveCharacters = codepointOffsetLeft
-				code = tmpInfo.move(UNIT_CHARACTER, moveCharacters, endPoint="end")
+				code = tmpInfo.move(Unit.CHARACTER, moveCharacters, endPoint="end")
 				lastMove = moveCharacters
 				tmpText = tmpInfo.text
 				actualCodepointOffset = len(tmpText)
@@ -816,7 +832,7 @@ class TextInfo(baseObject.AutoPropertyObject):
 						raise RuntimeError("Unable to find desired offset in TextInfo.")
 				else:
 					moveCharacters = -codepointOffsetRight
-				code = tmpInfo.move(UNIT_CHARACTER, moveCharacters, endPoint="start")
+				code = tmpInfo.move(Unit.CHARACTER, moveCharacters, endPoint="start")
 				lastMove = moveCharacters
 				tmpText = tmpInfo.text
 				actualCodepointOffset = totalCodepointOffset - len(tmpText)
