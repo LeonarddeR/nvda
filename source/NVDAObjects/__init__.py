@@ -56,7 +56,7 @@ class NVDAObjectTextInfo(textInfos.offsets.OffsetsTextInfo):
 	encoding = None
 
 	def _get_unit_mouseChunk(self):
-		return textInfos.UNIT_STORY
+		return textInfos.Unit.STORY
 
 	def _getStoryText(self):
 		return self.obj.basicText
@@ -1390,7 +1390,7 @@ This code is executed if a gain focus event is received by this object.
 		@return C{True} if the text contained in the object is considered empty by the underlying implementation. In most cases this will match {isCollapsed}, however some implementations may consider a single space or line feed as an empty range.
 		"""
 		ti = self.makeTextInfo(textInfos.POSITION_FIRST)
-		ti.move(textInfos.UNIT_CHARACTER, 1, endPoint="end")
+		ti.move(textInfos.Unit.CHARACTER, 1, endPoint="end")
 		return ti.isCollapsed
 
 	@staticmethod

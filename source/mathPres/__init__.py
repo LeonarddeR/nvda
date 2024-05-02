@@ -144,7 +144,7 @@ def getMathMlFromTextInfo(pos: textInfos.TextInfo) -> Optional[str]:
 	@return: The MathML or C{None} if there is no math.
 	"""
 	pos = pos.copy()
-	pos.expand(textInfos.UNIT_CHARACTER)
+	pos.expand(textInfos.Unit.CHARACTER)
 	for item in reversed(pos.getTextWithFields()):
 		if not isinstance(item, textInfos.FieldCommand) or item.command != "controlStart":
 			continue

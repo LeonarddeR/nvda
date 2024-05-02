@@ -48,8 +48,8 @@ class EdgeTextInfo_preGapRemoval(EdgeTextInfo):
 		# Skip over non-text element starts and ends
 		if not endPoint:
 			if direction > 0 and unit in (
-				textInfos.UNIT_LINE,
-				textInfos.UNIT_PARAGRAPH
+				textInfos.Unit.LINE,
+				textInfos.Unit.PARAGRAPH
 			):
 				return self._collapsedMove(unit, direction, skipReplacedContent)
 			elif direction > 0:
@@ -57,7 +57,7 @@ class EdgeTextInfo_preGapRemoval(EdgeTextInfo):
 				if res != 0:
 					# Ensure we move past the start of any elements
 					tempInfo = self.copy()
-					while 0 != super(EdgeTextInfo, tempInfo).move(textInfos.UNIT_CHARACTER, 1):
+					while 0 != super(EdgeTextInfo, tempInfo).move(textInfos.Unit.CHARACTER, 1):
 						tempInfo.setEndPoint(self, "startToStart")
 						if tempInfo.text or tempInfo._hasEmbedded():
 							break
@@ -72,7 +72,7 @@ class EdgeTextInfo_preGapRemoval(EdgeTextInfo):
 						tempInfo.setEndPoint(self, "startToStart")
 						if tempInfo.text or tempInfo._hasEmbedded():
 							break
-						if 0 == super(EdgeTextInfo, self).move(textInfos.UNIT_CHARACTER, -1):
+						if 0 == super(EdgeTextInfo, self).move(textInfos.Unit.CHARACTER, -1):
 							break
 				return res
 		else:
@@ -85,11 +85,11 @@ class EdgeTextInfo_preGapRemoval(EdgeTextInfo):
 	def expand(self, unit):
 		# Ensure expanding to character/word correctly covers embedded controls
 		if unit in (
-			textInfos.UNIT_CHARACTER,
-			textInfos.UNIT_WORD,
+			textInfos.Unit.CHARACTER,
+			textInfos.Unit.WORD,
 		):
 			tempInfo = self.copy()
-			tempInfo.move(textInfos.UNIT_CHARACTER, 1, endPoint="end", skipReplacedContent=False)
+			tempInfo.move(textInfos.Unit.CHARACTER, 1, endPoint="end", skipReplacedContent=False)
 			if tempInfo._hasEmbedded():
 				self.setEndPoint(tempInfo, "endToEnd")
 				return
@@ -345,7 +345,7 @@ class EdgeNode(web.UIAWeb):
 		# EdgeTextInfo.move used instead of
 		# EdgeTextInfo_preGapRemoval.move?
 		while 0 != super(EdgeTextInfo, charInfo).move(
-			textInfos.UNIT_CHARACTER,
+			textInfos.Unit.CHARACTER,
 			1
 		):
 			charInfo.setEndPoint(lastCharInfo, "startToStart")

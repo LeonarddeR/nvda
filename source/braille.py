@@ -1230,7 +1230,7 @@ class TextInfoRegion(Region):
 		info.obj._brailleFormatFieldAttributesCache = formatFieldAttributesCache
 
 	def _getReadingUnit(self):
-		return textInfos.UNIT_PARAGRAPH if config.conf["braille"]["readByParagraph"] else textInfos.UNIT_LINE
+		return textInfos.Unit.PARAGRAPH if config.conf["braille"]["readByParagraph"] else textInfos.Unit.LINE
 
 	def update(self):
 		formatConfig = config.conf["documentFormatting"]
@@ -1257,7 +1257,7 @@ class TextInfoRegion(Region):
 			# There is a selection.
 			if self.obj.isTextSelectionAnchoredAtStart:
 				# The end of the range is exclusive, so make it inclusive first.
-				readingInfo.move(textInfos.UNIT_CHARACTER, -1, "end")
+				readingInfo.move(textInfos.Unit.CHARACTER, -1, "end")
 			# Collapse the selection to the unanchored end.
 			readingInfo.collapse(end=self.obj.isTextSelectionAnchoredAtStart)
 			# Get the reading unit at the selection.
@@ -1350,7 +1350,7 @@ class TextInfoRegion(Region):
 		dest = self._readingInfo.copy()
 		dest.collapse()
 		# and move pos characters from there.
-		dest.move(textInfos.UNIT_CHARACTER, pos)
+		dest.move(textInfos.Unit.CHARACTER, pos)
 		return dest
 
 	def routeTo(self, braillePos: int):
@@ -1412,7 +1412,7 @@ class TextInfoRegion(Region):
 			unit = self._getReadingUnit()
 		else:
 			# If the end of the reading unit is desired, move to the last character.
-			unit = textInfos.UNIT_CHARACTER
+			unit = textInfos.Unit.CHARACTER
 		moved = dest.move(unit, -1)
 		if not moved:
 			if self.allowPageTurns and isinstance(dest.obj,textInfos.DocumentWithPageTurns):

@@ -482,22 +482,22 @@ class EditTextInfo(textInfos.offsets.OffsetsTextInfo):
 		return self._getLineOffsets(offset)
 
 ITextDocumentUnitsToNVDAUnits={
-	comInterfaces.tom.tomCharacter:textInfos.UNIT_CHARACTER,
-	comInterfaces.tom.tomWord:textInfos.UNIT_WORD,
-	comInterfaces.tom.tomLine:textInfos.UNIT_LINE,
-	comInterfaces.tom.tomSentence:textInfos.UNIT_SENTENCE,
-	comInterfaces.tom.tomParagraph:textInfos.UNIT_PARAGRAPH,
-	comInterfaces.tom.tomStory:textInfos.UNIT_STORY,
+	comInterfaces.tom.tomCharacter:textInfos.Unit.CHARACTER,
+	comInterfaces.tom.tomWord:textInfos.Unit.WORD,
+	comInterfaces.tom.tomLine:textInfos.Unit.LINE,
+	comInterfaces.tom.tomSentence:textInfos.Unit.SENTENCE,
+	comInterfaces.tom.tomParagraph:textInfos.Unit.PARAGRAPH,
+	comInterfaces.tom.tomStory:textInfos.Unit.STORY,
 }
 
 NVDAUnitsToITextDocumentUnits: Dict[str, int] = {
-	textInfos.UNIT_CHARACTER: comInterfaces.tom.tomCharacter,
-	textInfos.UNIT_WORD: comInterfaces.tom.tomWord,
-	textInfos.UNIT_LINE: comInterfaces.tom.tomLine,
-	textInfos.UNIT_SENTENCE: comInterfaces.tom.tomSentence,
-	textInfos.UNIT_PARAGRAPH: comInterfaces.tom.tomParagraph,
-	textInfos.UNIT_STORY: comInterfaces.tom.tomStory,
-	textInfos.UNIT_READINGCHUNK: comInterfaces.tom.tomLine,
+	textInfos.Unit.CHARACTER: comInterfaces.tom.tomCharacter,
+	textInfos.Unit.WORD: comInterfaces.tom.tomWord,
+	textInfos.Unit.LINE: comInterfaces.tom.tomLine,
+	textInfos.Unit.SENTENCE: comInterfaces.tom.tomSentence,
+	textInfos.Unit.PARAGRAPH: comInterfaces.tom.tomParagraph,
+	textInfos.Unit.STORY: comInterfaces.tom.tomStory,
+	textInfos.Unit.READINGCHUNK: comInterfaces.tom.tomLine,
 }
 
 
@@ -862,7 +862,7 @@ class EditBase(Window):
 class Edit(EditableTextWithAutoSelectDetection, EditBase):
 
 	editAPIVersion=0
-	editValueUnit=textInfos.UNIT_LINE
+	editValueUnit=textInfos.Unit.LINE
 
 	def _get_TextInfo(self):
 		if self.editAPIVersion!=0 and self.ITextDocumentObject:

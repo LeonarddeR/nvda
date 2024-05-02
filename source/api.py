@@ -512,7 +512,7 @@ def getCaretObject() -> "documentBase.TextContainerObject":
 	@note: Note: this may not be the NVDA Object closest to the caret, EG an edit text box may have focus,
 	and contain multiple NVDAObjects closer to the caret position, consider instead:
 		ti = getCaretPosition()
-		ti.expand(textInfos.UNIT_CHARACTER)
+		ti.expand(textInfos.Unit.CHARACTER)
 		closestObj = ti.NVDAObjectAtStart
 	"""
 	obj = getFocusObject()

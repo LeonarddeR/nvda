@@ -262,7 +262,7 @@ class WordDocumentTextInfo(UIATextInfo):
 	def _isEndOfRow(self):
 		""" Is this textInfo positioned on an end-of-row mark? """
 		info=self.copy()
-		info.expand(textInfos.UNIT_CHARACTER)
+		info.expand(textInfos.Unit.CHARACTER)
 		return info._rangeObj.getText(-1)==u'\u0007'
 
 	def move(self,unit,direction,endPoint=None):
@@ -571,12 +571,12 @@ class WordDocument(UIADocumentWithTableNavigation,WordDocumentNode,WordDocumentB
 		# Using the legacy object model,
 		# Move the caret to the next sentence in the requested direction.
 		legacyInfo = LegacyWordDocumentTextInfo(self, textInfos.POSITION_CARET)
-		legacyInfo.move(textInfos.UNIT_SENTENCE, direction)
+		legacyInfo.move(textInfos.Unit.SENTENCE, direction)
 		# Save the start of the sentence for future use
 		legacyStart = legacyInfo.copy()
 		# With the legacy object model,
 		# Move the caret to the end of the new sentence.
-		legacyInfo.move(textInfos.UNIT_SENTENCE, 1)
+		legacyInfo.move(textInfos.Unit.SENTENCE, 1)
 		legacyInfo.updateCaret()
 		# Fetch the caret position (end of the next sentence) with UI automation.
 		endInfo = self.makeTextInfo(textInfos.POSITION_CARET)
@@ -589,7 +589,7 @@ class WordDocument(UIADocumentWithTableNavigation,WordDocumentNode,WordDocumentB
 		info = startInfo.copy()
 		info.end = endInfo.end
 		# Speak the sentence moved to
-		speech.speakTextInfo(info, unit=textInfos.UNIT_SENTENCE, reason=controlTypes.OutputReason.CARET)
+		speech.speakTextInfo(info, unit=textInfos.Unit.SENTENCE, reason=controlTypes.OutputReason.CARET)
 		# Forget the word currently being typed as the user has moved the caret somewhere else.
 		speech.clearTypedWordBuffer()
 		# Alert review and braille the caret has moved to its new position

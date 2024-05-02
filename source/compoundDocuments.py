@@ -51,7 +51,7 @@ class CompoundTextInfo(textInfos.TextInfo):
 			try:
 				self._end, self._endObj = self._findNextContent(self._endObj, moveBack=True)
 				# _end is now on the last character, but we want it collapsed after this.
-				self._end.move(textInfos.UNIT_OFFSET, 1, endPoint="end")
+				self._end.move(textInfos.Unit.OFFSET, 1, endPoint="end")
 				self._end.collapse(end=True)
 			except LookupError:
 				pass
@@ -222,7 +222,7 @@ class CompoundTextInfo(textInfos.TextInfo):
 
 class TreeCompoundTextInfo(CompoundTextInfo):
 	#: Units contained within a single TextInfo.
-	SINGLE_TEXTINFO_UNITS = (textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD, textInfos.UNIT_LINE, textInfos.UNIT_SENTENCE, textInfos.UNIT_PARAGRAPH)
+	SINGLE_TEXTINFO_UNITS = (textInfos.Unit.CHARACTER, textInfos.Unit.WORD, textInfos.Unit.LINE, textInfos.Unit.SENTENCE, textInfos.Unit.PARAGRAPH)
 
 	def __init__(self, obj, position):
 		super(TreeCompoundTextInfo, self).__init__(obj, position)
@@ -374,8 +374,8 @@ class TreeCompoundTextInfo(CompoundTextInfo):
 		return (selfPosition>otherPosition)-(selfPosition<otherPosition)
 
 	def expand(self, unit):
-		if unit == textInfos.UNIT_READINGCHUNK:
-			unit = textInfos.UNIT_LINE
+		if unit == textInfos.Unit.READINGCHUNK:
+			unit = textInfos.Unit.LINE
 
 		if unit in self.SINGLE_TEXTINFO_UNITS:
 			# This unit is definitely contained within a single chunk.
@@ -389,8 +389,8 @@ class TreeCompoundTextInfo(CompoundTextInfo):
 		if direction == 0:
 			return 0
 
-		if unit == textInfos.UNIT_READINGCHUNK:
-			unit = textInfos.UNIT_LINE
+		if unit == textInfos.Unit.READINGCHUNK:
+			unit = textInfos.Unit.LINE
 
 		if unit not in self.SINGLE_TEXTINFO_UNITS:
 			raise NotImplementedError
@@ -495,8 +495,8 @@ class CompoundDocument(EditableText, DocumentTreeInterceptor):
 			pass
 		else:
 			if info.isCollapsed:
-				info.expand(textInfos.UNIT_LINE)
-				speech.speakTextInfo(info, unit=textInfos.UNIT_LINE, reason=controlTypes.OutputReason.CARET)
+				info.expand(textInfos.Unit.LINE)
+				speech.speakTextInfo(info, unit=textInfos.Unit.LINE, reason=controlTypes.OutputReason.CARET)
 			else:
 				speech.speakPreselectedText(info.text)
 			braille.handler.handleGainFocus(self)

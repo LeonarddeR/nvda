@@ -26,7 +26,7 @@ class ScreenExplorer(object):
 			x: int,
 			y: int,
 			new: bool = False,
-			unit: str = textInfos.UNIT_LINE,
+			unit: str = textInfos.Unit.LINE,
 	) -> None:
 		obj=api.getDesktopObject().objectFromPoint(x,y)
 		prevObj=None

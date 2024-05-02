@@ -220,7 +220,7 @@ class _TextReader(garbageHandler.TrackedObject, metaclass=ABCMeta):
 		# and we don't want to read from the start of the line in that case.
 		# For lines after the first, it's also more efficient because
 		# we're already at the start of the line, so there's no need to search backwards.
-		delta = self.reader.move(textInfos.UNIT_READINGCHUNK, 1, endPoint="end")
+		delta = self.reader.move(textInfos.Unit.READINGCHUNK, 1, endPoint="end")
 		if delta <= 0:
 			# No more text.
 			if isinstance(self.reader.obj, textInfos.DocumentWithPageTurns):
@@ -290,7 +290,7 @@ class _TextReader(garbageHandler.TrackedObject, metaclass=ABCMeta):
 		# As it would be inserted in the sequence after all initial control starts which is too late.
 		speechGen = SayAllHandler._getTextInfoSpeech(
 			self.reader,
-			unit=textInfos.UNIT_READINGCHUNK,
+			unit=textInfos.Unit.READINGCHUNK,
 			reason=controlTypes.OutputReason.SAYALL,
 			useCache=state
 		)

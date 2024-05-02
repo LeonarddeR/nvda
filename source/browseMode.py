@@ -213,7 +213,7 @@ class TextInfoQuickNavItem(QuickNavItem):
 		# If we are dealing with a form field, ensure we don't read the whole content if it's an editable text.
 		if self.itemType == "formField":
 			if self.obj.role == controlTypes.Role.EDITABLETEXT:
-				readUnit = textInfos.UNIT_LINE
+				readUnit = textInfos.Unit.LINE
 		if readUnit:
 			fieldInfo = info.copy()
 			info.collapse()
@@ -796,7 +796,7 @@ qn("table", key="t",
 	prevDoc=_("moves to the previous table"),
 	# Translators: Message presented when the browse mode element is not found.
 	prevError=_("no previous table"),
-	readUnit=textInfos.UNIT_LINE)
+	readUnit=textInfos.Unit.LINE)
 qn("link", key="k",
 	# Translators: Input help message for a quick navigation command in browse mode.
 	nextDoc=_("moves to the next link"),
@@ -842,7 +842,7 @@ qn("list", key="l",
 	prevDoc=_("moves to the previous list"),
 	# Translators: Message presented when the browse mode element is not found.
 	prevError=_("no previous list"),
-	readUnit=textInfos.UNIT_LINE)
+	readUnit=textInfos.Unit.LINE)
 qn("listItem", key="i",
 	# Translators: Input help message for a quick navigation command in browse mode.
 	nextDoc=_("moves to the next list item"),
@@ -870,7 +870,7 @@ qn("edit", key="e",
 	prevDoc=_("moves to the previous edit field"),
 	# Translators: Message presented when the browse mode element is not found.
 	prevError=_("no previous edit field"),
-	readUnit=textInfos.UNIT_LINE)
+	readUnit=textInfos.Unit.LINE)
 qn("frame", key="m",
 	# Translators: Input help message for a quick navigation command in browse mode.
 	nextDoc=_("moves to the next frame"),
@@ -880,7 +880,7 @@ qn("frame", key="m",
 	prevDoc=_("moves to the previous frame"),
 	# Translators: Message presented when the browse mode element is not found.
 	prevError=_("no previous frame"),
-	readUnit=textInfos.UNIT_LINE)
+	readUnit=textInfos.Unit.LINE)
 qn("separator", key="s",
 	# Translators: Input help message for a quick navigation command in browse mode.
 	nextDoc=_("moves to the next separator"),
@@ -944,7 +944,7 @@ qn("notLinkBlock", key="n",
 	prevDoc=_("skips backward past a block of links"),
 	# Translators: Message presented when the browse mode element is not found.
 	prevError=_("no more text before a block of links"),
-	readUnit=textInfos.UNIT_LINE)
+	readUnit=textInfos.Unit.LINE)
 qn("landmark", key="d",
 	# Translators: Input help message for a quick navigation command in browse mode.
 	nextDoc=_("moves to the next landmark"),
@@ -954,7 +954,7 @@ qn("landmark", key="d",
 	prevDoc=_("moves to the previous landmark"),
 	# Translators: Message presented when the browse mode element is not found.
 	prevError=_("no previous landmark"),
-	readUnit=textInfos.UNIT_LINE)
+	readUnit=textInfos.Unit.LINE)
 qn("embeddedObject", key="o",
 	# Translators: Input help message for a quick navigation command in browse mode.
 	nextDoc=_("moves to the next embedded object"),
@@ -1085,7 +1085,7 @@ qn(
 	prevDoc=_("moves to the previous text paragraph"),
 	# Translators: Message presented when the browse mode element is not found.
 	prevError=_("no previous text paragraph"),
-	readUnit=textInfos.UNIT_PARAGRAPH,
+	readUnit=textInfos.Unit.PARAGRAPH,
 )
 qn(
 	"verticalParagraph",
@@ -1098,7 +1098,7 @@ qn(
 	prevDoc=_("moves to the previous vertically aligned paragraph"),
 	# Translators: Message presented when the browse mode element is not found.
 	prevError=_("no previous vertically aligned paragraph"),
-	readUnit=textInfos.UNIT_PARAGRAPH,
+	readUnit=textInfos.Unit.PARAGRAPH,
 )
 qn(
 	"sameStyle",
@@ -1551,8 +1551,8 @@ class BrowseModeDocumentTreeInterceptor(documentBase.DocumentWithTableNavigation
 				if not info.isCollapsed:
 					speech.speakPreselectedText(info.text)
 				else:
-					info.expand(textInfos.UNIT_LINE)
-					speech.speakTextInfo(info, reason=OutputReason.CARET, unit=textInfos.UNIT_LINE)
+					info.expand(textInfos.Unit.LINE)
+					speech.speakTextInfo(info, reason=OutputReason.CARET, unit=textInfos.Unit.LINE)
 
 		reportPassThrough(self)
 		braille.handler.handleGainFocus(self)
@@ -1667,12 +1667,12 @@ class BrowseModeDocumentTreeInterceptor(documentBase.DocumentWithTableNavigation
 		# We've hit the edge of the focused control.
 		# Therefore, move the virtual caret to the same edge of the field.
 		info = self.makeTextInfo(textInfos.POSITION_CARET)
-		info.expand(textInfos.UNIT_CONTROLFIELD)
+		info.expand(textInfos.Unit.CONTROLFIELD)
 		if gesture.mainKeyName in ("leftArrow", "upArrow", "pageUp"):
 			info.collapse()
 		else:
 			info.collapse(end=True)
-			info.move(textInfos.UNIT_CHARACTER, -1)
+			info.move(textInfos.Unit.CHARACTER, -1)
 		info.updateCaret()
 
 		scriptHandler.queueScript(script, gesture)
@@ -1727,7 +1727,7 @@ class BrowseModeDocumentTreeInterceptor(documentBase.DocumentWithTableNavigation
 		#As for documents we should always override
 		if focus.role!=controlTypes.Role.DOCUMENT or controlTypes.State.EDITABLE in focus.states:
 			# Expand to one character, as isOverlapping() doesn't yield the desired results with collapsed ranges.
-			caretInfo.expand(textInfos.UNIT_CHARACTER)
+			caretInfo.expand(textInfos.Unit.CHARACTER)
 			if focusInfo.isOverlapping(caretInfo):
 				return False
 		# If we reach here, we do want to override tab/shift+tab if possible.
@@ -1868,7 +1868,7 @@ class BrowseModeDocumentTreeInterceptor(documentBase.DocumentWithTableNavigation
 			# Note that this is not the default and may be removed in future.
 			caretInfo = self.makeTextInfo(textInfos.POSITION_CARET)
 			# Expand to one character, as isOverlapping() doesn't treat, for example, (4,4) and (4,5) as overlapping.
-			caretInfo.expand(textInfos.UNIT_CHARACTER)
+			caretInfo.expand(textInfos.Unit.CHARACTER)
 			isOverlapping = focusInfo.isOverlapping(caretInfo)
 		else:
 			# if this focus event was caused by NVDA setting the focus itself
@@ -1969,10 +1969,10 @@ class BrowseModeDocumentTreeInterceptor(documentBase.DocumentWithTableNavigation
 		#We only want to update the caret and speak the field if we're not in the same one as before
 		caretInfo=self.makeTextInfo(textInfos.POSITION_CARET)
 		# Expand to one character, as isOverlapping() doesn't treat, for example, (4,4) and (4,5) as overlapping.
-		caretInfo.expand(textInfos.UNIT_CHARACTER)
+		caretInfo.expand(textInfos.Unit.CHARACTER)
 		if not scrollInfo.isOverlapping(caretInfo):
 			if scrollInfo.isCollapsed:
-				scrollInfo.expand(textInfos.UNIT_LINE)
+				scrollInfo.expand(textInfos.Unit.LINE)
 			speech.speakTextInfo(scrollInfo, reason=OutputReason.CARET)
 			scrollInfo.collapse()
 			self.selection = scrollInfo
@@ -2111,7 +2111,7 @@ class BrowseModeDocumentTreeInterceptor(documentBase.DocumentWithTableNavigation
 
 	def script_moveToStartOfContainer(self,gesture):
 		info=self.makeTextInfo(textInfos.POSITION_CARET)
-		info.expand(textInfos.UNIT_CHARACTER)
+		info.expand(textInfos.Unit.CHARACTER)
 		container=self.getEnclosingContainerRange(info)
 		if not container:
 			# Translators: Reported when the user attempts to move to the start or end of a container
@@ -2121,7 +2121,7 @@ class BrowseModeDocumentTreeInterceptor(documentBase.DocumentWithTableNavigation
 		container.collapse()
 		self._set_selection(container, reason=OutputReason.QUICKNAV)
 		if not willSayAllResume(gesture):
-			container.expand(textInfos.UNIT_LINE)
+			container.expand(textInfos.Unit.LINE)
 			speech.speakTextInfo(container, reason=OutputReason.FOCUS)
 	script_moveToStartOfContainer.resumeSayAllMode = sayAll.CURSOR.CARET
 	# Translators: Description for the Move to start of container command in browse mode. 
@@ -2129,7 +2129,7 @@ class BrowseModeDocumentTreeInterceptor(documentBase.DocumentWithTableNavigation
 
 	def script_movePastEndOfContainer(self,gesture):
 		info=self.makeTextInfo(textInfos.POSITION_CARET)
-		info.expand(textInfos.UNIT_CHARACTER)
+		info.expand(textInfos.Unit.CHARACTER)
 		container=self.getEnclosingContainerRange(info)
 		if not container:
 			# Translators: Reported when the user attempts to move to the start or end of a container
@@ -2146,7 +2146,7 @@ class BrowseModeDocumentTreeInterceptor(documentBase.DocumentWithTableNavigation
 			ui.message(_("Bottom"))
 		self._set_selection(container, reason=OutputReason.QUICKNAV)
 		if not willSayAllResume(gesture):
-			container.expand(textInfos.UNIT_LINE)
+			container.expand(textInfos.Unit.LINE)
 			speech.speakTextInfo(container, reason=OutputReason.FOCUS)
 	script_movePastEndOfContainer.resumeSayAllMode = sayAll.CURSOR.CARET
 	# Translators: Description for the Move past end of container command in browse mode. 
@@ -2294,7 +2294,7 @@ class BrowseModeDocumentTreeInterceptor(documentBase.DocumentWithTableNavigation
 		resultInfo = textRange.copy()
 		paragraphInfo = textRange.copy()
 		paragraphInfo.collapse()
-		paragraphInfo.expand(textInfos.UNIT_PARAGRAPH)
+		paragraphInfo.expand(textInfos.Unit.PARAGRAPH)
 		compareResult = textRange.compareEndPoints(
 			paragraphInfo,
 			"endToEnd" if direction == documentBase._Movement.NEXT else "startToStart"
@@ -2347,10 +2347,10 @@ class BrowseModeDocumentTreeInterceptor(documentBase.DocumentWithTableNavigation
 				return False
 		else:
 			paragraph.collapse(end=False)
-			result = paragraph.move(textInfos.UNIT_CHARACTER, -1)
+			result = paragraph.move(textInfos.Unit.CHARACTER, -1)
 			if result == 0:
 				return False
-		paragraph.expand(textInfos.UNIT_PARAGRAPH)
+		paragraph.expand(textInfos.Unit.PARAGRAPH)
 		if paragraph.isCollapsed:
 			return False
 		if (
@@ -2378,11 +2378,11 @@ class BrowseModeDocumentTreeInterceptor(documentBase.DocumentWithTableNavigation
 		initialTextInfo.collapse()
 		if direction == documentBase._Movement.PREVIOUS:
 			# If going backwards, need to include character at the cursor.
-			if 0 == initialTextInfo.move(textInfos.UNIT_CHARACTER, 1, endPoint="end"):
+			if 0 == initialTextInfo.move(textInfos.Unit.CHARACTER, 1, endPoint="end"):
 				return
 		paragraph = initialTextInfo.copy()
 		tmpInfo = initialTextInfo.copy()
-		tmpInfo.expand(textInfos.UNIT_PARAGRAPH)
+		tmpInfo.expand(textInfos.Unit.PARAGRAPH)
 		paragraph.setEndPoint(
 			tmpInfo,
 			which="endToEnd" if direction == documentBase._Movement.NEXT else "startToStart",
@@ -2414,7 +2414,7 @@ class BrowseModeDocumentTreeInterceptor(documentBase.DocumentWithTableNavigation
 		# until the end/beginning of the paragraph.
 		paragraph = currentTextInfo.copy()
 		tmpInfo = currentTextInfo.copy()
-		tmpInfo.expand(textInfos.UNIT_PARAGRAPH)
+		tmpInfo.expand(textInfos.Unit.PARAGRAPH)
 		if tmpInfo.isCollapsed:
 			return
 		else:
@@ -2540,7 +2540,7 @@ class BrowseModeDocumentTreeInterceptor(documentBase.DocumentWithTableNavigation
 			raise RuntimeError
 		info = pos.copy()
 		info.collapse()
-		info.expand(textInfos.UNIT_PARAGRAPH)
+		info.expand(textInfos.Unit.PARAGRAPH)
 		if desiredValue is None:
 			desiredValue = paragraphFunction(info)
 		for i in range(self.MAX_ITERATIONS_FOR_SIMILAR_PARAGRAPH):
@@ -2552,9 +2552,9 @@ class BrowseModeDocumentTreeInterceptor(documentBase.DocumentWithTableNavigation
 				return
 
 			if direction == _Movement.PREVIOUS:
-				if info.move(textInfos.UNIT_CHARACTER, -1) == 0:
+				if info.move(textInfos.Unit.CHARACTER, -1) == 0:
 					return
-			info.expand(textInfos.UNIT_PARAGRAPH)
+			info.expand(textInfos.Unit.PARAGRAPH)
 			if info.isCollapsed:
 				return
 			value = paragraphFunction(info)

@@ -321,9 +321,9 @@ class OffsetsTextInfo(textInfos.TextInfo):
 		@param unit: the TextInfo unit (character or word)
 		@param relOffset: the character offset within the text string at which to calculate the bounds.
 		"""
-		if unit is textInfos.UNIT_WORD:
+		if unit is textInfos.Unit.WORD:
 			helperFunc = NVDAHelper.localLib.calculateWordOffsets
-		elif unit is textInfos.UNIT_CHARACTER:
+		elif unit is textInfos.Unit.CHARACTER:
 			helperFunc = NVDAHelper.localLib.calculateCharacterOffsets
 		else:
 			raise NotImplementedError(f"Unit: {unit}")
@@ -368,7 +368,7 @@ class OffsetsTextInfo(textInfos.TextInfo):
 		lineText = self._getTextRange(lineStart, lineEnd)
 		relOffset = offset - lineStart
 		if self.useUniscribe:
-			offsets = self._calculateUniscribeOffsets(lineText, textInfos.UNIT_CHARACTER, relOffset)
+			offsets = self._calculateUniscribeOffsets(lineText, textInfos.Unit.CHARACTER, relOffset)
 			if offsets is not None:
 				return (offsets[0] + lineStart, offsets[1] + lineStart)
 		if self.encoding == textUtils.WCHAR_ENCODING:
@@ -392,7 +392,7 @@ class OffsetsTextInfo(textInfos.TextInfo):
 		lineText = lineText.translate({0:u' ',0xa0:u' '})
 		relOffset = offset - lineStart
 		if self.useUniscribe:
-			offsets = self._calculateUniscribeOffsets(lineText, textInfos.UNIT_WORD, relOffset)
+			offsets = self._calculateUniscribeOffsets(lineText, textInfos.Unit.WORD, relOffset)
 			if offsets is not None:
 				return (offsets[0] + lineStart, offsets[1] + lineStart)
 		#Fall back to the older word offsets detection that only breaks on non alphanumeric
@@ -491,19 +491,19 @@ class OffsetsTextInfo(textInfos.TextInfo):
 		return self._getNVDAObjectFromOffset(self._startOffset)
 
 	def _getUnitOffsets(self,unit,offset):
-		if unit==textInfos.UNIT_CHARACTER:
+		if unit==textInfos.Unit.CHARACTER:
 			offsetsFunc=self._getCharacterOffsets
-		elif unit==textInfos.UNIT_WORD:
+		elif unit==textInfos.Unit.WORD:
 			offsetsFunc=self._getWordOffsets
-		elif unit==textInfos.UNIT_LINE:
+		elif unit==textInfos.Unit.LINE:
 			offsetsFunc=self._getLineOffsets
-		elif unit==textInfos.UNIT_PARAGRAPH:
+		elif unit==textInfos.Unit.PARAGRAPH:
 			offsetsFunc=self._getParagraphOffsets
-		elif unit==textInfos.UNIT_READINGCHUNK:
+		elif unit==textInfos.Unit.READINGCHUNK:
 			offsetsFunc=self._getReadingChunkOffsets
-		elif unit==textInfos.UNIT_STORY:
+		elif unit==textInfos.Unit.STORY:
 			return 0,self._getStoryLength()
-		elif unit==textInfos.UNIT_OFFSET:
+		elif unit==textInfos.Unit.OFFSET:
 			return offset,offset+1
 		else:
 			raise ValueError("unknown unit: %s"%unit)
@@ -594,13 +594,13 @@ class OffsetsTextInfo(textInfos.TextInfo):
 		return self._getTextRange(self._startOffset,self._endOffset)
 
 	def unitIndex(self,unit):
-		if unit==textInfos.UNIT_LINE:  
+		if unit==textInfos.Unit.LINE:  
 			return self._lineNumFromOffset(self._startOffset)
 		else:
 			raise NotImplementedError
 
 	def unitCount(self,unit):
-		if unit==textInfos.UNIT_LINE:
+		if unit==textInfos.Unit.LINE:
 			return self._getLineCount()
 		else:
 			raise NotImplementedError
@@ -621,7 +621,7 @@ class OffsetsTextInfo(textInfos.TextInfo):
 		count=0
 		lowLimit=0
 		highLimit=self._getStoryLength()
-		if self.allowMoveToOffsetPastEnd and unit==textInfos.UNIT_CHARACTER:
+		if self.allowMoveToOffsetPastEnd and unit==textInfos.Unit.CHARACTER:
 			# #2096: There is often an uncounted character at the end of the text
 			# where the caret is placed to append text.
 			highLimit+=1

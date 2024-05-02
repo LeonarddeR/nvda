@@ -40,8 +40,8 @@ class FakeEmbeddingTextInfo(offsets.OffsetsTextInfo):
 		yield from range(self._startOffset, self._endOffset)
 
 	def _getUnitOffsets(self,unit,offset):
-		if unit in (textInfos.UNIT_WORD,textInfos.UNIT_LINE):
-			unit=textInfos.UNIT_CHARACTER
+		if unit in (textInfos.Unit.WORD,textInfos.Unit.LINE):
+			unit=textInfos.Unit.CHARACTER
 		return super(FakeEmbeddingTextInfo,self)._getUnitOffsets(unit,offset)
 
 
@@ -89,7 +89,7 @@ class MozillaCompoundTextInfo(CompoundTextInfo):
 				self._start, self._startObj = self._findContentDescendant(position, textInfos.POSITION_FIRST)
 				self._end, self._endObj = self._findContentDescendant(position, textInfos.POSITION_LAST)
 				# This is the last character. Move to the end.
-				self._end.move(textInfos.UNIT_CHARACTER, 1)
+				self._end.move(textInfos.Unit.CHARACTER, 1)
 			except LookupError:
 				# This might be an embedded object that doesn't support text such as a graphic.
 				if position not in obj:
@@ -112,9 +112,9 @@ class MozillaCompoundTextInfo(CompoundTextInfo):
 			self._endObj = self._startObj
 		elif position == textInfos.POSITION_ALL:
 			self._start, self._startObj = self._findContentDescendant(obj, textInfos.POSITION_FIRST)
-			self._start.expand(textInfos.UNIT_STORY)
+			self._start.expand(textInfos.Unit.STORY)
 			self._end, self._endObj = self._findContentDescendant(obj, textInfos.POSITION_LAST)
-			self._end.expand(textInfos.UNIT_STORY)
+			self._end.expand(textInfos.Unit.STORY)
 		elif position == textInfos.POSITION_CARET:
 			try:
 				caretTi, caretObj = self._findContentDescendant(obj, textInfos.POSITION_CARET)
@@ -372,7 +372,7 @@ class MozillaCompoundTextInfo(CompoundTextInfo):
 				)
 				return []
 			obj = ti.obj
-			if ti.move(textInfos.UNIT_OFFSET, 1) == 0:
+			if ti.move(textInfos.Unit.OFFSET, 1) == 0:
 				# There's no more text in this object.
 				continue
 			ti.setEndPoint(self._makeRawTextInfo(obj, textInfos.POSITION_ALL), "endToEnd")
@@ -418,7 +418,7 @@ class MozillaCompoundTextInfo(CompoundTextInfo):
 				expandTi.expand(unit)
 				if expandTi.isCollapsed:
 					# This shouldn't happen, but can due to server implementation bugs; e.g. MozillaBug:1149415.
-					expandTi.expand(textInfos.UNIT_OFFSET)
+					expandTi.expand(textInfos.Unit.OFFSET)
 			allTi = self._makeRawTextInfo(obj, textInfos.POSITION_ALL)
 
 			if not start and findStart and expandTi.compareEndPoints(allTi, "startToStart") != 0:
@@ -525,7 +525,7 @@ class MozillaCompoundTextInfo(CompoundTextInfo):
 		return start, startObj, end, endObj
 
 	def expand(self, unit):
-		if unit in ( textInfos.UNIT_CHARACTER, textInfos.UNIT_OFFSET):
+		if unit in ( textInfos.Unit.CHARACTER, textInfos.Unit.OFFSET):
 			self._end = self._start
 			self._endObj = self._startObj
 			self._start.expand(unit)
@@ -552,7 +552,7 @@ class MozillaCompoundTextInfo(CompoundTextInfo):
 		# Ascend until we can move to the next offset.
 		direction = -1 if moveBack else 1
 		while True:
-			if ti and ti.move(textInfos.UNIT_OFFSET, direction) != 0:
+			if ti and ti.move(textInfos.Unit.OFFSET, direction) != 0:
 				break
 			if obj == self.obj:
 				# We're at the root. Don't go any further.

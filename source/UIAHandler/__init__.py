@@ -134,14 +134,14 @@ windowsTerminalUIAClassNames = (
 )
 
 NVDAUnitsToUIAUnits: Dict[str, int] = {
-	textInfos.UNIT_CHARACTER: UIA.TextUnit_Character,
-	textInfos.UNIT_WORD: UIA.TextUnit_Word,
-	textInfos.UNIT_LINE: UIA.TextUnit_Line,
-	textInfos.UNIT_PARAGRAPH: UIA.TextUnit_Paragraph,
-	textInfos.UNIT_PAGE: UIA.TextUnit_Page,
-	textInfos.UNIT_READINGCHUNK: UIA.TextUnit_Line,
-	textInfos.UNIT_STORY: UIA.TextUnit_Document,
-	textInfos.UNIT_FORMATFIELD: UIA.TextUnit_Format,
+	textInfos.Unit.CHARACTER: UIA.TextUnit_Character,
+	textInfos.Unit.WORD: UIA.TextUnit_Word,
+	textInfos.Unit.LINE: UIA.TextUnit_Line,
+	textInfos.Unit.PARAGRAPH: UIA.TextUnit_Paragraph,
+	textInfos.Unit.PAGE: UIA.TextUnit_Page,
+	textInfos.Unit.READINGCHUNK: UIA.TextUnit_Line,
+	textInfos.Unit.STORY: UIA.TextUnit_Document,
+	textInfos.Unit.FORMATFIELD: UIA.TextUnit_Format,
 }
 
 UIAControlTypesToNVDARoles={

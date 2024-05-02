@@ -533,7 +533,7 @@ class DisplayModelTextInfo(OffsetsTextInfo):
 		return super()._getUnitOffsets(unit, offset)
 
 	def _get_clipboardText(self):
-		return "\r\n".join(x.strip('\r\n') for x in self.getTextInChunks(textInfos.UNIT_LINE))
+		return "\r\n".join(x.strip('\r\n') for x in self.getTextInChunks(textInfos.Unit.LINE))
 
 	def getTextInChunks(self,unit):
 		# Specifically handle the line and display chunk units.
@@ -544,7 +544,7 @@ class DisplayModelTextInfo(OffsetsTextInfo):
 					continue
 				yield x
 			return
-		if unit is textInfos.UNIT_LINE:
+		if unit is textInfos.Unit.LINE:
 			text=self.text
 			relStart=0
 			for lineEndOffset in self._storyFieldsAndRects[2]:

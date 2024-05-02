@@ -298,4 +298,4 @@ class WinConsoleTextInfo(textInfos.offsets.OffsetsTextInfo):
 		return consoleScreenBufferInfo.dwSize.x*((consoleScreenBufferInfo.srWindow.Bottom+1)-consoleScreenBufferInfo.srWindow.Top)
 
 	def _get_clipboardText(self):
-		return "\r\n".join(block.rstrip() for block in self.getTextInChunks(textInfos.UNIT_LINE))
+		return "\r\n".join(block.rstrip() for block in self.getTextInChunks(textInfos.Unit.LINE))

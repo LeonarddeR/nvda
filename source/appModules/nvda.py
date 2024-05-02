@@ -160,12 +160,12 @@ class NvdaPythonConsoleUIOutputCtrl(ScriptableObject):
 			consoleUI.outputCtrl.SetSelection(pos, pos)
 		info = self.makeTextInfo(textInfos.POSITION_CARET)
 		copy = info.copy()
-		info.expand(textInfos.UNIT_LINE)
+		info.expand(textInfos.Unit.LINE)
 		if (
-			copy.move(textInfos.UNIT_CHARACTER, 4, endPoint="end") == 4
+			copy.move(textInfos.Unit.CHARACTER, 4, endPoint="end") == 4
 			and copy.text == ">>> "
 		):
-			info.move(textInfos.UNIT_CHARACTER, 4, endPoint="start")
+			info.move(textInfos.Unit.CHARACTER, 4, endPoint="start")
 		speech.speakTextInfo(info, reason=controlTypes.OutputReason.CARET)
 
 

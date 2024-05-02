@@ -140,7 +140,7 @@ class CursorManager(documentBase.TextContainerObject,baseObject.ScriptableObject
 		info=oldInfo.copy()
 		info.collapse(end=self.isTextSelectionAnchoredAtStart)
 		if self.isTextSelectionAnchoredAtStart and not oldInfo.isCollapsed:
-			info.move(textInfos.UNIT_CHARACTER,-1)
+			info.move(textInfos.Unit.CHARACTER,-1)
 		if posUnit is not None:
 			# expand and collapse to ensure that we are aligned with the end of the intended unit
 			info.expand(posUnit)
@@ -152,7 +152,7 @@ class CursorManager(documentBase.TextContainerObject,baseObject.ScriptableObject
 				# See #7009
 				pass
 			if posUnitEnd:
-				info.move(textInfos.UNIT_CHARACTER,-1)
+				info.move(textInfos.Unit.CHARACTER,-1)
 		if direction is not None:
 			info.expand(unit)
 			info.collapse(end=posUnitEnd)
@@ -182,7 +182,7 @@ class CursorManager(documentBase.TextContainerObject,baseObject.ScriptableObject
 		if res:
 			self.selection=info
 			speech.cancelSpeech()
-			info.move(textInfos.UNIT_LINE,1,endPoint="end")
+			info.move(textInfos.Unit.LINE,1,endPoint="end")
 			if not willSayAllResume:
 				speech.speakTextInfo(info, reason=controlTypes.OutputReason.CARET)
 		else:
@@ -248,39 +248,39 @@ class CursorManager(documentBase.TextContainerObject,baseObject.ScriptableObject
 		)
 
 	def script_moveByPage_back(self,gesture):
-		self._caretMovementScriptHelper(gesture,textInfos.UNIT_LINE,-config.conf["virtualBuffers"]["linesPerPage"],extraDetail=False)
+		self._caretMovementScriptHelper(gesture,textInfos.Unit.LINE,-config.conf["virtualBuffers"]["linesPerPage"],extraDetail=False)
 	script_moveByPage_back.resumeSayAllMode = sayAll.CURSOR.CARET
 
 	def script_moveByPage_forward(self,gesture):
-		self._caretMovementScriptHelper(gesture,textInfos.UNIT_LINE,config.conf["virtualBuffers"]["linesPerPage"],extraDetail=False)
+		self._caretMovementScriptHelper(gesture,textInfos.Unit.LINE,config.conf["virtualBuffers"]["linesPerPage"],extraDetail=False)
 	script_moveByPage_forward.resumeSayAllMode = sayAll.CURSOR.CARET
 
 	def script_moveByCharacter_back(self,gesture):
-		self._caretMovementScriptHelper(gesture,textInfos.UNIT_CHARACTER,-1,extraDetail=True,handleSymbols=True)
+		self._caretMovementScriptHelper(gesture,textInfos.Unit.CHARACTER,-1,extraDetail=True,handleSymbols=True)
 
 	def script_moveByCharacter_forward(self,gesture):
-		self._caretMovementScriptHelper(gesture,textInfos.UNIT_CHARACTER,1,extraDetail=True,handleSymbols=True)
+		self._caretMovementScriptHelper(gesture,textInfos.Unit.CHARACTER,1,extraDetail=True,handleSymbols=True)
 
 	def script_moveByWord_back(self,gesture):
-		self._caretMovementScriptHelper(gesture,textInfos.UNIT_WORD,-1,extraDetail=True,handleSymbols=True)
+		self._caretMovementScriptHelper(gesture,textInfos.Unit.WORD,-1,extraDetail=True,handleSymbols=True)
 
 	def script_moveByWord_forward(self,gesture):
-		self._caretMovementScriptHelper(gesture,textInfos.UNIT_WORD,1,extraDetail=True,handleSymbols=True)
+		self._caretMovementScriptHelper(gesture,textInfos.Unit.WORD,1,extraDetail=True,handleSymbols=True)
 
 	def script_moveByLine_back(self,gesture):
-		self._caretMovementScriptHelper(gesture,textInfos.UNIT_LINE,-1)
+		self._caretMovementScriptHelper(gesture,textInfos.Unit.LINE,-1)
 	script_moveByLine_back.resumeSayAllMode = sayAll.CURSOR.CARET
 
 	def script_moveByLine_forward(self,gesture):
-		self._caretMovementScriptHelper(gesture,textInfos.UNIT_LINE,1)
+		self._caretMovementScriptHelper(gesture,textInfos.Unit.LINE,1)
 	script_moveByLine_forward.resumeSayAllMode = sayAll.CURSOR.CARET
 
 	def script_moveBySentence_back(self,gesture):
-		self._caretMovementScriptHelper(gesture,textInfos.UNIT_SENTENCE,-1)
+		self._caretMovementScriptHelper(gesture,textInfos.Unit.SENTENCE,-1)
 	script_moveBySentence_back.resumeSayAllMode = sayAll.CURSOR.CARET
 
 	def script_moveBySentence_forward(self,gesture):
-		self._caretMovementScriptHelper(gesture,textInfos.UNIT_SENTENCE,1)
+		self._caretMovementScriptHelper(gesture,textInfos.Unit.SENTENCE,1)
 	script_moveBySentence_forward.resumeSayAllMode = sayAll.CURSOR.CARET
 
 	def _handleParagraphNavigation(self, gesture: InputGesture, nextParagraph: bool) -> None:
@@ -290,7 +290,7 @@ class CursorManager(documentBase.TextContainerObject,baseObject.ScriptableObject
 			flag.calculated() == ParagraphNavigationFlag.APPLICATION
 			or flag.calculated() == ParagraphNavigationFlag.SINGLE_LINE_BREAK
 		):
-			self._caretMovementScriptHelper(gesture, textInfos.UNIT_PARAGRAPH, 1 if nextParagraph else -1)
+			self._caretMovementScriptHelper(gesture, textInfos.Unit.PARAGRAPH, 1 if nextParagraph else -1)
 		elif flag.calculated() == ParagraphNavigationFlag.MULTI_LINE_BREAK:
 			from documentNavigation.paragraphHelper import moveToMultiLineBreakParagraph
 			ti = self.makeTextInfo(textInfos.POSITION_SELECTION)
@@ -302,7 +302,7 @@ class CursorManager(documentBase.TextContainerObject,baseObject.ScriptableObject
 				self.selection = ti
 			elif passKey:
 				# fail over to default behavior
-				self._caretMovementScriptHelper(gesture, textInfos.UNIT_PARAGRAPH, 1 if nextParagraph else -1)
+				self._caretMovementScriptHelper(gesture, textInfos.Unit.PARAGRAPH, 1 if nextParagraph else -1)
 		else:
 			log.error(f"Unexpected ParagraphNavigationFlag value {flag.value}")
 
@@ -315,16 +315,16 @@ class CursorManager(documentBase.TextContainerObject,baseObject.ScriptableObject
 	script_moveByParagraph_forward.resumeSayAllMode = sayAll.CURSOR.CARET
 
 	def script_startOfLine(self,gesture):
-		self._caretMovementScriptHelper(gesture,textInfos.UNIT_CHARACTER,posUnit=textInfos.UNIT_LINE,extraDetail=True,handleSymbols=True)
+		self._caretMovementScriptHelper(gesture,textInfos.Unit.CHARACTER,posUnit=textInfos.Unit.LINE,extraDetail=True,handleSymbols=True)
 
 	def script_endOfLine(self,gesture):
-		self._caretMovementScriptHelper(gesture,textInfos.UNIT_CHARACTER,posUnit=textInfos.UNIT_LINE,posUnitEnd=True,extraDetail=True,handleSymbols=True)
+		self._caretMovementScriptHelper(gesture,textInfos.Unit.CHARACTER,posUnit=textInfos.Unit.LINE,posUnitEnd=True,extraDetail=True,handleSymbols=True)
 
 	def script_topOfDocument(self,gesture):
-		self._caretMovementScriptHelper(gesture,textInfos.UNIT_LINE,posConstant=textInfos.POSITION_FIRST)
+		self._caretMovementScriptHelper(gesture,textInfos.Unit.LINE,posConstant=textInfos.POSITION_FIRST)
 
 	def script_bottomOfDocument(self,gesture):
-		self._caretMovementScriptHelper(gesture,textInfos.UNIT_LINE,posConstant=textInfos.POSITION_LAST)
+		self._caretMovementScriptHelper(gesture,textInfos.Unit.LINE,posConstant=textInfos.POSITION_LAST)
 
 	def _selectionMovementScriptHelper(self,unit=None,direction=None,toPosition=None):
 		oldInfo=self.makeTextInfo(textInfos.POSITION_SELECTION)
@@ -390,56 +390,56 @@ class CursorManager(documentBase.TextContainerObject,baseObject.ScriptableObject
 		speech.speakSelectionChange(oldInfo,newInfo)
 
 	def script_selectCharacter_forward(self,gesture):
-		self._selectionMovementScriptHelper(unit=textInfos.UNIT_CHARACTER,direction=1)
+		self._selectionMovementScriptHelper(unit=textInfos.Unit.CHARACTER,direction=1)
 
 	def script_selectCharacter_back(self,gesture):
-		self._selectionMovementScriptHelper(unit=textInfos.UNIT_CHARACTER,direction=-1)
+		self._selectionMovementScriptHelper(unit=textInfos.Unit.CHARACTER,direction=-1)
 
 	def script_selectWord_forward(self,gesture):
-		self._selectionMovementScriptHelper(unit=textInfos.UNIT_WORD,direction=1)
+		self._selectionMovementScriptHelper(unit=textInfos.Unit.WORD,direction=1)
 
 	def script_selectWord_back(self,gesture):
-		self._selectionMovementScriptHelper(unit=textInfos.UNIT_WORD,direction=-1)
+		self._selectionMovementScriptHelper(unit=textInfos.Unit.WORD,direction=-1)
 
 	def script_selectLine_forward(self,gesture):
-		self._selectionMovementScriptHelper(unit=textInfos.UNIT_LINE,direction=1)
+		self._selectionMovementScriptHelper(unit=textInfos.Unit.LINE,direction=1)
 
 	def script_selectLine_back(self,gesture):
-		self._selectionMovementScriptHelper(unit=textInfos.UNIT_LINE,direction=-1)
+		self._selectionMovementScriptHelper(unit=textInfos.Unit.LINE,direction=-1)
 
 	def script_selectPage_forward(self,gesture):
-		self._selectionMovementScriptHelper(unit=textInfos.UNIT_LINE,direction=config.conf["virtualBuffers"]["linesPerPage"])
+		self._selectionMovementScriptHelper(unit=textInfos.Unit.LINE,direction=config.conf["virtualBuffers"]["linesPerPage"])
 
 	def script_selectPage_back(self,gesture):
-		self._selectionMovementScriptHelper(unit=textInfos.UNIT_LINE,direction=-config.conf["virtualBuffers"]["linesPerPage"])
+		self._selectionMovementScriptHelper(unit=textInfos.Unit.LINE,direction=-config.conf["virtualBuffers"]["linesPerPage"])
 
 	def script_selectParagraph_forward(self, gesture):
-		self._selectionMovementScriptHelper(unit=textInfos.UNIT_PARAGRAPH, direction=1)
+		self._selectionMovementScriptHelper(unit=textInfos.Unit.PARAGRAPH, direction=1)
 
 	def script_selectParagraph_back(self, gesture):
-		self._selectionMovementScriptHelper(unit=textInfos.UNIT_PARAGRAPH, direction=-1)
+		self._selectionMovementScriptHelper(unit=textInfos.Unit.PARAGRAPH, direction=-1)
 
 	def script_selectToBeginningOfLine(self,gesture):
 		# Make sure the active endpoint of the selection is after the start of the line.
 		sel=self.makeTextInfo(textInfos.POSITION_SELECTION)
 		line=sel.copy()
 		line.collapse()
-		line.expand(textInfos.UNIT_LINE)
+		line.expand(textInfos.Unit.LINE)
 		compOp="startToStart" if not self.isTextSelectionAnchoredAtStart else "endToStart"
 		if sel.compareEndPoints(line,compOp)>0:
-			self._selectionMovementScriptHelper(unit=textInfos.UNIT_LINE,direction=-1)
+			self._selectionMovementScriptHelper(unit=textInfos.Unit.LINE,direction=-1)
 
 	def script_selectToEndOfLine(self,gesture):
 		# #7157: There isn't necessarily a line ending character or insertion point at the end of a line.
 		# Therefore, always allow select to end of line,
 		# even if the caret is already on the last character of the line.
-		self._selectionMovementScriptHelper(unit=textInfos.UNIT_LINE,direction=1)
+		self._selectionMovementScriptHelper(unit=textInfos.Unit.LINE,direction=1)
 
 	def script_selectToTopOfDocument(self,gesture):
 		self._selectionMovementScriptHelper(toPosition=textInfos.POSITION_FIRST)
 
 	def script_selectToBottomOfDocument(self,gesture):
-		self._selectionMovementScriptHelper(toPosition=textInfos.POSITION_LAST,unit=textInfos.UNIT_CHARACTER,direction=1)
+		self._selectionMovementScriptHelper(toPosition=textInfos.POSITION_LAST,unit=textInfos.Unit.CHARACTER,direction=1)
 
 	def script_selectAll(self,gesture):
 		self._selectionMovementScriptHelper(toPosition=textInfos.POSITION_ALL)

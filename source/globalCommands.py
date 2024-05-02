@@ -209,10 +209,10 @@ class GlobalCommands(ScriptableObject):
 			info=obj.makeTextInfo(textInfos.POSITION_CARET)
 		except (NotImplementedError, RuntimeError):
 			info=obj.makeTextInfo(textInfos.POSITION_FIRST)
-		info.expand(textInfos.UNIT_LINE)
+		info.expand(textInfos.Unit.LINE)
 		scriptCount=scriptHandler.getLastScriptRepeatCount()
 		if scriptCount==0:
-			speech.speakTextInfo(info, unit=textInfos.UNIT_LINE, reason=controlTypes.OutputReason.CARET)
+			speech.speakTextInfo(info, unit=textInfos.Unit.LINE, reason=controlTypes.OutputReason.CARET)
 		else:
 			speech.spellTextInfo(info,useCharacterDescriptions=scriptCount>1)
 
@@ -1153,7 +1153,7 @@ class GlobalCommands(ScriptableObject):
 		if label:
 			ui.reviewMessage(label)
 			pos=api.getReviewPosition().copy()
-			pos.expand(textInfos.UNIT_LINE)
+			pos.expand(textInfos.Unit.LINE)
 			braille.handler.setTether(TetherTo.REVIEW.value, auto=True)
 			speech.speakTextInfo(pos)
 		else:
@@ -1174,7 +1174,7 @@ class GlobalCommands(ScriptableObject):
 		if label:
 			ui.reviewMessage(label)
 			pos=api.getReviewPosition().copy()
-			pos.expand(textInfos.UNIT_LINE)
+			pos.expand(textInfos.Unit.LINE)
 			braille.handler.setTether(TetherTo.REVIEW.value, auto=True)
 			speech.speakTextInfo(pos)
 		else:
@@ -1234,7 +1234,7 @@ class GlobalCommands(ScriptableObject):
 					if not info.isCollapsed:
 						textList.append(info.text)
 					else:
-						info.expand(textInfos.UNIT_LINE)
+						info.expand(textInfos.Unit.LINE)
 						if not info.isCollapsed:
 							textList.append(info.text)
 				except (RuntimeError, NotImplementedError):
@@ -1424,7 +1424,7 @@ class GlobalCommands(ScriptableObject):
 				ui.message(_("No caret"))
 				return
 			info=review.copy()
-			info.expand(textInfos.UNIT_LINE)
+			info.expand(textInfos.Unit.LINE)
 			speech.speakTextInfo(info, reason=controlTypes.OutputReason.CARET)
 
 	@script(
@@ -1613,10 +1613,10 @@ class GlobalCommands(ScriptableObject):
 		# the review position does not contain secure information
 		# before announcing this object
 		if api.setReviewPosition(info):
-			info.expand(textInfos.UNIT_LINE)
+			info.expand(textInfos.Unit.LINE)
 			speech.speakTextInfo(
 				info,
-				unit=textInfos.UNIT_LINE,
+				unit=textInfos.Unit.LINE,
 				reason=controlTypes.OutputReason.CARET
 			)
 		else:
@@ -1632,9 +1632,9 @@ class GlobalCommands(ScriptableObject):
 	)
 	def script_review_previousLine(self, gesture: inputCore.InputGesture):
 		info=api.getReviewPosition().copy()
-		info.expand(textInfos.UNIT_LINE)
+		info.expand(textInfos.Unit.LINE)
 		info.collapse()
-		res=info.move(textInfos.UNIT_LINE,-1)
+		res=info.move(textInfos.Unit.LINE,-1)
 		if res==0:
 			# Translators: a message reported when review cursor is at the top line of the current navigator object.
 			ui.reviewMessage(_("Top"))
@@ -1648,10 +1648,10 @@ class GlobalCommands(ScriptableObject):
 			ui.reviewMessage(gui.blockAction.Context.WINDOWS_LOCKED.translatedMessage)
 			return
 		else:
-			info.expand(textInfos.UNIT_LINE)
+			info.expand(textInfos.Unit.LINE)
 			speech.speakTextInfo(
 				info,
-				unit=textInfos.UNIT_LINE,
+				unit=textInfos.Unit.LINE,
 				reason=controlTypes.OutputReason.CARET
 			)
 
@@ -1674,12 +1674,12 @@ class GlobalCommands(ScriptableObject):
 		if objectBelowLockScreenAndWindowsIsLocked(info.obj):
 			ui.reviewMessage(gui.blockAction.Context.WINDOWS_LOCKED.translatedMessage)
 			return
-		info.expand(textInfos.UNIT_LINE)
+		info.expand(textInfos.Unit.LINE)
 		# Explicitly tether here
 		braille.handler.handleReviewMove(shouldAutoTether=True)
 		scriptCount=scriptHandler.getLastScriptRepeatCount()
 		if scriptCount==0:
-			speech.speakTextInfo(info, unit=textInfos.UNIT_LINE, reason=controlTypes.OutputReason.CARET)
+			speech.speakTextInfo(info, unit=textInfos.Unit.LINE, reason=controlTypes.OutputReason.CARET)
 		else:
 			speech.spellTextInfo(info,useCharacterDescriptions=scriptCount>1)
 
@@ -1694,9 +1694,9 @@ class GlobalCommands(ScriptableObject):
 		origInfo = api.getReviewPosition().copy()
 		origInfo.collapse()
 		info = origInfo.copy()
-		res = info.move(textInfos.UNIT_LINE, 1)
+		res = info.move(textInfos.Unit.LINE, 1)
 		newLine = info.copy()
-		newLine.expand(textInfos.UNIT_LINE)
+		newLine.expand(textInfos.Unit.LINE)
 		# #12808: Some implementations of move forward by one line may succeed one more time than expected,
 		# landing on the exclusive end of the document.
 		# Therefore, verify that expanding after the move does result in being on a new line,
@@ -1716,7 +1716,7 @@ class GlobalCommands(ScriptableObject):
 		else:
 			speech.speakTextInfo(
 				newLine,
-				unit=textInfos.UNIT_LINE,
+				unit=textInfos.Unit.LINE,
 				reason=controlTypes.OutputReason.CARET
 			)
 
@@ -1730,9 +1730,9 @@ class GlobalCommands(ScriptableObject):
 	def script_review_previousPage(self, gesture: inputCore.InputGesture) -> None:
 		info = api.getReviewPosition().copy()
 		try:
-			info.expand(textInfos.UNIT_PAGE)
+			info.expand(textInfos.Unit.PAGE)
 			info.collapse()
-			res = info.move(textInfos.UNIT_PAGE, -1)
+			res = info.move(textInfos.Unit.PAGE, -1)
 		except (ValueError, NotImplementedError):
 			# Translators: a message reported when movement by page is unsupported
 			ui.reviewMessage(_("Movement by page not supported"))
@@ -1749,8 +1749,8 @@ class GlobalCommands(ScriptableObject):
 			ui.reviewMessage(gui.blockAction.Context.WINDOWS_LOCKED.translatedMessage)
 			return
 		else:
-			info.expand(textInfos.UNIT_PAGE)
-			speech.speakTextInfo(info, unit=textInfos.UNIT_PAGE, reason=controlTypes.OutputReason.CARET)
+			info.expand(textInfos.Unit.PAGE)
+			speech.speakTextInfo(info, unit=textInfos.Unit.PAGE, reason=controlTypes.OutputReason.CARET)
 
 	@script(
 		# Translators: Input help mode message for move review cursor to next page command.
@@ -1764,9 +1764,9 @@ class GlobalCommands(ScriptableObject):
 		origInfo.collapse()
 		info = origInfo.copy()
 		try:
-			res = info.move(textInfos.UNIT_PAGE, 1)
+			res = info.move(textInfos.Unit.PAGE, 1)
 			newPage = info.copy()
-			newPage.expand(textInfos.UNIT_PAGE)
+			newPage.expand(textInfos.Unit.PAGE)
 		except (ValueError, NotImplementedError):
 			# Translators: a message reported when movement by page is unsupported
 			ui.reviewMessage(_("Movement by page not supported"))
@@ -1787,7 +1787,7 @@ class GlobalCommands(ScriptableObject):
 			ui.reviewMessage(gui.blockAction.Context.WINDOWS_LOCKED.translatedMessage)
 			return
 		else:
-			speech.speakTextInfo(newPage, unit=textInfos.UNIT_PAGE, reason=controlTypes.OutputReason.CARET)
+			speech.speakTextInfo(newPage, unit=textInfos.Unit.PAGE, reason=controlTypes.OutputReason.CARET)
 
 	@script(
 		# Translators: Input help mode message for move review cursor to bottom line command.
@@ -1802,10 +1802,10 @@ class GlobalCommands(ScriptableObject):
 		# the review position does not contain secure information
 		# before announcing this object
 		if api.setReviewPosition(info):
-			info.expand(textInfos.UNIT_LINE)
+			info.expand(textInfos.Unit.LINE)
 			speech.speakTextInfo(
 				info,
-				unit=textInfos.UNIT_LINE,
+				unit=textInfos.Unit.LINE,
 				reason=controlTypes.OutputReason.CARET
 			)
 		else:
@@ -1820,9 +1820,9 @@ class GlobalCommands(ScriptableObject):
 	)
 	def script_review_previousWord(self, gesture: inputCore.InputGesture):
 		info=api.getReviewPosition().copy()
-		info.expand(textInfos.UNIT_WORD)
+		info.expand(textInfos.Unit.WORD)
 		info.collapse()
-		res=info.move(textInfos.UNIT_WORD,-1)
+		res=info.move(textInfos.Unit.WORD,-1)
 		if res==0:
 			# Translators: a message reported when review cursor is at the top line of the current navigator object.
 			ui.reviewMessage(_("Top"))
@@ -1836,11 +1836,11 @@ class GlobalCommands(ScriptableObject):
 			ui.reviewMessage(gui.blockAction.Context.WINDOWS_LOCKED.translatedMessage)
 			return
 		else:
-			info.expand(textInfos.UNIT_WORD)
+			info.expand(textInfos.Unit.WORD)
 			speech.speakTextInfo(
 				info,
 				reason=controlTypes.OutputReason.CARET,
-				unit=textInfos.UNIT_WORD
+				unit=textInfos.Unit.WORD
 			)
 
 	@script(
@@ -1863,12 +1863,12 @@ class GlobalCommands(ScriptableObject):
 			ui.reviewMessage(gui.blockAction.Context.WINDOWS_LOCKED.translatedMessage)
 			return
 
-		info.expand(textInfos.UNIT_WORD)
+		info.expand(textInfos.Unit.WORD)
 		# Explicitly tether here
 		braille.handler.handleReviewMove(shouldAutoTether=True)
 		scriptCount=scriptHandler.getLastScriptRepeatCount()
 		if scriptCount==0:
-			speech.speakTextInfo(info, reason=controlTypes.OutputReason.CARET, unit=textInfos.UNIT_WORD)
+			speech.speakTextInfo(info, reason=controlTypes.OutputReason.CARET, unit=textInfos.Unit.WORD)
 		else:
 			speech.spellTextInfo(info,useCharacterDescriptions=scriptCount>1)
 
@@ -1882,9 +1882,9 @@ class GlobalCommands(ScriptableObject):
 		origInfo = api.getReviewPosition().copy()
 		origInfo.collapse()
 		info = origInfo.copy()
-		res = info.move(textInfos.UNIT_WORD, 1)
+		res = info.move(textInfos.Unit.WORD, 1)
 		newWord = info.copy()
-		newWord.expand(textInfos.UNIT_WORD)
+		newWord.expand(textInfos.Unit.WORD)
 		# #12808: Some implementations of move forward by one word may succeed one more time than expected,
 		# landing on the exclusive end of the document.
 		# Therefore, verify that expanding after the move does result in being on a new word,
@@ -1904,7 +1904,7 @@ class GlobalCommands(ScriptableObject):
 		else:
 			speech.speakTextInfo(
 				newWord,
-				unit=textInfos.UNIT_WORD,
+				unit=textInfos.Unit.WORD,
 				reason=controlTypes.OutputReason.CARET
 			)
 
@@ -1919,7 +1919,7 @@ class GlobalCommands(ScriptableObject):
 	)
 	def script_review_startOfLine(self, gesture: inputCore.InputGesture):
 		info=api.getReviewPosition().copy()
-		info.expand(textInfos.UNIT_LINE)
+		info.expand(textInfos.Unit.LINE)
 		info.collapse()
 
 		# This script is available on the lock screen via getSafeScripts,
@@ -1927,10 +1927,10 @@ class GlobalCommands(ScriptableObject):
 		# the review position does not contain secure information
 		# before announcing this object
 		if api.setReviewPosition(info):
-			info.expand(textInfos.UNIT_CHARACTER)
+			info.expand(textInfos.Unit.CHARACTER)
 			speech.speakTextInfo(
 				info,
-				unit=textInfos.UNIT_CHARACTER,
+				unit=textInfos.Unit.CHARACTER,
 				reason=controlTypes.OutputReason.CARET
 			)
 		else:
@@ -1947,11 +1947,11 @@ class GlobalCommands(ScriptableObject):
 	)
 	def script_review_previousCharacter(self, gesture: inputCore.InputGesture):
 		lineInfo=api.getReviewPosition().copy()
-		lineInfo.expand(textInfos.UNIT_LINE)
+		lineInfo.expand(textInfos.Unit.LINE)
 		charInfo=api.getReviewPosition().copy()
-		charInfo.expand(textInfos.UNIT_CHARACTER)
+		charInfo.expand(textInfos.Unit.CHARACTER)
 		charInfo.collapse()
-		res=charInfo.move(textInfos.UNIT_CHARACTER,-1)
+		res=charInfo.move(textInfos.Unit.CHARACTER,-1)
 		if res==0 or charInfo.compareEndPoints(lineInfo,"startToStart")<0:
 			# Translators: a message reported when review cursor is at the leftmost character of the current navigator object's text.
 			ui.reviewMessage(_("Left"))
@@ -1967,10 +1967,10 @@ class GlobalCommands(ScriptableObject):
 			ui.reviewMessage(gui.blockAction.Context.WINDOWS_LOCKED.translatedMessage)
 			return
 		else:
-			reviewInfo.expand(textInfos.UNIT_CHARACTER)
+			reviewInfo.expand(textInfos.Unit.CHARACTER)
 			speech.speakTextInfo(
 				reviewInfo,
-				unit=textInfos.UNIT_CHARACTER,
+				unit=textInfos.Unit.CHARACTER,
 				reason=controlTypes.OutputReason.CARET
 			)
 
@@ -1994,12 +1994,12 @@ class GlobalCommands(ScriptableObject):
 			ui.reviewMessage(gui.blockAction.Context.WINDOWS_LOCKED.translatedMessage)
 			return
 
-		info.expand(textInfos.UNIT_CHARACTER)
+		info.expand(textInfos.Unit.CHARACTER)
 		# Explicitly tether here
 		braille.handler.handleReviewMove(shouldAutoTether=True)
 		scriptCount=scriptHandler.getLastScriptRepeatCount()
 		if scriptCount==0:
-			speech.speakTextInfo(info, unit=textInfos.UNIT_CHARACTER, reason=controlTypes.OutputReason.CARET)
+			speech.speakTextInfo(info, unit=textInfos.Unit.CHARACTER, reason=controlTypes.OutputReason.CARET)
 		elif scriptCount==1:
 			speech.spellTextInfo(info,useCharacterDescriptions=True)
 		else:
@@ -2017,7 +2017,7 @@ class GlobalCommands(ScriptableObject):
 				braille.handler.message("; ".join(f"{c}, {hex(c)}" for c in cList))
 			else:
 				log.debugWarning("Couldn't calculate ordinal for character %r" % info.text)
-				speech.speakTextInfo(info, unit=textInfos.UNIT_CHARACTER, reason=controlTypes.OutputReason.CARET)
+				speech.speakTextInfo(info, unit=textInfos.Unit.CHARACTER, reason=controlTypes.OutputReason.CARET)
 
 	@script(
 		description=_(
@@ -2029,11 +2029,11 @@ class GlobalCommands(ScriptableObject):
 	)
 	def script_review_nextCharacter(self, gesture: inputCore.InputGesture):
 		lineInfo=api.getReviewPosition().copy()
-		lineInfo.expand(textInfos.UNIT_LINE)
+		lineInfo.expand(textInfos.Unit.LINE)
 		charInfo=api.getReviewPosition().copy()
-		charInfo.expand(textInfos.UNIT_CHARACTER)
+		charInfo.expand(textInfos.Unit.CHARACTER)
 		charInfo.collapse()
-		res=charInfo.move(textInfos.UNIT_CHARACTER,1)
+		res=charInfo.move(textInfos.Unit.CHARACTER,1)
 		if res==0 or charInfo.compareEndPoints(lineInfo,"endToEnd")>=0:
 			# Translators: a message reported when review cursor is at the rightmost character of the current navigator object's text.
 			ui.reviewMessage(_("Right"))
@@ -2049,10 +2049,10 @@ class GlobalCommands(ScriptableObject):
 			ui.reviewMessage(gui.blockAction.Context.WINDOWS_LOCKED.translatedMessage)
 			return
 		else:
-			reviewInfo.expand(textInfos.UNIT_CHARACTER)
+			reviewInfo.expand(textInfos.Unit.CHARACTER)
 			speech.speakTextInfo(
 				reviewInfo,
-				unit=textInfos.UNIT_CHARACTER,
+				unit=textInfos.Unit.CHARACTER,
 				reason=controlTypes.OutputReason.CARET
 			)
 
@@ -2067,18 +2067,18 @@ class GlobalCommands(ScriptableObject):
 	)
 	def script_review_endOfLine(self, gesture: inputCore.InputGesture):
 		info=api.getReviewPosition().copy()
-		info.expand(textInfos.UNIT_LINE)
+		info.expand(textInfos.Unit.LINE)
 		info.collapse(end=True)
-		info.move(textInfos.UNIT_CHARACTER,-1)
+		info.move(textInfos.Unit.CHARACTER,-1)
 
 		# This script is available on the lock screen via getSafeScripts, as such
 		# ensure the review position does not contain secure information
 		# before announcing this object
 		if api.setReviewPosition(info):
-			info.expand(textInfos.UNIT_CHARACTER)
+			info.expand(textInfos.Unit.CHARACTER)
 			speech.speakTextInfo(
 				info,
-				unit=textInfos.UNIT_CHARACTER,
+				unit=textInfos.Unit.CHARACTER,
 				reason=controlTypes.OutputReason.CARET,
 			)
 		else:
@@ -2103,7 +2103,7 @@ class GlobalCommands(ScriptableObject):
 	)
 	def script_review_currentSymbol(self,gesture):
 		info=api.getReviewPosition().copy()
-		info.expand(textInfos.UNIT_CHARACTER)
+		info.expand(textInfos.Unit.CHARACTER)
 		curLanguage = self._getCurrentLanguageForTextInfo(info)
 		text = info.text
 		expandedSymbol = characterProcessing.processSpeechSymbol(curLanguage, text)
@@ -2310,13 +2310,13 @@ class GlobalCommands(ScriptableObject):
 		textList = []
 		# First, fetch indentation.
 		line=info.copy()
-		line.expand(textInfos.UNIT_LINE)
+		line.expand(textInfos.Unit.LINE)
 		indentation,content=speech.splitTextIndentation(line.text)
 		if indentation:
 			textList.extend(speech.getIndentationSpeech(indentation, formatConfig))
 		
 		info=info.copy()
-		info.expand(textInfos.UNIT_CHARACTER)
+		info.expand(textInfos.Unit.CHARACTER)
 		formatField=textInfos.FormatField()
 		for field in info.getTextWithFields(formatConfig):
 			if isinstance(field,textInfos.FieldCommand) and isinstance(field.field,textInfos.FormatField):
@@ -2464,7 +2464,7 @@ class GlobalCommands(ScriptableObject):
 		except RuntimeError:
 			log.debugWarning("Unable to get the caret position.", exc_info=True)
 			return None
-		caret.expand(textInfos.UNIT_CHARACTER)
+		caret.expand(textInfos.Unit.CHARACTER)
 		objAtStart: NVDAObject = caret.NVDAObjectAtStart
 		_isDebugLogCatEnabled = bool(config.conf["debugLog"]["annotations"])
 		if _isDebugLogCatEnabled:
@@ -2624,9 +2624,9 @@ class GlobalCommands(ScriptableObject):
 			except NotImplementedError:
 				info = foreground.flatReviewPosition
 				if info:
-					info.expand(textInfos.UNIT_STORY)
+					info.expand(textInfos.Unit.STORY)
 					info.collapse(True)
-					info.expand(textInfos.UNIT_LINE)
+					info.expand(textInfos.Unit.LINE)
 			if (
 				info
 				# This script is available on the lock screen via getSafeScripts, as such
@@ -3643,10 +3643,10 @@ class GlobalCommands(ScriptableObject):
 		# before announcing this object
 		if api.setReviewPosition(startMarker):
 			startMarker.collapse()
-			startMarker.expand(textInfos.UNIT_CHARACTER)
+			startMarker.expand(textInfos.Unit.CHARACTER)
 			speech.speakTextInfo(
 				startMarker,
-				unit=textInfos.UNIT_CHARACTER,
+				unit=textInfos.Unit.CHARACTER,
 				reason=controlTypes.OutputReason.CARET
 			)
 		else:
@@ -3684,14 +3684,14 @@ class GlobalCommands(ScriptableObject):
 				copyMarker.setEndPoint(startMarker, "startToStart")
 				# end needs to be updated to the current cursor position.
 				copyMarker.setEndPoint(pos, "endToEnd")
-				copyMarker.move(textInfos.UNIT_CHARACTER, 1, endPoint="end")
+				copyMarker.move(textInfos.Unit.CHARACTER, 1, endPoint="end")
 			else:# user has moved the cursor 'backwards' or not at all.
 				# when the cursor is not moved at all we still want to select the character have under the cursor
 				# start becomes the current cursor position position
 				copyMarker.setEndPoint(pos, "startToStart")
 				# end becomes the original start position plus 1
 				copyMarker.setEndPoint(startMarker, "endToEnd")
-				copyMarker.move(textInfos.UNIT_CHARACTER, 1, endPoint="end")
+				copyMarker.move(textInfos.Unit.CHARACTER, 1, endPoint="end")
 			if copyMarker.compareEndPoints(copyMarker, "startToEnd") == 0:
 				# Translators: Presented when there is no text selection to copy from review cursor.
 				ui.message(_("No text to copy"))
@@ -3991,7 +3991,7 @@ class GlobalCommands(ScriptableObject):
 		except RuntimeError:
 			log.debugWarning("Unable to get the caret position.", exc_info=True)
 			ti: textInfos.TextInfo = api.getFocusObject().makeTextInfo(textInfos.POSITION_FIRST)
-		ti.expand(textInfos.UNIT_CHARACTER)
+		ti.expand(textInfos.Unit.CHARACTER)
 		obj: NVDAObject = ti.NVDAObjectAtStart
 		presses = scriptHandler.getLastScriptRepeatCount()
 		if (

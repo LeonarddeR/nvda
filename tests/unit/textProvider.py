@@ -60,7 +60,7 @@ class BasicTextProvider(PlaceholderNVDAObject):
 	>>> ti = obj.makeTextInfo(textInfos.POSITION_CARET)
 	>>> ti.offsets
 	(0, 0)
-	>>> ti.expand(textInfos.UNIT_CHARACTER)
+	>>> ti.expand(textInfos.Unit.CHARACTER)
 	>>> ti.text
 	"a"
 	>>> ti.offsets
@@ -123,7 +123,7 @@ class MockBlackBoxTextInfo(textInfos.TextInfo):
 		self._endOffset = self.n
 	
 	def move(self, unit: str, direction: int, endPoint: str | None = None) -> int:
-		if unit != textInfos.UNIT_CHARACTER:
+		if unit != textInfos.Unit.CHARACTER:
 			raise NotImplementedError("This mock TextInfo only supports move by character")
 		if self._startOffset != self._endOffset and endPoint is None:
 			raise RuntimeError("For non-collapsed textInfo endPoint must be specified.")
@@ -151,11 +151,11 @@ class MockBlackBoxTextInfo(textInfos.TextInfo):
 			self._endOffset = self._startOffset
 
 	def expand(self, unit: str):
-		if unit != textInfos.UNIT_CHARACTER:
+		if unit != textInfos.Unit.CHARACTER:
 			raise NotImplementedError("This mock TextInfo only supports expand by character")
 		if self._startOffset != self._endOffset:
 			raise RuntimeError("expand() can be called on collapsed textInfo only.")
-		self.move(textInfos.UNIT_CHARACTER, 1, "end")
+		self.move(textInfos.Unit.CHARACTER, 1, "end")
 	
 	def compareEndPoints(self, other: textInfos.TextInfo, which: str):
 		if not isinstance(other, self.__class__):

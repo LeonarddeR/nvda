@@ -62,7 +62,7 @@ class TestReviewRoutingMovesSystemCaretInNavigableText(unittest.TestCase):
 		caret = self.cm.makeTextInfo(textInfos.POSITION_CARET)
 		self.assertEquals(caret, self.caret)
 		expectedReview = self.caret.copy()
-		expectedReview.move(textInfos.UNIT_CHARACTER, 3)
+		expectedReview.move(textInfos.Unit.CHARACTER, 3)
 		self.assertEquals(expectedReview, api.getReviewPosition())
 		braille.handler.routeTo(4)  # Route to the fifth cell
 		# Object still not activated as no second routing press on same cell.
@@ -71,7 +71,7 @@ class TestReviewRoutingMovesSystemCaretInNavigableText(unittest.TestCase):
 		caret = self.cm.makeTextInfo(textInfos.POSITION_CARET)
 		self.assertEquals(caret, self.caret)
 		# move expected review from cell 4 to 5
-		expectedReview.move(textInfos.UNIT_CHARACTER, 1)
+		expectedReview.move(textInfos.Unit.CHARACTER, 1)
 		self.assertEquals(expectedReview, api.getReviewPosition())
 		# Route a second time to activate the object under the cell
 		braille.handler.routeTo(4)
@@ -89,7 +89,7 @@ class TestReviewRoutingMovesSystemCaretInNavigableText(unittest.TestCase):
 		config.conf["braille"]["reviewRoutingMovesSystemCaret"] = ReviewRoutingMovesSystemCaretFlag.NEVER.name
 		curTime = time.time()
 		review = self.caret.copy()
-		review.move(textInfos.UNIT_CHARACTER, 3)
+		review.move(textInfos.Unit.CHARACTER, 3)
 		api.setReviewPosition(review)
 		# Route to the fourth cell to activate the object under the cell,
 		# since the review cursor is already on that cell.
@@ -110,7 +110,7 @@ class TestReviewRoutingMovesSystemCaretInNavigableText(unittest.TestCase):
 		self.assertLess(self.cm.lastActivateTime, curTime)
 		caret = self.cm.makeTextInfo(textInfos.POSITION_CARET)
 		expectedReview = self.caret.copy()
-		expectedReview.move(textInfos.UNIT_CHARACTER, 3)
+		expectedReview.move(textInfos.Unit.CHARACTER, 3)
 		self.assertEquals(expectedReview, api.getReviewPosition())
 		self.assertEquals(caret, expectedReview)
 		braille.handler.routeTo(4)  # Route to the fifth cell
@@ -118,7 +118,7 @@ class TestReviewRoutingMovesSystemCaretInNavigableText(unittest.TestCase):
 		self.assertLess(self.cm.lastActivateTime, curTime)
 		caret = self.cm.makeTextInfo(textInfos.POSITION_CARET)
 		# move expected review from cell 4 to 5
-		expectedReview.move(textInfos.UNIT_CHARACTER, 1)
+		expectedReview.move(textInfos.Unit.CHARACTER, 1)
 		self.assertEquals(expectedReview, api.getReviewPosition())
 		self.assertEquals(caret, expectedReview)
 		# Route a second time to activate the object under the cell
@@ -136,7 +136,7 @@ class TestReviewRoutingMovesSystemCaretInNavigableText(unittest.TestCase):
 		config.conf["braille"]["reviewRoutingMovesSystemCaret"] = ReviewRoutingMovesSystemCaretFlag.ALWAYS.name
 		curTime = time.time()
 		review = self.caret.copy()
-		review.move(textInfos.UNIT_CHARACTER, 3)
+		review.move(textInfos.Unit.CHARACTER, 3)
 		api.setReviewPosition(review)
 		self.assertNotEqual(self.caret, review)
 		# Route to the fourth cell to activate the object under the cell,

@@ -107,13 +107,13 @@ def speakSingleLineBreakParagraph(ti: textInfos.TextInfo) -> None:
 	numLines = 0
 	tempTi = ti.copy()
 	while numLines < MAX_LINES:
-		tempTi.expand(textInfos.UNIT_LINE)
+		tempTi.expand(textInfos.Unit.LINE)
 		line = tempTi.text.strip()
 		if len(line) > 0:
 			paragraph += line + " "
 		if _isLastLineOfParagraph(tempTi.text):
 			break
-		if not tempTi.move(textInfos.UNIT_LINE, _Offset.NEXT_LINE):
+		if not tempTi.move(textInfos.Unit.LINE, _Offset.NEXT_LINE):
 			break
 		numLines += 1
 
@@ -137,28 +137,28 @@ def _notFoundMessage(nextParagraph: bool):
 
 def _moveTextInfoToSingleLineBreakParagraph(nextParagraph: bool, ti: textInfos.TextInfo) -> bool:
 	moved = False
-	ti.expand(textInfos.UNIT_LINE)
+	ti.expand(textInfos.Unit.LINE)
 	ti.collapse()  # move to start of line
 	moveOffset: _Offset = _Offset.NEXT_LINE if nextParagraph else _Offset.PREVIOUS_LINE
 	numLines = 0
 	tempTi = ti.copy()
-	tempTi.expand(textInfos.UNIT_LINE)
+	tempTi.expand(textInfos.Unit.LINE)
 	# if starting line is the last line of a paragraph, move back two paragraph markers
 	moveBackTwice = _isLastLineOfParagraph(tempTi.text)
 	while numLines < MAX_LINES:
 		tempTi = ti.copy()
-		tempTi.expand(textInfos.UNIT_LINE)
+		tempTi.expand(textInfos.Unit.LINE)
 		if _isLastLineOfParagraph(tempTi.text):
 			if not nextParagraph:
 				if not moveBackTwice:
 					while numLines < MAX_LINES:
-						if not ti.move(textInfos.UNIT_LINE, _Offset.PREVIOUS_LINE):
+						if not ti.move(textInfos.Unit.LINE, _Offset.PREVIOUS_LINE):
 							moved = True  # pin to beginning
 							break
 						tempTi = ti.copy()
-						tempTi.expand(textInfos.UNIT_LINE)
+						tempTi.expand(textInfos.Unit.LINE)
 						if _isLastLineOfParagraph(tempTi.text):
-							ti.move(textInfos.UNIT_LINE, _Offset.NEXT_LINE)
+							ti.move(textInfos.Unit.LINE, _Offset.NEXT_LINE)
 							moved = True
 							break
 						numLines += 1
@@ -167,10 +167,10 @@ def _moveTextInfoToSingleLineBreakParagraph(nextParagraph: bool, ti: textInfos.T
 				else:
 					moveBackTwice = False
 			else:  # moving to next paragraph
-				if ti.move(textInfos.UNIT_LINE, _Offset.NEXT_LINE):
+				if ti.move(textInfos.Unit.LINE, _Offset.NEXT_LINE):
 					moved = True
 				break
-		if not ti.move(textInfos.UNIT_LINE, moveOffset):
+		if not ti.move(textInfos.Unit.LINE, moveOffset):
 			break
 		numLines += 1
 	return moved
@@ -215,12 +215,12 @@ def speakMultiLineBreakParagraph(ti: textInfos.TextInfo) -> None:
 	numLines = 0
 	tempTi = ti.copy()
 	while numLines < MAX_LINES:
-		tempTi.expand(textInfos.UNIT_LINE)
+		tempTi.expand(textInfos.Unit.LINE)
 		line = tempTi.text.strip()
 		if not len(line):
 			break
 		paragraph += line + "\r\n"
-		if not tempTi.move(textInfos.UNIT_LINE, _Offset.NEXT_LINE):
+		if not tempTi.move(textInfos.Unit.LINE, _Offset.NEXT_LINE):
 			break
 		numLines += 1
 
@@ -236,14 +236,14 @@ def _moveTextInfoToMultiLineBreakParagraph(nextParagraph: bool, ti: textInfos.Te
 	numLines = 0
 	while numLines < MAX_LINES:
 		tempTi = ti.copy()
-		tempTi.expand(textInfos.UNIT_LINE)
+		tempTi.expand(textInfos.Unit.LINE)
 		isBlank = len(tempTi.text.strip()) == 0
 		if lookingForBlank and isBlank:
 			lookingForBlank = False
 		if not lookingForBlank and not isBlank:
 			moved = True
 			break
-		if not ti.move(textInfos.UNIT_LINE, moveOffset):
+		if not ti.move(textInfos.Unit.LINE, moveOffset):
 			break
 		numLines += 1
 
@@ -251,14 +251,14 @@ def _moveTextInfoToMultiLineBreakParagraph(nextParagraph: bool, ti: textInfos.Te
 	if moved and not nextParagraph:
 		moved = False
 		while numLines < MAX_LINES:
-			if not ti.move(textInfos.UNIT_LINE, _Offset.PREVIOUS_LINE):
+			if not ti.move(textInfos.Unit.LINE, _Offset.PREVIOUS_LINE):
 				moved = True
 				break  # leave at top
 			tempTi = ti.copy()
-			tempTi.expand(textInfos.UNIT_LINE)
+			tempTi.expand(textInfos.Unit.LINE)
 			if not len(tempTi.text.strip()):
 				# found blank line before desired paragraph
-				ti.move(textInfos.UNIT_LINE, _Offset.NEXT_LINE)  # first line of paragraph
+				ti.move(textInfos.Unit.LINE, _Offset.NEXT_LINE)  # first line of paragraph
 				moved = True
 				break
 			numLines += 1

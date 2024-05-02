@@ -312,7 +312,7 @@ class WordDocument(IAccessible, EditableTextWithoutAutoSelectDetection, winWordW
 				log.debug(f"Canceled detecting new selection after {elapsed} sec")
 				break
 			time.sleep(retryInterval)
-		info.expand(textInfos.UNIT_CELL)
+		info.expand(textInfos.Unit.CELL)
 		speech.speakTextInfo(info, reason=controlTypes.OutputReason.FOCUS)
 		braille.handler.handleCaretMove(self)
 
@@ -325,7 +325,7 @@ class WordDocument(IAccessible, EditableTextWithoutAutoSelectDetection, winWordW
 	)
 	def script_reportCurrentComment(self,gesture):
 		info=self.makeTextInfo(textInfos.POSITION_CARET)
-		info.expand(textInfos.UNIT_CHARACTER)
+		info.expand(textInfos.Unit.CHARACTER)
 		fields=info.getTextWithFields(formatConfig={'reportComments':True})
 		for field in reversed(fields):
 			if isinstance(field,textInfos.FieldCommand) and isinstance(field.field,textInfos.FormatField): 
@@ -345,7 +345,7 @@ class WordDocument(IAccessible, EditableTextWithoutAutoSelectDetection, winWordW
 
 	def _moveInTable(self,row=True,forward=True):
 		info=self.makeTextInfo(textInfos.POSITION_CARET)
-		info.expand(textInfos.UNIT_CHARACTER)
+		info.expand(textInfos.Unit.CHARACTER)
 		formatConfig=config.conf['documentFormatting'].copy()
 		formatConfig['reportTables']=True
 		commandList=info.getTextWithFields(formatConfig)
@@ -390,7 +390,7 @@ class WordDocument(IAccessible, EditableTextWithoutAutoSelectDetection, winWordW
 		newInfo = winWordWindowModule.WordDocumentTextInfo(
 			self, textInfos.POSITION_CARET, _rangeObj=foundCell
 		)
-		speech.speakTextInfo(newInfo, reason=controlTypes.OutputReason.CARET, unit=textInfos.UNIT_CELL)
+		speech.speakTextInfo(newInfo, reason=controlTypes.OutputReason.CARET, unit=textInfos.Unit.CELL)
 		newInfo.collapse()
 		newInfo.updateCaret()
 		return True
@@ -428,7 +428,7 @@ class WordDocument(IAccessible, EditableTextWithoutAutoSelectDetection, winWordW
 		# #4375: can't use self.move here as it may check document.chracters.count which can take for ever on large documents.
 		info._rangeObj.move(winWordWindowModule.wdParagraph, 1)
 		info.updateCaret()
-		self._caretScriptPostMovedHelper(textInfos.UNIT_PARAGRAPH,gesture,None)
+		self._caretScriptPostMovedHelper(textInfos.Unit.PARAGRAPH,gesture,None)
 
 	@script(
 		gesture="kb:control+upArrow",
@@ -439,7 +439,7 @@ class WordDocument(IAccessible, EditableTextWithoutAutoSelectDetection, winWordW
 		# #4375: keeping symmetrical with nextParagraph script.
 		info._rangeObj.move(winWordWindowModule.wdParagraph, -1)
 		info.updateCaret()
-		self._caretScriptPostMovedHelper(textInfos.UNIT_PARAGRAPH,gesture,None)
+		self._caretScriptPostMovedHelper(textInfos.Unit.PARAGRAPH,gesture,None)
 
 	@script(
 		gestures=(

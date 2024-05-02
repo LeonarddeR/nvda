@@ -1721,7 +1721,7 @@ class ExcelCell(ExcelBase):
 	def reportFocus(self):
 		# #4878: Excel specific code for speaking format changes on the focused object.
 		info=self.makeTextInfo(textInfos.POSITION_FIRST)
-		info.expand(textInfos.UNIT_CHARACTER)
+		info.expand(textInfos.Unit.CHARACTER)
 		formatField=textInfos.FormatField()
 		formatConfig=config.conf['documentFormatting']
 		for field in info.getTextWithFields(formatConfig):

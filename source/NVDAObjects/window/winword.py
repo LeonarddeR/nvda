@@ -349,17 +349,17 @@ winwordWindowIid=GUID('{00020962-0000-0000-C000-000000000046}')
 wm_winword_expandToLine=ctypes.windll.user32.RegisterWindowMessageW(u"wm_winword_expandToLine")
 
 NVDAUnitsToWordUnits={
-	textInfos.UNIT_CHARACTER:wdCharacter,
-	textInfos.UNIT_WORD:wdWord,
-	textInfos.UNIT_LINE:wdLine,
-	textInfos.UNIT_SENTENCE:wdSentence,
-	textInfos.UNIT_PARAGRAPH:wdParagraph,
-	textInfos.UNIT_TABLE:wdTable,
-	textInfos.UNIT_CELL:wdCell,
-	textInfos.UNIT_ROW:wdRow,
-	textInfos.UNIT_COLUMN:wdColumn,
-	textInfos.UNIT_STORY:wdStory,
-	textInfos.UNIT_READINGCHUNK:wdSentence,
+	textInfos.Unit.CHARACTER:wdCharacter,
+	textInfos.Unit.WORD:wdWord,
+	textInfos.Unit.LINE:wdLine,
+	textInfos.Unit.SENTENCE:wdSentence,
+	textInfos.Unit.PARAGRAPH:wdParagraph,
+	textInfos.Unit.TABLE:wdTable,
+	textInfos.Unit.CELL:wdCell,
+	textInfos.Unit.ROW:wdRow,
+	textInfos.Unit.COLUMN:wdColumn,
+	textInfos.Unit.STORY:wdStory,
+	textInfos.Unit.READINGCHUNK:wdSentence,
 }
 
 formatConfigFlagsMap = {
@@ -647,8 +647,8 @@ class WordDocumentTextInfo(textInfos.TextInfo):
 	# We need to however fix line so it does not accidentially scroll.
 	def _get_unit_mouseChunk(self):
 		unit=super(WordDocumentTextInfo,self).unit_mouseChunk
-		if unit==textInfos.UNIT_LINE:
-			unit=textInfos.UNIT_SENTENCE
+		if unit==textInfos.Unit.LINE:
+			unit=textInfos.Unit.SENTENCE
 		return unit
 
 	def _get_locationText(self):
@@ -730,7 +730,7 @@ class WordDocumentTextInfo(textInfos.TextInfo):
 			self._rangeObj.setRange(bMark.start, bMark.start)
 			self.updateCaret()
 			tiCopy = self.copy()
-			tiCopy.expand(textInfos.UNIT_LINE)
+			tiCopy.expand(textInfos.Unit.LINE)
 			speech.speakTextInfo(tiCopy, reason=controlTypes.OutputReason.FOCUS)
 			braille.handler.handleCaretMove(self)
 			return
@@ -989,15 +989,15 @@ class WordDocumentTextInfo(textInfos.TextInfo):
 		return field
 
 	def expand(self,unit):
-		if unit==textInfos.UNIT_LINE: 
+		if unit==textInfos.Unit.LINE: 
 			try:
 				if self._rangeObj.tables.count>0 and self._rangeObj.cells.count==0:
-					unit=textInfos.UNIT_CHARACTER
+					unit=textInfos.Unit.CHARACTER
 			except COMError:
 				pass
-		if unit==textInfos.UNIT_LINE:
+		if unit==textInfos.Unit.LINE:
 			self._expandToLineAtCaret()
-		elif unit==textInfos.UNIT_CHARACTER:
+		elif unit==textInfos.Unit.CHARACTER:
 			self._rangeObj.moveEnd(wdCharacter,1)
 		elif unit in NVDAUnitsToWordUnits:
 			self._rangeObj.Expand(NVDAUnitsToWordUnits[unit])
@@ -1085,7 +1085,7 @@ class WordDocumentTextInfo(textInfos.TextInfo):
 		return res
 
 	def move(self,unit,direction,endPoint=None):
-		if unit!=textInfos.UNIT_LINE:
+		if unit!=textInfos.Unit.LINE:
 			return self._move(unit,direction,endPoint)
 		if direction==0 or direction>1 or direction<-1:
 			raise NotImplementedError("moving by line is only supported   collapsed and with a count of 1 or -1")
@@ -1099,16 +1099,16 @@ class WordDocumentTextInfo(textInfos.TextInfo):
 		if direction<0 and not endPoint and newOffset==oldOffset:
 			# Moving backwards by line seemed to not move.
 			# Therefore fallback to moving back a character, expanding to line and collapsing to start instead.
-			self.move(textInfos.UNIT_CHARACTER,-1)
+			self.move(textInfos.Unit.CHARACTER,-1)
 			self.expand(unit)
 			self.collapse()
 		elif direction>0 and not endPoint and newOffset<oldOffset:
 			# Moving forward by line seems to have wrapped back before the original position
 			# This can happen in some tables with merged rows.
 			# Try moving forward by cell, but if that fails, jump past the entire table.
-			res=self.move(textInfos.UNIT_CELL,direction,endPoint)
+			res=self.move(textInfos.Unit.CELL,direction,endPoint)
 			if res==0:
-				self.expand(textInfos.UNIT_TABLE)
+				self.expand(textInfos.Unit.TABLE)
 				self.collapse(end=True)
 		else:
 			# the move by line using the selection succeeded. Therefore update this TextInfo's position.
@@ -1447,7 +1447,7 @@ class WordDocument(Window):
 		if self._hasCaretMoved(oldBookmark)[0]:
 			info=self.makeTextInfo(textInfos.POSITION_SELECTION)
 			info.collapse()
-			info.move(textInfos.UNIT_PARAGRAPH,-1,endPoint="start")
+			info.move(textInfos.Unit.PARAGRAPH,-1,endPoint="start")
 			lastParaText=info.text.strip()
 			if lastParaText:
 				# Translators: a message reported when a paragraph is moved below another paragraph
@@ -1462,8 +1462,8 @@ class WordDocument(Window):
 		if self._hasCaretMoved(oldBookmark)[0]:
 			info=self.makeTextInfo(textInfos.POSITION_SELECTION)
 			info.collapse()
-			info.move(textInfos.UNIT_PARAGRAPH,1)
-			info.expand(textInfos.UNIT_PARAGRAPH)
+			info.move(textInfos.Unit.PARAGRAPH,1)
+			info.expand(textInfos.Unit.PARAGRAPH)
 			lastParaText=info.text.strip()
 			if lastParaText:
 				# Translators: a message reported when a paragraph is moved above another paragraph
@@ -1528,7 +1528,7 @@ class WordDocument(Window):
 		info=self.makeTextInfo(textInfos.POSITION_SELECTION)
 		isCollapsed=info.isCollapsed
 		if inTable and isCollapsed:
-			info.expand(textInfos.UNIT_PARAGRAPH)
+			info.expand(textInfos.Unit.PARAGRAPH)
 			isCollapsed=info.isCollapsed
 		if not isCollapsed:
 			speech.speakTextInfo(info, reason=controlTypes.OutputReason.FOCUS)
@@ -1538,8 +1538,8 @@ class WordDocument(Window):
 			msg=self.getLocalizedMeasurementTextForPointSize(offset)
 			ui.message(msg)
 			if selectionObj.paragraphs[1].range.start==selectionObj.start:
-				info.expand(textInfos.UNIT_LINE)
-				speech.speakTextInfo(info, unit=textInfos.UNIT_LINE, reason=controlTypes.OutputReason.CARET)
+				info.expand(textInfos.Unit.LINE)
+				speech.speakTextInfo(info, unit=textInfos.Unit.LINE, reason=controlTypes.OutputReason.CARET)
 
 	def getLocalizedMeasurementTextForPointSize(self,offset):
 		options=self.WinwordApplicationObject.options

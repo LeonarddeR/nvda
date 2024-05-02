@@ -18,11 +18,11 @@ Paragraph 3."""
 		ti = obj.makeTextInfo(textInfos.POSITION_FIRST)
 		moved = paragraphHelper._moveTextInfoToSingleLineBreakParagraph(True, ti)  # move to second paragraph
 		self.assertTrue(moved)
-		ti.expand(textInfos.UNIT_LINE)
+		ti.expand(textInfos.Unit.LINE)
 		self.assertEqual(ti.text, "Paragraph 2.\n")
 		moved = paragraphHelper._moveTextInfoToSingleLineBreakParagraph(True, ti)  # move to third paragraph
 		self.assertTrue(moved)
-		ti.expand(textInfos.UNIT_LINE)
+		ti.expand(textInfos.Unit.LINE)
 		self.assertEqual(ti.text, "Paragraph 3.")
 		moved = paragraphHelper._moveTextInfoToSingleLineBreakParagraph(True, ti)  # no more paragraphs
 		self.assertFalse(moved)
@@ -36,12 +36,12 @@ Paragraph 3.
 		ti = obj.makeTextInfo(textInfos.POSITION_LAST)
 		moved = paragraphHelper._moveTextInfoToSingleLineBreakParagraph(False, ti)  # move to third paragraph
 		self.assertTrue(moved)
-		ti.expand(textInfos.UNIT_LINE)
+		ti.expand(textInfos.Unit.LINE)
 		self.assertEqual(ti.text, "Paragraph 3.\n")
 		paragraphHelper._moveTextInfoToSingleLineBreakParagraph(False, ti)
 		moved = paragraphHelper._moveTextInfoToSingleLineBreakParagraph(False, ti)  # move to first paragraph
 		self.assertTrue(moved)
-		ti.expand(textInfos.UNIT_LINE)
+		ti.expand(textInfos.Unit.LINE)
 		self.assertEqual(ti.text, "Paragraph 1.\n")
 		moved = paragraphHelper._moveTextInfoToSingleLineBreakParagraph(False, ti)  # no more paragraphs
 		self.assertFalse(moved)
@@ -57,11 +57,11 @@ Paragraph 3.
 		ti = obj.makeTextInfo(textInfos.POSITION_FIRST)
 		moved = paragraphHelper._moveTextInfoToMultiLineBreakParagraph(True, ti)  # second paragraph
 		self.assertTrue(moved)
-		ti.expand(textInfos.UNIT_LINE)
+		ti.expand(textInfos.Unit.LINE)
 		self.assertEqual(ti.text, "Paragraph 2.\n")
 		moved = paragraphHelper._moveTextInfoToMultiLineBreakParagraph(True, ti)  # third paragraph
 		self.assertTrue(moved)
-		ti.expand(textInfos.UNIT_LINE)
+		ti.expand(textInfos.Unit.LINE)
 		self.assertEqual(ti.text, "Paragraph 3.\n")
 		moved = paragraphHelper._moveTextInfoToMultiLineBreakParagraph(True, ti)  # no more paragraphs
 		self.assertFalse(moved)
@@ -77,15 +77,15 @@ Paragraph 3.
 		ti = obj.makeTextInfo(textInfos.POSITION_LAST)
 		moved = paragraphHelper._moveTextInfoToMultiLineBreakParagraph(False, ti)  # third paragraph
 		self.assertTrue(moved)
-		ti.expand(textInfos.UNIT_LINE)
+		ti.expand(textInfos.Unit.LINE)
 		self.assertEqual(ti.text, "Paragraph 3.\n")
 		moved = paragraphHelper._moveTextInfoToMultiLineBreakParagraph(False, ti)  # second paragraph
 		self.assertTrue(moved)
-		ti.expand(textInfos.UNIT_LINE)
+		ti.expand(textInfos.Unit.LINE)
 		self.assertEqual(ti.text, "Paragraph 2.\n")
 		moved = paragraphHelper._moveTextInfoToMultiLineBreakParagraph(False, ti)  # first paragraph
 		self.assertTrue(moved)
-		ti.expand(textInfos.UNIT_LINE)
+		ti.expand(textInfos.Unit.LINE)
 		self.assertEqual(ti.text, "Paragraph 1.\n")
 		moved = paragraphHelper._moveTextInfoToMultiLineBreakParagraph(False, ti)  # no more paragraphs
 		self.assertFalse(moved)
@@ -116,15 +116,15 @@ Paragraph 1.
 		ti = obj.makeTextInfo(textInfos.POSITION_FIRST)
 		moved = paragraphHelper._moveTextInfoToMultiLineBreakParagraph(True, ti)  # first paragraph
 		self.assertTrue(moved)
-		ti.expand(textInfos.UNIT_LINE)
+		ti.expand(textInfos.Unit.LINE)
 		self.assertEqual(ti.text, "Paragraph 1.\n")
 		moved = paragraphHelper._moveTextInfoToMultiLineBreakParagraph(True, ti)  # second paragraph
 		self.assertTrue(moved)
-		ti.expand(textInfos.UNIT_LINE)
+		ti.expand(textInfos.Unit.LINE)
 		self.assertEqual(ti.text, "\tParagraph 2.\n")
 		moved = paragraphHelper._moveTextInfoToMultiLineBreakParagraph(True, ti)  # third paragraph
 		self.assertTrue(moved)
-		ti.expand(textInfos.UNIT_LINE)
+		ti.expand(textInfos.Unit.LINE)
 		self.assertEqual(ti.text, "     Paragraph 3.\n")
 		moved = paragraphHelper._moveTextInfoToMultiLineBreakParagraph(True, ti)  # no more paragraphs
 		self.assertFalse(moved)
@@ -153,15 +153,15 @@ Paragraph 1.
 		ti = obj.makeTextInfo(textInfos.POSITION_LAST)
 		moved = paragraphHelper._moveTextInfoToMultiLineBreakParagraph(False, ti)  # third paragraph
 		self.assertTrue(moved)
-		ti.expand(textInfos.UNIT_LINE)
+		ti.expand(textInfos.Unit.LINE)
 		self.assertEqual(ti.text, "     Paragraph 3.\n")
 		moved = paragraphHelper._moveTextInfoToMultiLineBreakParagraph(False, ti)  # second paragraph
 		self.assertTrue(moved)
-		ti.expand(textInfos.UNIT_LINE)
+		ti.expand(textInfos.Unit.LINE)
 		self.assertEqual(ti.text, "\tParagraph 2.\n")
 		moved = paragraphHelper._moveTextInfoToMultiLineBreakParagraph(False, ti)  # first paragraph
 		self.assertTrue(moved)
-		ti.expand(textInfos.UNIT_LINE)
+		ti.expand(textInfos.Unit.LINE)
 		self.assertEqual(ti.text, "Paragraph 1.\n")
 		moved = paragraphHelper._moveTextInfoToMultiLineBreakParagraph(False, ti)  # no more paragraphs
 		self.assertFalse(moved)
@@ -194,7 +194,7 @@ Paragraph 3.
 		lines = text.split("\n")
 		for x in range(len(lines) - 1):  # skip last line
 			line = lines[x] + "\n"
-			ti.expand(textInfos.UNIT_LINE)
+			ti.expand(textInfos.Unit.LINE)
 			self.assertEqual(line, ti.text)
 			paragraphHelper._moveTextInfoToSingleLineBreakParagraph(True, ti)
 		# work backward
@@ -208,7 +208,7 @@ Paragraph 3.
 		# paragraphHelper._moveTextInfoToSingleLineBreakParagraph(False, ti)
 		for x in range(len(lines) - 2, -1, -1):
 			line = lines[x] + "\n"
-			ti.expand(textInfos.UNIT_LINE)
+			ti.expand(textInfos.Unit.LINE)
 			self.assertEqual(line, ti.text)
 			paragraphHelper._moveTextInfoToSingleLineBreakParagraph(False, ti)
 

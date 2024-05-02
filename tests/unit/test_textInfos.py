@@ -24,73 +24,73 @@ class TestCharacterOffsets(unittest.TestCase):
 	def test_nonSurrogateForward(self):
 		obj = BasicTextProvider(text="abc")
 		ti = obj.makeTextInfo(Offsets(0, 0))
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at a
+		ti.expand(textInfos.Unit.CHARACTER) # Range at a
 		self.assertEqual(ti.offsets, (0, 1)) # One offset
-		ti.move(textInfos.UNIT_CHARACTER, 1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at b
+		ti.move(textInfos.Unit.CHARACTER, 1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at b
 		self.assertEqual(ti.offsets, (1, 2)) # One offset
-		ti.move(textInfos.UNIT_CHARACTER, 1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at c
+		ti.move(textInfos.Unit.CHARACTER, 1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at c
 		self.assertEqual(ti.offsets, (2, 3)) # One offset
 
 	def test_nonSurrogateBackward(self):
 		obj = BasicTextProvider(text="abc")
 		ti = obj.makeTextInfo(Offsets(2, 2))
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at c
+		ti.expand(textInfos.Unit.CHARACTER) # Range at c
 		self.assertEqual(ti.offsets, (2, 3)) # One offset
-		ti.move(textInfos.UNIT_CHARACTER, -1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at b
+		ti.move(textInfos.Unit.CHARACTER, -1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at b
 		self.assertEqual(ti.offsets, (1, 2)) # One offset
-		ti.move(textInfos.UNIT_CHARACTER, -1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at a
+		ti.move(textInfos.Unit.CHARACTER, -1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at a
 		self.assertEqual(ti.offsets, (0, 1)) # One offset
 
 	def test_surrogatePairsForward(self):
 		obj = BasicTextProvider(text=u"\U0001f926\U0001f60a\U0001f44d") # 🤦😊👍
 		ti = obj.makeTextInfo(Offsets(0, 0))
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at 🤦
+		ti.expand(textInfos.Unit.CHARACTER) # Range at 🤦
 		self.assertEqual(ti.offsets, (0, 2)) # Two offsets
-		ti.move(textInfos.UNIT_CHARACTER, 1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at 😊
+		ti.move(textInfos.Unit.CHARACTER, 1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at 😊
 		self.assertEqual(ti.offsets, (2, 4)) # Two offsets
-		ti.move(textInfos.UNIT_CHARACTER, 1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at 👍
+		ti.move(textInfos.Unit.CHARACTER, 1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at 👍
 		self.assertEqual(ti.offsets, (4, 6)) # Two offsets
 
 	def test_surrogatePairsBackward(self):
 		obj = BasicTextProvider(text=u"\U0001f926\U0001f60a\U0001f44d") # 🤦😊👍
 		ti = obj.makeTextInfo(Offsets(5, 5))
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at 👍
+		ti.expand(textInfos.Unit.CHARACTER) # Range at 👍
 		self.assertEqual(ti.offsets, (4, 6)) # Two offsets
-		ti.move(textInfos.UNIT_CHARACTER, -1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at 😊
+		ti.move(textInfos.Unit.CHARACTER, -1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at 😊
 		self.assertEqual(ti.offsets, (2, 4)) # Two offsets
-		ti.move(textInfos.UNIT_CHARACTER, -1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at 🤦
+		ti.move(textInfos.Unit.CHARACTER, -1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at 🤦
 		self.assertEqual(ti.offsets, (0, 2)) # Two offsets
 
 	def test_mixedSurrogatePairsAndNonSurrogatesForward(self):
 		obj = BasicTextProvider(text=u"a\U0001f926b") # a🤦b
 		ti = obj.makeTextInfo(Offsets(0, 0))
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at a
+		ti.expand(textInfos.Unit.CHARACTER) # Range at a
 		self.assertEqual(ti.offsets, (0, 1)) # One offset
-		ti.move(textInfos.UNIT_CHARACTER, 1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at 🤦
+		ti.move(textInfos.Unit.CHARACTER, 1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at 🤦
 		self.assertEqual(ti.offsets, (1, 3)) # Two offsets
-		ti.move(textInfos.UNIT_CHARACTER, 1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at c
+		ti.move(textInfos.Unit.CHARACTER, 1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at c
 		self.assertEqual(ti.offsets, (3, 4)) # One offset
 
 	def test_mixedSurrogatePairsAndNonSurrogatesBackward(self):
 		obj = BasicTextProvider(text=u"a\U0001f926b") # a🤦b
 		ti = obj.makeTextInfo(Offsets(3, 3))
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at c
+		ti.expand(textInfos.Unit.CHARACTER) # Range at c
 		self.assertEqual(ti.offsets, (3, 4)) # One offset
-		ti.move(textInfos.UNIT_CHARACTER, -1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at 🤦
+		ti.move(textInfos.Unit.CHARACTER, -1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at 🤦
 		self.assertEqual(ti.offsets, (1, 3)) # Two offsets
-		ti.move(textInfos.UNIT_CHARACTER, -1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at a
+		ti.move(textInfos.Unit.CHARACTER, -1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at a
 		self.assertEqual(ti.offsets, (0, 1)) # One offset
 
 	def test_mixedSurrogatePairsNonSurrogatesAndSingleSurrogatesForward(self):
@@ -100,37 +100,37 @@ class TestCharacterOffsets(unittest.TestCase):
 		"""
 		obj = BasicTextProvider(text=u"a\ud83e\U0001f926\udd26b")
 		ti = obj.makeTextInfo(Offsets(0, 0))
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at a
+		ti.expand(textInfos.Unit.CHARACTER) # Range at a
 		self.assertEqual(ti.offsets, (0, 1)) # One offset
-		ti.move(textInfos.UNIT_CHARACTER, 1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at 🠀
+		ti.move(textInfos.Unit.CHARACTER, 1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at 🠀
 		self.assertEqual(ti.offsets, (1, 2)) # Leading surrogate without a trailing surrogate
-		ti.move(textInfos.UNIT_CHARACTER, 1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at 🤦
+		ti.move(textInfos.Unit.CHARACTER, 1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at 🤦
 		self.assertEqual(ti.offsets, (2, 4)) # Two offsets
-		ti.move(textInfos.UNIT_CHARACTER, 1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at 񙠀
+		ti.move(textInfos.Unit.CHARACTER, 1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at 񙠀
 		self.assertEqual(ti.offsets, (4, 5)) # Trailing surrogate without a leading surrogate.
-		ti.move(textInfos.UNIT_CHARACTER, 1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at c
+		ti.move(textInfos.Unit.CHARACTER, 1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at c
 		self.assertEqual(ti.offsets, (5, 6)) # One offset
 
 	def test_mixedSurrogatePairsNonSurrogatesAndSingleSurrogatesBackward(self):
 		obj = BasicTextProvider(text=u"a\ud83e\U0001f926\udd26b")
 		ti = obj.makeTextInfo(Offsets(5, 5))
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at c
+		ti.expand(textInfos.Unit.CHARACTER) # Range at c
 		self.assertEqual(ti.offsets, (5, 6)) # One offset
-		ti.move(textInfos.UNIT_CHARACTER, -1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at 񙠀
+		ti.move(textInfos.Unit.CHARACTER, -1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at 񙠀
 		self.assertEqual(ti.offsets, (4, 5)) # Trailing surrogate without a leading surrogate.
-		ti.move(textInfos.UNIT_CHARACTER, -1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at 🤦
+		ti.move(textInfos.Unit.CHARACTER, -1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at 🤦
 		self.assertEqual(ti.offsets, (2, 4)) # Two offsets
-		ti.move(textInfos.UNIT_CHARACTER, -1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at 🠀
+		ti.move(textInfos.Unit.CHARACTER, -1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at 🠀
 		self.assertEqual(ti.offsets, (1, 2)) # Leading surrogate without a trailing surrogate
-		ti.move(textInfos.UNIT_CHARACTER, -1)
-		ti.expand(textInfos.UNIT_CHARACTER) # Range at a
+		ti.move(textInfos.Unit.CHARACTER, -1)
+		ti.expand(textInfos.Unit.CHARACTER) # Range at a
 		self.assertEqual(ti.offsets, (0, 1)) # One offset
 
 
@@ -237,7 +237,7 @@ class TestMoveToCodepointOffsetInOffsetsTextInfo(unittest.TestCase):
 		info = obj.makeTextInfo(Offsets(0, 0))
 		info._startOffset = info._endOffset = prefixOffset
 		storyInfo = info.copy()
-		storyInfo.expand(textInfos.UNIT_STORY)
+		storyInfo.expand(textInfos.Unit.STORY)
 		info.setEndPoint(storyInfo, "endToEnd")
 		s = info.text
 		self.assertEqual(text, s)

@@ -68,7 +68,7 @@ class AppModule(appModuleHandler.AppModule):
 		if parentClassName=="OE_Envelope" and isinstance(obj,IAccessible) and obj.IAccessibleChildID==0 and controlID in envelopeNames:
 			obj.name=envelopeNames[controlID]
 			obj.useITextDocumentSupport=True
-			obj.editValueUnit=textInfos.UNIT_STORY
+			obj.editValueUnit=textInfos.Unit.STORY
 
 	def chooseNVDAObjectOverlayClasses(self,obj,clsList):
 		if obj.windowClassName=="SysListView32" and obj.windowControlID in (128,129,130) and obj.role==controlTypes.Role.LISTITEM:
@@ -107,7 +107,7 @@ class MessageListItem(sysListView32.ListItem):
 
 	def _get_isUnread(self):
 		info=displayModel.DisplayModelTextInfo(self,textInfos.POSITION_FIRST)
-		info.expand(textInfos.UNIT_CHARACTER)
+		info.expand(textInfos.Unit.CHARACTER)
 		fields=info.getTextWithFields()
 		try:
 			isUnread=fields[0].field['bold']

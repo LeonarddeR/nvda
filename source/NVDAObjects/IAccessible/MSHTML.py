@@ -53,7 +53,7 @@ class UIAMSHTMLTextInfo(UIATextInfo):
 		return info
 
 	def expand(self,unit):
-		if unit in (textInfos.UNIT_CHARACTER,textInfos.UNIT_WORD) and self._atEndOfStory:
+		if unit in (textInfos.Unit.CHARACTER,textInfos.Unit.WORD) and self._atEndOfStory:
 			return
 		self._atEndOfStory=False
 		return super(UIAMSHTMLTextInfo,self).expand(unit)
@@ -334,24 +334,24 @@ class MSHTMLTextInfo(textInfos.TextInfo):
 			raise NotImplementedError("position: %s" % (position,))
 
 	def expand(self,unit):
-		if unit==textInfos.UNIT_PARAGRAPH:
-			unit=textInfos.UNIT_LINE
-		if unit==textInfos.UNIT_LINE and self.basePosition not in [textInfos.POSITION_SELECTION,textInfos.POSITION_CARET]:
-			unit=textInfos.UNIT_SENTENCE
-		if unit==textInfos.UNIT_READINGCHUNK:
-			unit=textInfos.UNIT_SENTENCE
-		if unit==textInfos.UNIT_CHARACTER:
+		if unit==textInfos.Unit.PARAGRAPH:
+			unit=textInfos.Unit.LINE
+		if unit==textInfos.Unit.LINE and self.basePosition not in [textInfos.POSITION_SELECTION,textInfos.POSITION_CARET]:
+			unit=textInfos.Unit.SENTENCE
+		if unit==textInfos.Unit.READINGCHUNK:
+			unit=textInfos.Unit.SENTENCE
+		if unit==textInfos.Unit.CHARACTER:
 			self._rangeObj.expand("character")
-		elif unit==textInfos.UNIT_WORD:
+		elif unit==textInfos.Unit.WORD:
 			#Expand to word at the start of a control is broken in MSHTML
 			#Unless we expand to character first.
 			self._rangeObj.expand("character")
 			self._rangeObj.expand("word")
-		elif unit==textInfos.UNIT_SENTENCE:
+		elif unit==textInfos.Unit.SENTENCE:
 			self._rangeObj.expand("sentence")
-		elif unit==textInfos.UNIT_LINE:
+		elif unit==textInfos.Unit.LINE:
 			self._expandToLine(self._rangeObj)
-		elif unit==textInfos.UNIT_STORY:
+		elif unit==textInfos.Unit.STORY:
 			self._rangeObj.expand("textedit")
 		else:
 			raise NotImplementedError("unit: %s"%unit)
@@ -383,9 +383,9 @@ class MSHTMLTextInfo(textInfos.TextInfo):
 		return text
 
 	def move(self,unit,direction, endPoint=None):
-		if unit in [textInfos.UNIT_READINGCHUNK,textInfos.UNIT_LINE]:
-			unit=textInfos.UNIT_SENTENCE
-		if unit==textInfos.UNIT_STORY:
+		if unit in [textInfos.Unit.READINGCHUNK,textInfos.Unit.LINE]:
+			unit=textInfos.Unit.SENTENCE
+		if unit==textInfos.Unit.STORY:
 			unit="textedit"
 		if endPoint=="start":
 			moveFunc=self._rangeObj.moveStart

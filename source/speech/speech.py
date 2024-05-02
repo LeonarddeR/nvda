@@ -744,12 +744,12 @@ def getObjectSpeech(
 		else:
 			if not info:
 				info = obj.makeTextInfo(textInfos.POSITION_FIRST)
-			info.expand(textInfos.UNIT_LINE)
+			info.expand(textInfos.Unit.LINE)
 			textEmpty, placeholderSeq = _getPlaceholderSpeechIfTextEmpty(obj, reason)
 			sequence.extend(placeholderSeq)
 			speechGen = getTextInfoSpeech(
 				info,
-				unit=textInfos.UNIT_LINE,
+				unit=textInfos.Unit.LINE,
 				reason=OutputReason.CARET,
 			)
 			sequence.extend(_flattenNestedSequences(speechGen))
@@ -1350,18 +1350,18 @@ def getTextInfoSpeech(  # noqa: C901
 	else:
 		speakTextInfoState=None
 	autoLanguageSwitching=config.conf['speech']['autoLanguageSwitching']
-	extraDetail=unit in (textInfos.UNIT_CHARACTER,textInfos.UNIT_WORD)
+	extraDetail=unit in (textInfos.Unit.CHARACTER,textInfos.Unit.WORD)
 	if not formatConfig:
 		formatConfig=config.conf["documentFormatting"]
 	formatConfig=formatConfig.copy()
 	if extraDetail:
 		formatConfig['extraDetail']=True
 	reportIndentation = (
-		unit == textInfos.UNIT_LINE
+		unit == textInfos.Unit.LINE
 		and formatConfig["reportLineIndentation"] != ReportLineIndentation.OFF
 	)
 	# For performance reasons, when navigating by paragraph or table cell, spelling errors will not be announced.
-	if unit in (textInfos.UNIT_PARAGRAPH, textInfos.UNIT_CELL) and reason == OutputReason.CARET:
+	if unit in (textInfos.Unit.PARAGRAPH, textInfos.Unit.CELL) and reason == OutputReason.CARET:
 		formatConfig['reportSpellingErrors']=False
 
 	#Fetch the last controlFieldStack, or make a blank one
@@ -1516,7 +1516,7 @@ def getTextInfoSpeech(  # noqa: C901
 		language=newFormatField.get('language')
 		speechSequence.append(LangChangeCommand(language))
 		lastLanguage=language
-	isWordOrCharUnit = unit in (textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD)
+	isWordOrCharUnit = unit in (textInfos.Unit.CHARACTER, textInfos.Unit.WORD)
 	if onlyInitialFields or (
 		isWordOrCharUnit
 		and len(textWithFields) > 0
@@ -1741,7 +1741,7 @@ def _getTextInfoSpeech_considerSpelling(
 		yield spellingSequence
 		if (
 			reason == OutputReason.CARET
-			and unit == textInfos.UNIT_CHARACTER
+			and unit == textInfos.Unit.CHARACTER
 			and config.conf["speech"]["delayedCharacterDescriptions"]
 		):
 			descriptionSequence = list(getSingleCharDescription(
@@ -2457,7 +2457,7 @@ def getFormatFieldSpeech(  # noqa: C901
 				initialFormat
 				and (
 					reason in [OutputReason.FOCUS, OutputReason.QUICKNAV]
-					or unit in (textInfos.UNIT_LINE, textInfos.UNIT_PARAGRAPH)
+					or unit in (textInfos.Unit.LINE, textInfos.Unit.PARAGRAPH)
 				)
 				or headingLevel != oldHeadingLevel
 			)
@@ -2802,7 +2802,7 @@ def getFormatFieldSpeech(  # noqa: C901
 	# However, some implementations (such as MS Word with UIA) do limit its useage to the very first formatField of the list item.
 	# Therefore, they also expose a line-prefix_speakAlways attribute to allow its usage for any unit.
 	linePrefix_speakAlways=attrs.get('line-prefix_speakAlways',False)
-	if linePrefix_speakAlways or unit in (textInfos.UNIT_LINE,textInfos.UNIT_SENTENCE,textInfos.UNIT_PARAGRAPH,textInfos.UNIT_READINGCHUNK):
+	if linePrefix_speakAlways or unit in (textInfos.Unit.LINE,textInfos.Unit.SENTENCE,textInfos.Unit.PARAGRAPH,textInfos.Unit.READINGCHUNK):
 		linePrefix=attrs.get("line-prefix")
 		if linePrefix:
 			textList.append(linePrefix)

@@ -227,8 +227,8 @@ class EditableTextBase(editableText.EditableText, NVDAObject):
 			# This gets called for characters which might end a word; e.g. space.
 			# The character before the caret is the word end.
 			# The one before that is the last of the word, which is what we want.
-			info.move(textInfos.UNIT_CHARACTER, -2)
-			info.expand(textInfos.UNIT_CHARACTER)
+			info.move(textInfos.Unit.CHARACTER, -2)
+			info.expand(textInfos.Unit.CHARACTER)
 		except Exception:
 			# Focus probably moved.
 			log.debugWarning("Error fetching last character of previous word", exc_info=True)

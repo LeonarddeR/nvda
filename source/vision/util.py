@@ -88,7 +88,7 @@ def getContextRect(
 
 def getRectFromTextInfo(textInfo: textInfos.TextInfo) -> locationHelper.RectLTRB:
 	if textInfo.isCollapsed:
-		textInfo.expand(textInfos.UNIT_CHARACTER)
+		textInfo.expand(textInfos.Unit.CHARACTER)
 	try:
 		rects = textInfo.boundingRects
 	except NotImplementedError:

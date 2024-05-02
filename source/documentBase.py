@@ -125,7 +125,7 @@ class DocumentWithTableNavigation(TextContainerObject,ScriptableObject):
 		"""
 		if info.isCollapsed:
 			info = info.copy()
-			info.expand(textInfos.UNIT_CHARACTER)
+			info.expand(textInfos.Unit.CHARACTER)
 		fields=list(info.getTextWithFields())
 		layoutIDs = self._maybeGetLayoutTableIds(info)
 		for field in reversed(fields):
@@ -196,7 +196,7 @@ class DocumentWithTableNavigation(TextContainerObject,ScriptableObject):
 		"""
 		if info.isCollapsed:
 			info = info.copy()
-			info.expand(textInfos.UNIT_CHARACTER)
+			info.expand(textInfos.Unit.CHARACTER)
 		fields = list(info.getTextWithFields())
 		layoutIDs = self._maybeGetLayoutTableIds(info)
 		for field in reversed(fields):

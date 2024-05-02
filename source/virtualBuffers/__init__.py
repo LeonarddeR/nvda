@@ -141,7 +141,7 @@ class VirtualBufferTextInfo(browseMode.BrowseModeDocumentTextInfo,textInfos.offs
 
 	def _getControlFieldAttribs(self,  docHandle, id):
 		info = self.copy()
-		info.expand(textInfos.UNIT_CHARACTER)
+		info.expand(textInfos.Unit.CHARACTER)
 		for field in reversed(info.getTextWithFields()):
 			if not (isinstance(field, textInfos.FieldCommand) and field.command == "controlStart"):
 				# Not a control field.
@@ -388,7 +388,7 @@ class VirtualBufferTextInfo(browseMode.BrowseModeDocumentTextInfo,textInfos.offs
 		return self._getFieldIdentifierFromOffset( self._startOffset)
 
 	def _getUnitOffsets(self, unit, offset):
-		if unit == textInfos.UNIT_CONTROLFIELD:
+		if unit == textInfos.Unit.CONTROLFIELD:
 			startOffset=ctypes.c_int()
 			endOffset=ctypes.c_int()
 			docHandle=ctypes.c_int()
@@ -396,7 +396,7 @@ class VirtualBufferTextInfo(browseMode.BrowseModeDocumentTextInfo,textInfos.offs
 			node=VBufRemote_nodeHandle_t()
 			NVDAHelper.localLib.VBuf_locateControlFieldNodeAtOffset(self.obj.VBufHandle,offset,ctypes.byref(startOffset),ctypes.byref(endOffset),ctypes.byref(docHandle),ctypes.byref(ID),ctypes.byref(node))
 			return startOffset.value,endOffset.value
-		elif unit == textInfos.UNIT_FORMATFIELD:
+		elif unit == textInfos.Unit.FORMATFIELD:
 			startOffset=ctypes.c_int()
 			endOffset=ctypes.c_int()
 			node=VBufRemote_nodeHandle_t()
@@ -407,7 +407,7 @@ class VirtualBufferTextInfo(browseMode.BrowseModeDocumentTextInfo,textInfos.offs
 	def _get_clipboardText(self):
 		# Blocks should start on a new line, but they don't necessarily have an end of line indicator.
 		# Therefore, get the text in block (paragraph) chunks and join the chunks with \r\n.
-		blocks = (block.strip("\r\n") for block in self.getTextInChunks(textInfos.UNIT_PARAGRAPH))
+		blocks = (block.strip("\r\n") for block in self.getTextInChunks(textInfos.Unit.PARAGRAPH))
 		return "\r\n".join(blocks)
 
 	def activate(self):
@@ -537,7 +537,7 @@ class VirtualBuffer(browseMode.BrowseModeDocumentTreeInterceptor):
 		ID=str(ID)
 		info=self.makeTextInfo(obj)
 		info.collapse()
-		info.expand(textInfos.UNIT_CHARACTER)
+		info.expand(textInfos.Unit.CHARACTER)
 		fieldCommands=[x for x in info.getTextWithFields() if isinstance(x,textInfos.FieldCommand)]
 		tableLayout=None
 		tableID=None
@@ -762,7 +762,7 @@ class VirtualBuffer(browseMode.BrowseModeDocumentTreeInterceptor):
 		objId = str(objId)
 		info = self.makeTextInfo(obj)
 		info.collapse()
-		info.expand(textInfos.UNIT_CHARACTER)
+		info.expand(textInfos.Unit.CHARACTER)
 		for item in info.getTextWithFields():
 			if not isinstance(item, textInfos.FieldCommand) or not item.field:
 				continue

@@ -13,7 +13,7 @@ from abc import abstractmethod
 from baseObject import AutoPropertyObject
 from difflib import ndiff
 from logHandler import log
-from textInfos import TextInfo, UNIT_LINE
+from textInfos import TextInfo, Unit
 from threading import Lock
 from typing import List
 import NVDAState
@@ -174,7 +174,7 @@ class Difflib(DiffAlgo):
 		return outLines
 
 	def _getText(self, ti: TextInfo) -> str:
-		return "\n".join(ti.getTextInChunks(UNIT_LINE))
+		return "\n".join(ti.getTextInChunks(Unit.LINE))
 
 
 def prefer_dmp():

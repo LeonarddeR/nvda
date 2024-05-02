@@ -494,7 +494,7 @@ class UIATextInfo(textInfos.TextInfo):
 		tempInfo.collapse()
 		# some implementations (Edge, Word) do not correctly  class embedded objects (graphics, checkboxes) as being the enclosing element, even when the range is completely within them. Rather, they still list the object in getChildren.
 		# Thus we must check getChildren before getEnclosingElement.
-		tempInfo.expand(textInfos.UNIT_CHARACTER)
+		tempInfo.expand(textInfos.Unit.CHARACTER)
 		tempRange=tempInfo._rangeObj
 		try:
 			children=getChildrenWithCacheFromUIATextRange(tempRange,UIAHandler.handler.baseCacheRequest)

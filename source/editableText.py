@@ -125,7 +125,7 @@ class EditableText(TextContainerObject,ScriptableObject):
 				# some editors such as Mozilla Gecko can have text and units that get out of sync with eachother while a character is being deleted.
 				# Therefore, only check if the word has changed after a particular amount of time has elapsed, allowing the text and units to settle down.
 				wordInfo = newInfo.copy()
-				wordInfo.expand(textInfos.UNIT_WORD)
+				wordInfo.expand(textInfos.Unit.WORD)
 				word = wordInfo.text
 				if word != origWord:
 					log.debug("Word at caret changed. Elapsed: %g sec" % elapsed)
@@ -204,17 +204,17 @@ class EditableText(TextContainerObject,ScriptableObject):
 			lineInfo=self.makeTextInfo(textInfos.POSITION_CARET)
 		except (RuntimeError,NotImplementedError):
 			return
-		lineInfo.expand(textInfos.UNIT_LINE)
+		lineInfo.expand(textInfos.Unit.LINE)
 		if not self.announceEntireNewLine: 
 			lineInfo.setEndPoint(newInfo,"endToStart")
 		if lineInfo.isCollapsed:
-			lineInfo.expand(textInfos.UNIT_CHARACTER)
+			lineInfo.expand(textInfos.Unit.CHARACTER)
 			onlyInitial=True
 		else:
 			onlyInitial=False
 		speech.speakTextInfo(
 			lineInfo,
-			unit=textInfos.UNIT_LINE,
+			unit=textInfos.Unit.LINE,
 			reason=controlTypes.OutputReason.CARET,
 			onlyInitialFields=onlyInitial,
 			suppressBlanks=True
@@ -225,25 +225,25 @@ class EditableText(TextContainerObject,ScriptableObject):
 			return
 		try:
 			info=self.makeTextInfo(textInfos.POSITION_CARET)
-			info.move(textInfos.UNIT_SENTENCE, direction)
+			info.move(textInfos.Unit.SENTENCE, direction)
 			info.updateCaret()
-			self._caretScriptPostMovedHelper(textInfos.UNIT_SENTENCE,gesture,info)
+			self._caretScriptPostMovedHelper(textInfos.Unit.SENTENCE,gesture,info)
 		except:
 			gesture.send()
 			return
 
 	def script_caret_moveByLine(self,gesture):
-		self._caretMovementScriptHelper(gesture, textInfos.UNIT_LINE)
+		self._caretMovementScriptHelper(gesture, textInfos.Unit.LINE)
 	script_caret_moveByLine.resumeSayAllMode = sayAll.CURSOR.CARET
 
 	def script_caret_moveByCharacter(self,gesture):
-		self._caretMovementScriptHelper(gesture, textInfos.UNIT_CHARACTER)
+		self._caretMovementScriptHelper(gesture, textInfos.Unit.CHARACTER)
 
 	def script_caret_moveByWord(self,gesture):
-		self._caretMovementScriptHelper(gesture, textInfos.UNIT_WORD)
+		self._caretMovementScriptHelper(gesture, textInfos.Unit.WORD)
 
 	def script_caret_moveByParagraph(self,gesture):
-		self._caretMovementScriptHelper(gesture, textInfos.UNIT_PARAGRAPH)
+		self._caretMovementScriptHelper(gesture, textInfos.Unit.PARAGRAPH)
 	script_caret_moveByParagraph.resumeSayAllMode = sayAll.CURSOR.CARET
 
 	def script_caret_previousSentence(self,gesture):
@@ -263,7 +263,7 @@ class EditableText(TextContainerObject,ScriptableObject):
 		oldBookmark=oldInfo.bookmark
 		testInfo=oldInfo.copy()
 		try:
-			res = testInfo.move(textInfos.UNIT_CHARACTER, -1)
+			res = testInfo.move(textInfos.Unit.CHARACTER, -1)
 		except COMError:
 			log.exception("Error in testInfo.move")
 			gesture.send()
@@ -285,10 +285,10 @@ class EditableText(TextContainerObject,ScriptableObject):
 		self._caretScriptPostMovedHelper(None,gesture,newInfo)
 
 	def script_caret_backspaceCharacter(self,gesture):
-		self._backspaceScriptHelper(textInfos.UNIT_CHARACTER,gesture)
+		self._backspaceScriptHelper(textInfos.Unit.CHARACTER,gesture)
 
 	def script_caret_backspaceWord(self,gesture):
-		self._backspaceScriptHelper(textInfos.UNIT_WORD,gesture)
+		self._backspaceScriptHelper(textInfos.Unit.WORD,gesture)
 
 	def _deleteScriptHelper(self, unit, gesture):
 		try:
@@ -297,7 +297,7 @@ class EditableText(TextContainerObject,ScriptableObject):
 			gesture.send()
 			return
 		bookmark=info.bookmark
-		info.expand(textInfos.UNIT_WORD)
+		info.expand(textInfos.Unit.WORD)
 		word=info.text
 		gesture.send()
 		# We'll try waiting for the caret to move, but we don't care if it doesn't.
@@ -306,10 +306,10 @@ class EditableText(TextContainerObject,ScriptableObject):
 		braille.handler.handleCaretMove(self)
 
 	def script_caret_deleteCharacter(self, gesture):
-		self._deleteScriptHelper(textInfos.UNIT_CHARACTER, gesture)
+		self._deleteScriptHelper(textInfos.Unit.CHARACTER, gesture)
 
 	def script_caret_deleteWord(self, gesture):
-		self._deleteScriptHelper(textInfos.UNIT_WORD, gesture)
+		self._deleteScriptHelper(textInfos.Unit.WORD, gesture)
 
 	def _handleParagraphNavigation(self, gesture: InputGesture, nextParagraph: bool) -> None:
 		from config.featureFlagEnums import ParagraphNavigationFlag

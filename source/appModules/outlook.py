@@ -599,7 +599,7 @@ class MailViewerTreeInterceptor(WordDocumentTreeInterceptor):
 		inTable=info._rangeObj.tables.count>0
 		isCollapsed=info.isCollapsed
 		if inTable and isCollapsed:
-			info.expand(textInfos.UNIT_CELL)
+			info.expand(textInfos.Unit.CELL)
 			isCollapsed=False
 		if not isCollapsed:
 			speech.speakTextInfo(info, reason=controlTypes.OutputReason.FOCUS)

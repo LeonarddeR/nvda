@@ -139,12 +139,12 @@ class ConsoleUIATextInfoWorkaroundEndInclusive(ConsoleUIATextInfo):
 			# Seems to sometimes ignore the x coordinate.
 			# Therefore use the bottom left, then move   to the last character on that line.
 			tempInfo = self.__class__(obj, obj.location.bottomLeft)
-			tempInfo.expand(textInfos.UNIT_LINE)
+			tempInfo.expand(textInfos.Unit.LINE)
 			# We must pull back the end by one character otherwise when we collapse to end,
 			# a console bug results in a textRange covering the entire console buffer!
 			# Strangely the *very* last character is a special blank point
 			# so we never seem to miss a real character.
-			UIATextInfo.move(tempInfo, textInfos.UNIT_CHARACTER, -1, endPoint="end")
+			UIATextInfo.move(tempInfo, textInfos.Unit.CHARACTER, -1, endPoint="end")
 			tempInfo.setEndPoint(tempInfo, "startToEnd")
 			_rangeObj = tempInfo._rangeObj
 		elif position is textInfos.POSITION_ALL:
@@ -198,10 +198,10 @@ class ConsoleUIATextInfoWorkaroundEndInclusive(ConsoleUIATextInfo):
 		return super().setEndPoint(other, which=which)
 
 	def expand(self, unit):
-		if unit == textInfos.UNIT_WORD:
+		if unit == textInfos.Unit.WORD:
 			# UIA doesn't implement word movement, so we need to do it manually.
 			lineInfo = self.copy()
-			lineInfo.expand(textInfos.UNIT_LINE)
+			lineInfo.expand(textInfos.Unit.LINE)
 			offset = self._getCurrentOffsetInThisLine(lineInfo)
 			start, end = self._getWordOffsetsInThisLine(offset, lineInfo)
 			wordEndPoints = (
@@ -211,33 +211,33 @@ class ConsoleUIATextInfoWorkaroundEndInclusive(ConsoleUIATextInfo):
 			if wordEndPoints[0]:
 				self._rangeObj.MoveEndpointByUnit(
 					UIAHandler.TextPatternRangeEndpoint_Start,
-					UIAHandler.NVDAUnitsToUIAUnits[textInfos.UNIT_CHARACTER],
+					UIAHandler.NVDAUnitsToUIAUnits[textInfos.Unit.CHARACTER],
 					wordEndPoints[0]
 				)
 			if wordEndPoints[1]:
 				self._rangeObj.MoveEndpointByUnit(
 					UIAHandler.TextPatternRangeEndpoint_End,
-					UIAHandler.NVDAUnitsToUIAUnits[textInfos.UNIT_CHARACTER],
+					UIAHandler.NVDAUnitsToUIAUnits[textInfos.Unit.CHARACTER],
 					wordEndPoints[1]
 				)
 		else:
 			return super(ConsoleUIATextInfo, self).expand(unit)
 
 	def _move(self, unit, direction, endPoint=None):
-		if unit == textInfos.UNIT_WORD and direction != 0:
+		if unit == textInfos.Unit.WORD and direction != 0:
 			# On conhost versions before microsoft/terminal#4018, UIA doesn't implement word
 			# movement, so we need to do it manually.
 			# Relative to the current line, calculate our offset
 			# and the current word's offsets.
 			lineInfo = self.copy()
-			lineInfo.expand(textInfos.UNIT_LINE)
+			lineInfo.expand(textInfos.Unit.LINE)
 			offset = self._getCurrentOffsetInThisLine(lineInfo)
 			start, end = self._getWordOffsetsInThisLine(offset, lineInfo)
 			if direction > 0:
 				# Moving in a forward direction, we can just jump to the
 				# end offset of the current word and we're done.
 				res = self.move(
-					textInfos.UNIT_CHARACTER,
+					textInfos.Unit.CHARACTER,
 					end - offset,
 					endPoint=endPoint
 				)
@@ -248,13 +248,13 @@ class ConsoleUIATextInfoWorkaroundEndInclusive(ConsoleUIATextInfo):
 					# We are after the beginning of a word.
 					# So first move back to the start of the word.
 					self.move(
-						textInfos.UNIT_CHARACTER,
+						textInfos.Unit.CHARACTER,
 						wordStartDistance,
 						endPoint=endPoint
 					)
 					offset += wordStartDistance
 				# Try to move one character back before the start of the word.
-				res = self.move(textInfos.UNIT_CHARACTER, -1, endPoint=endPoint)
+				res = self.move(textInfos.Unit.CHARACTER, -1, endPoint=endPoint)
 				if res == 0:
 					return 0
 				offset -= 1
@@ -263,7 +263,7 @@ class ConsoleUIATextInfoWorkaroundEndInclusive(ConsoleUIATextInfo):
 					# We've moved on to the previous line.
 					# Recalculate the current offset based on the new line we are now on.
 					lineInfo = self.copy()
-					lineInfo.expand(textInfos.UNIT_LINE)
+					lineInfo.expand(textInfos.Unit.LINE)
 					offset = self._getCurrentOffsetInThisLine(lineInfo)
 				# Finally using the new offset,
 				# Calculate the current word offsets and move to the start of
@@ -272,7 +272,7 @@ class ConsoleUIATextInfoWorkaroundEndInclusive(ConsoleUIATextInfo):
 				wordStartDistance = (offset - start) * -1
 				if wordStartDistance < 0:
 					self.move(
-						textInfos.UNIT_CHARACTER,
+						textInfos.Unit.CHARACTER,
 						wordStartDistance,
 						endPoint=endPoint
 					)
