@@ -454,7 +454,7 @@ class UnicodeNormalizationOffsetConverter(OffsetConverter):
 			self,
 			origBuffer: str,
 			normBuffer: str
-	)  -> Generator[tuple[slice | None, slice | None], None, None]:
+	)  -> Generator[tuple[slice, slice], None, None]:
 		iOrig = iNorm = 0
 		while origBuffer and normBuffer:
 			origPart = ""
@@ -484,16 +484,24 @@ class UnicodeNormalizationOffsetConverter(OffsetConverter):
 			origBuffer = origBuffer[origPartLen:]
 			normBuffer = normBuffer[normPartLen:]
 		else:
+			if not origBuffer and not normBuffer:
+				return  # Buffers were processed
 			# One of the buffers contains data 
-			origPartSlice = slice(iOrig, iOrig + len(origBuffer)) if origBuffer else None
-			normPartSlice = slice(iNorm, iNorm + len(normBuffer)) if normBuffer else None
+			origPartSlice = slice(iOrig, iOrig + len(origBuffer))
+			normPartSlice = slice(iNorm, iNorm + len(normBuffer))
 			yield (origPartSlice, normPartSlice)
 
 	@property
 	def _computedStrToEncodedOffsetsGenerator(self) -> Generator[int, None, None]:
 		inInsertDelete = False
 		pendingRange: range | None = None
-		for opcode, origRange, normRange in self._opcodes:
+
+		def _handleOpcode(
+				opcode: str,
+				origRange: range,
+				normRange: range,
+		) -> Generator[int, None, None]:
+			nonlocal inInsertDelete, pendingRange
 			match opcode:
 				case "equal":
 					yield from normRange
@@ -501,6 +509,13 @@ class UnicodeNormalizationOffsetConverter(OffsetConverter):
 					origBuffer = self.decoded[origRange.start:origRange.stop]
 					normBuffer = self.encoded[normRange.start:normRange.stop]
 					for origSlice, normSlice in self._getNormalizedRanges(origBuffer, normBuffer):
+						if origSLice.step is None or normSlice.step is None:
+							yield from handleOpcode(
+								"insert" if origSLice.step is None else "delete",
+								range(origSLice.start, origSLice.stop),
+								range(normSLice.start, normSLice.stop)
+							)
+							continue
 						start, stop, multiplier = normSlice.start, normSlice.stop, normSlice.step
 						start += normRange.start
 						stop += normRange.start
@@ -511,24 +526,26 @@ class UnicodeNormalizationOffsetConverter(OffsetConverter):
 							for i in tempRange:
 								for _ in range(int(1 // multiplier)):
 									yield i
-				case "insert":
-					if pendingRange:
-						raise RuntimeError("Unexpected pending range for insertion")
-					if inInsertDelete:
-						yield from normRange
-						inInsertDelete = False
-						continue
+				case "insert" if not inInsertDelete:
+					# Insertion before deletion
+					# 
 					inInsertDelete = True
 					pendingRange = normRange
-				case "delete":
-					if inInsertDelete:
-						if not pendingRange:
-							raise RuntimeError("Expected pending range for insertion")
-						yield from pendingRange
-						inInsertDelete = False
-						pendingRange  = None
-						continue
+				case "insert" if inInsertDelete:
+					yield from normRange
+					inInsertDelete = False
+				case "delete" if not inInsertDelete:
 					inInsertDelete = True
+				case "delete" if inInsertDelete:
+					if not pendingRange:
+						raise RuntimeError("Expected pending range for insertion")
+					yield from pendingRange
+					inInsertDelete = False
+					pendingRange  = None
+
+
+		for opcode, origRange, normRange in self._opcodes:
+			yield from handleOpcode(opcode, origRange, normRange)
 
 	@cached_property
 	def computedStrToEncodedOffsets(self) -> tuple[int]:
