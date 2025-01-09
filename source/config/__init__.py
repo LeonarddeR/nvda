@@ -581,20 +581,28 @@ class ConfigManager(object):
 			try:
 				profile = self._loadConfig(fn)  # a blank config returned if fn does not exist
 				self.baseConfigError = False
-			except:  # noqa: E722
-				backupFileName = fn + ".corrupted.bak"
-				log.error(
-					"Error loading base configuration; the base configuration file will be reinitialized."
-					f" A copy of your previous configuration file will be saved at {backupFileName}",
-					exc_info=True,
-				)
-				try:
-					if os.path.exists(backupFileName):
-						os.unlink(backupFileName)
-					os.rename(fn, backupFileName)
-				except Exception:
+			except Exception:
+				if NVDAState.shouldWriteToDisk():
+					backupFileName = fn + ".corrupted.bak"
 					log.error(
-						f"Unable to save a copy of the corrupted configuration to {backupFileName}",
+						"Error loading base configuration; the base configuration file will be reinitialized."
+						f" A copy of your previous configuration file will be saved at {backupFileName}",
+						exc_info=True,
+					)
+					try:
+						if os.path.exists(backupFileName):
+							os.unlink(backupFileName)
+						os.rename(fn, backupFileName)
+					except Exception:
+						log.error(
+							f"Unable to save a copy of the corrupted configuration to {backupFileName}",
+							exc_info=True,
+						)
+				else:
+					log.error(
+						"Error loading base configuration; Leaving base configuration file untouched "
+						"because either --secure or --launcher args present. "
+						"Yet reverting to factory defaults for this instance of NVDA",
 						exc_info=True,
 					)
 				self.baseConfigError = True
