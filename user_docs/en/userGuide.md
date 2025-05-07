@@ -3114,6 +3114,8 @@ Use this checkbox to enable or disable NVDA's Remote Access feature.
 When this is unchecked, the Remote Access feature is entirely unavailable.
 
 Please note that in order to continue a Remote Access session on secure screens such as User Account Control prompts, you must enable this setting, save the changes, and then [copy your settings to NVDA's system configuration directory](#GeneralSettingsCopySettings).
+Remote Access will only continue sessions started by the installed copy of NVDA on secure desktops.
+This means that you cannot, for instance, start a Remote Access session with a portable copy of NVDA and have the session continue on secure screens.
 
 The following options are only available if Remote Access is enabled.
 
@@ -3139,8 +3141,8 @@ This option is only available when [Automatically connect after NVDA starts](#Re
 
 |Option |Behaviour |
 |---|---|
-|Allow this machine to be controlled |Use this computer as the "controlling" computer. This allows you to execute commands on the remote computer. |
-|Control another machine |Use this computer as the "controlled" computer. This allows the operator of the "controlling" computer to use this computer as if they were sitting in front of it. |
+|Allow this computer to be controlled |Use this computer as the "controlled" computer. This allows the operator of the "controlling" computer to use this computer as if they were sitting in front of it. |
+|Control another computer |Use this computer as the "controlling" computer. This allows you to execute commands on the remote computer. |
 
 ##### Server {#RemoteAutoconnectServer}
 
@@ -4056,7 +4058,7 @@ To toggle the braille viewer from anywhere, please assign a custom gesture using
 ### Python Console {#PythonConsole}
 
 The NVDA Python console, found under Tools in the NVDA menu, is a development tool which is useful for debugging, general inspection of NVDA internals or inspection of the accessibility hierarchy of an application.
-For more information, please see the [NVDA Developer Guide](https://www.nvaccess.org/files/nvda/documentation/developerGuide.html).
+For more information, please see the [NVDA Developer Guide](https://download.nvaccess.org/documentation/developerGuide.html).
 
 ### Add-on Store {#AddonStoreMenuItem}
 
