@@ -7,7 +7,7 @@ import argparse
 import io
 import json
 import os
-from typing import Iterable, NamedTuple, TYPE_CHECKING
+from typing import DefaultDict, Iterable, NamedTuple, TYPE_CHECKING
 
 import globalVars
 import languageHandler
@@ -24,13 +24,6 @@ def encodeNamedTuple(nt: NamedTuple):
 	}
 
 
-def decodeBrailleTable(dct: dict) -> "brailleTables.BrailleTable":
-	"""Decode a dictionary into a braille table object."""
-	from brailleTables import BrailleTable
-
-	return BrailleTable(**dct)
-
-
 def createAddTableStatement(table: "brailleTables.BrailleTable") -> str:
 	dct = encodeNamedTuple(table)
 	writer = io.StringIO()
@@ -38,21 +31,35 @@ def createAddTableStatement(table: "brailleTables.BrailleTable") -> str:
 		[
 			"# Translators: The name of a braille table displayed in the",
 			"# braille settings dialog.",
-		]
+		],
 	)
 	writer.write(f"""addTable({dct['fileName']!r}, {dct['displayName']!r}, """)
 
 
-def _writeTablesToJson(tables: Iterable["brailleTables.BrailleTable"], outputFile: str) -> None:
-	tables = [encodeNamedTuple(t) for t in tables]
+def _writeToJson(data: Iterable, outputFile: str) -> None:
 	with open(outputFile, "w", encoding="utf-8") as f:
-		json.dump(tables, f, indent="\t")
+		json.dump(data, f, indent="\t")
 
 
 def generateBuiltInTablesJson(outputFile: str) -> None:
 	import brailleTables
 
-	_writeTablesToJson(brailleTables._tables.values(), outputFile)
+	inputTableForLangs = DefaultDict(list)
+	for lang, tableFileName in brailleTables._inputTableForLangs.items():
+		inputTableForLangs[tableFileName].append(lang)
+	outputTableForLangs = DefaultDict(list)
+	for lang, tableFileName in brailleTables._outputTableForLangs.items():
+		outputTableForLangs[tableFileName].append(lang)
+	data = []
+	for fileName, table in brailleTables._tables.items():
+		dct = encodeNamedTuple(table)
+		if langs := inputTableForLangs.get(fileName):
+			dct["inputForLangs"] = langs
+		if langs := outputTableForLangs.get(fileName):
+			dct["outputForLangs"] = langs
+
+		data.append(dct)
+	_writeToJson(data, outputFile)
 
 
 def generateLiblouisTablesJson(outputFile: str) -> None:
@@ -66,19 +73,20 @@ def generateLiblouisTablesJson(outputFile: str) -> None:
 	nvdaTables = []
 	for table in louisTables:
 		fileName = os.path.basename(table)
-		nvdaTables.append(
-			brailleTables.BrailleTable(
-				fileName=fileName,
-				displayName=louis.getTableInfo(fileName, "display-name"),
-				contracted=louis.getTableInfo(fileName, "contraction") in ("partial", "full"),
-			),
-		)
-	_writeTablesToJson(nvdaTables, outputFile)
+		dct = {
+			"fileName": fileName,
+			"displayName": louis.getTableInfo(fileName, "display-name"),
+		}
+		if louis.getTableInfo(fileName, "contraction") in ("partial", "full"):
+			dct["contracted"] = True
+		nvdaTables.append(dct)
+
+	_writeToJson(nvdaTables, outputFile)
 
 
 def generateTablesModule(inputFile: str, outputFile: str) -> None:
 	with open(inputFile, "r", encoding="utf-8") as input:
-		tables = json.load(input, object_hook=decodeBrailleTable)
+		tables = json.load(input)
 
 
 def main():
