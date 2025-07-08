@@ -1,5 +1,5 @@
 # A part of NonVisual Desktop Access (NVDA)
-# Copyright (C) 2001-2023 Chris Liechti, NV Access Limited, Babbage B.V., Leonard de Ruijter
+# Copyright (C) 2001-2024 Chris Liechti, NV Access Limited, Babbage B.V., Leonard de Ruijter
 # Based on serial scanner code by Chris Liechti from https://raw.githubusercontent.com/pyserial/pyserial/81167536e796cc2e13aa16abd17a14634dc3aed1/pyserial/examples/scanwin32.py
 
 """Utilities for working with hardware connection ports."""
@@ -405,7 +405,7 @@ def _listDevices(
 			class SP_DEVICE_INTERFACE_DETAIL_DATA_W(ctypes.Structure):
 				_fields_ = (
 					("cbSize", DWORD),
-					("DevicePath", WCHAR * (dwNeeded.value - ctypes.sizeof(DWORD))),
+					("DevicePath", WCHAR * ((dwNeeded.value - ctypes.sizeof(DWORD)) // 2)),
 				)
 
 				def __str__(self):
