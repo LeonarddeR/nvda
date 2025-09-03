@@ -71,6 +71,7 @@ import hwIo
 from editableText import EditableText
 
 if TYPE_CHECKING:
+	from documentBase import TextContainerObject	
 	from NVDAObjects import NVDAObject
 	from speech.types import SpeechSequence
 
@@ -3083,7 +3084,7 @@ class BrailleHandler(baseObject.AutoPropertyObject):
 				self.handleUpdate(obj)
 				return
 
-	def handleUpdate(self, obj: "NVDAObject") -> None:
+	def handleUpdate(self, obj: "TextContainerObject") -> None:
 		if not self.enabled:
 			return
 		if objectBelowLockScreenAndWindowsIsLocked(obj):
