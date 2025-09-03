@@ -223,14 +223,14 @@ def getProcessHandleFromProcessId(processId: int, fallBackToTopLevelWindowEnumer
 	try:
 		if not (
 			processHandle := winKernel.openProcess(
-				winKernel.SYNCHRONIZE | winKernel.PROCESS_QUERY_INFORMATION,
+				winKernel.SYNCHRONIZE | winKernel.PROCESS_QUERY_LIMITED_INFORMATION,
 				False,
 				processId,
 			)
 		):
 			raise ctypes.WinError()
 	except WindowsError:
-		log.debugWarning(f"Unable to open process for processId {processId}", exc_info=True)
+		log.debugWarning(f"Unable to open process for processId {processId}", exc_info=True, stack_info=True)
 	else:
 		return processHandle
 
