@@ -20,7 +20,7 @@ import nh3
 import speech
 import wx.html2
 from config.configFlags import TetherTo
-from gui.message import MessageDialog, ReturnCode
+from gui.message import MessageDialog, ReturnCode, EscapeCode
 from logHandler import log
 from utils.security import isRunningOnSecureDesktop
 
@@ -169,7 +169,9 @@ def browseableMessage(
 	)
 
 	if closeButton:
-		dialog.addCloseButton()
+		dialog.addCloseButton(fallbackAction=True)
+	else:
+		dialog.setFallbackAction(EscapeCode.CANCEL_OR_AFFIRMATIVE)
 	if copyButton:
 
 		def doCopy(payload):

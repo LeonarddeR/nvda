@@ -22,7 +22,6 @@ def findExtraOverlayClasses(obj: IAccessible, clsList: list[NVDAObject]):
 
 class WxWebView(IAccessible):
 	def event_gainFocus(self) -> None:
-		super().event_gainFocus()
 		firstChild = self.firstChild
 		if not firstChild:
 			return
