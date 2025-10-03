@@ -108,15 +108,15 @@ def _resolveTable(tablesList: bytes, base: bytes | None) -> int | None:
 
 
 @louis.LogCallback
-def louis_log(level, message):
+def louis_log(level: int, message: bytes):
 	if not _isDebug():
 		return
 	NVDALevel = LOUIS_TO_NVDA_LOG_LEVELS.get(level, log.DEBUG)
 	if not log.isEnabledFor(NVDALevel):
 		return
-	message = message.decode("ASCII")
-	codepath = "liblouis at internal log level %d" % level
-	log._log(NVDALevel, message, [], codepath=codepath)
+	messageStr = message.decode(errors="replace")
+	codepath = f"liblouis at internal log level {level}"
+	log._log(NVDALevel, messageStr, [], codepath=codepath)
 
 
 def _isDebug():
