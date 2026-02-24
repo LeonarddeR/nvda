@@ -1,5 +1,5 @@
 # A part of NonVisual Desktop Access (NVDA)
-# Copyright (C) 2006-2025 NV Access Limited, Babbage B.V., Davy Kager, Bill Dengler, Julien Cochuyt,
+# Copyright (C) 2006-2026 NV Access Limited, Babbage B.V., Davy Kager, Bill Dengler, Julien Cochuyt,
 # Joseph Lee, Dawid Pieper, mltony, Bram Duvigneau, Cyrille Bougot, Rob Meredith,
 # Burman's Computer and Education Ltd., Leonard de Ruijter, Łukasz Golonka, Cary-rowen
 # This file is covered by the GNU General Public License.
@@ -13,7 +13,7 @@ from . import configDefaults
 #: provide an upgrade step (@see profileUpgradeSteps.py). An upgrade step does not need to be added when
 #: just adding a new element to (or removing from) the schema, only when old versions of the config
 #: (conforming to old schema versions) will not work correctly with the new schema.
-latestSchemaVersion = 20
+latestSchemaVersion = 21
 
 #: The configuration specification string
 #: @type: String
@@ -47,6 +47,7 @@ schemaVersion = integer(min=0, default={latestSchemaVersion})
 	delayedCharacterDescriptions = boolean(default=false)
 	excludedSpeechModes = int_list(default=list())
 	trimLeadingSilence = boolean(default=true)
+	useWASAPIForSAPI4 = featureFlag(optionsEnum="BoolFlag", behaviorOfDefault="enabled")
 
 	[[__many__]]
 		capPitchChange = integer(default=30,min=-100,max=100)
@@ -109,6 +110,15 @@ schemaVersion = integer(min=0, default={latestSchemaVersion})
 	# Vision enhancement provider settings
 	[[__many__]]
 		enabled = boolean(default=false)
+
+# Magnifier settings
+[magnifier]
+	defaultZoomLevel = float(min=1.0, max=10.0, default=2.0)
+	defaultFullscreenMode = string(default="center")
+	isTrueCentered = boolean(default=False)
+	defaultFilter = string(default="normal")
+	keepMouseCentered = boolean(default=false)
+	saveShortcutChanges = boolean(default=false)
 
 # Presentation settings
 [presentation]
@@ -338,8 +348,8 @@ schemaVersion = integer(min=0, default={latestSchemaVersion})
 [featureFlag]
 	# 0:default, 1:yes, 2:no
 	cancelExpiredFocusSpeech = integer(0, 2, default=0)
-	# 0:Only in test versions, 1:yes
-	playErrorSound = integer(0, 1, default=0)
+	# 0: Only in test versions, 1: Yes, 2: No
+	playErrorSound = integer(0, 2, default=0)
 
 [addonStore]
 	automaticUpdates = option("notify", "update", "disabled", default="notify")

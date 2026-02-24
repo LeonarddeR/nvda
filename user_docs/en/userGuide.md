@@ -28,7 +28,7 @@ Major highlights include:
 * Ability to [connect to and control another computer running NVDA](#RemoteAccess) for remote assistance or collaboration
 * Ability to run entirely from a USB flash drive or other portable media without the need for installation
 * Easy to use talking installer
-* Translated into 55 languages
+* Translated into 56 languages
 * Support for [modern Windows Operating Systems](#MinimumSystemRequirements)
 * Ability to run during Windows sign-in and [other secure screens](#SecureScreens)
 * Announcing controls and text while using touch gestures
@@ -58,7 +58,7 @@ Windows Server 2016, 2019, 2022 and 2025.
 ### Internationalization {#Internationalization}
 
 It is important that people anywhere in the world, no matter what language they speak, get equal access to technology.
-Besides English, NVDA has been translated into 55 languages including: Afrikaans, Albanian, Amharic, Arabic, Aragonese, Bosnian, Bulgarian, Burmese, Catalan, Chinese (simplified and traditional), Croatian, Czech, Danish, Dutch, Farsi, Finnish, French, Galician, Georgian, German (Germany and Switzerland), Greek, Hebrew, Hindi, Hungarian, Icelandic, Irish, Italian, Japanese, Kannada, Korean, Kyrgyz, Lithuanian, Macedonian, Mongolian, Nepali, Norwegian, Polish, Portuguese (Brazil and Portugal), Punjabi, Romanian, Russian, Serbian, Slovak, Slovenian, Spanish (Colombia and Spain), Swedish, Tamil, Thai, Turkish, Ukrainian and Vietnamese.
+Besides English, NVDA has been translated into 56 languages including: Afrikaans, Albanian, Amharic, Arabic, Aragonese, Bosnian, Bulgarian, Burmese, Cambodian, Catalan, Chinese (simplified and traditional), Croatian, Czech, Danish, Dutch, Farsi, Finnish, French, Galician, Georgian, German (Germany and Switzerland), Greek, Hebrew, Hindi, Hungarian, Icelandic, Irish, Italian, Japanese, Kannada, Korean, Kyrgyz, Lithuanian, Macedonian, Mongolian, Nepali, Norwegian, Polish, Portuguese (Brazil and Portugal), Punjabi, Romanian, Russian, Serbian, Slovak, Slovenian, Spanish (Colombia and Spain), Swedish, Tamil, Thai, Turkish, Ukrainian and Vietnamese.
 
 ### Speech Synthesizer Support {#SpeechSynthesizerSupport}
 
@@ -1508,6 +1508,105 @@ Some screenshot utilities also may not work.
 
 Please note that while Windows Magnifier is running and inverted screen colors are being used, Screen Curtain cannot be enabled.
 
+## Magnifier {#Magnifier}
+
+NVDA includes a built-in Magnifier feature that allows you to zoom and magnify parts of the screen.
+This feature is particularly useful for users with low vision who need to enlarge content on the screen, or for users who want to apply color filters to reduce eye strain or improve readability.
+
+The NVDA Magnifier operates as a full-screen magnifier, meaning it enlarges the entire screen while following the system focus or mouse pointer.
+It provides several configuration options to customize the magnification experience according to your needs.
+
+### Enabling and Disabling the Magnifier {#MagnifierToggle}
+
+To enable or disable the magnifier, press `NVDA+shift+w`.
+When the magnifier is enabled, NVDA will announce the current zoom level, color filter, and focus tracking mode.
+When disabled, the screen returns to its normal size.
+
+Important: The NVDA Magnifier cannot be used simultaneously with Screen Curtain for security reasons.
+If you attempt to enable the magnifier while Screen Curtain is active, NVDA will prompt you to disable Screen Curtain first, and vice versa.
+
+### Magnifier Controls {#MagnifierControls}
+
+Once the magnifier is enabled, you can use the following keyboard commands to control it:
+
+<!-- KC:beginInclude -->
+
+| Name |Key |Description|
+|---|---|---|
+|Toggles the magnifier on and off |`NVDA+shift+w` |Enables or disables the magnifier|
+|Increases the magnification level of the magnifier |`NVDA+shift+equals` |Increases the zoom level|
+|Decreases the magnification level of the magnifier |`NVDA+shift+minus` |Decreases the zoom level|
+|Toggle filter of the magnifier |`NVDA+shift+i` |Cycles through available color filters (normal, grayscale, inverted)|
+|Toggle focus mode for the full-screen magnifier |None |Cycles through focus tracking modes (center, border, relative)|
+|Launch spotlight if magnifier is full-screen |`NVDA+shift+l` |Activates spotlight mode for focused reading or presentations|
+
+<!-- KC:endInclude -->
+
+### Zoom Levels {#MagnifierZoomLevels}
+
+The magnifier supports zoom levels from 1.0 (no magnification) to 10.0 (maximum magnification).
+You can adjust the zoom level using the zoom in (`NVDA+shift+equals`) and zoom out (`NVDA+shift+minus`) commands.
+Each press increases or decreases the zoom by a fixed increment.
+
+The default zoom level when the magnifier is first enabled can be configured in the [Magnifier settings](#MagnifierSettings).
+
+### Color Filters {#MagnifierColorFilters}
+
+Color filters can help users with certain visual impairments or light sensitivity by modifying the colors displayed on the screen.
+The magnifier provides three color filter options:
+
+* **Normal**: No color modification is applied. This is the default setting.
+* **Grayscale**: Converts all colors to shades of gray, which can help reduce eye strain and improve contrast for some users.
+* **Inverted**: Inverts all colors on the screen (black becomes white, white becomes black, etc.), which can be helpful for users who prefer light text on dark backgrounds or have photophobia.
+
+To cycle through the available filters press `NVDA+shift+i`.
+NVDA will announce the name of the currently selected filter.
+
+The default color filter when the magnifier is first enabled can be configured in the [Magnifier settings](#MagnifierSettings).
+
+### Focus Tracking Modes {#MagnifierFullscreenFocusModes}
+
+The magnifier offers three different modes for tracking focus and determining which part of the screen to magnify:
+
+* **Center**: The magnified area is centered on the current focus position.
+This mode keeps the focused element at the center of the screen and clamps to the screen edge.
+To disable clamping, activate [true center mode in the Magnifier settings](#MagnifierUseTrueCenter).
+
+* **Border**: The magnified area only moves when the focus approaches the edge of the visible area.
+This mode provides a more stable view, only adjusting when necessary.
+* **Relative**: The magnified area maintains the relative position of the focus within the screen.
+This mode mimics the behavior of the Windows Magnifier.
+
+To cycle through the focus tracking modes, please assign a custom gesture using the [Input Gestures dialog](#InputGestures).
+NVDA will announce the name of the currently selected mode.
+
+The default focus mode when the magnifier is first enabled can be configured in the [Magnifier settings](#MagnifierSettings).
+
+### Spotlight Mode {#MagnifierSpotlight}
+
+Spotlight mode is a special feature designed for presentations or focused reading tasks.
+When activated, it temporarily zooms out the magnified view to show the full screen, then zooms back in to the current focus position after a brief period of mouse inactivity.
+
+This is useful when you want to:
+
+* Show context to your audience during a presentation before zooming in on specific details
+* Temporarily view the full screen layout while magnifying
+
+To activate spotlight mode, press `NVDA+shift+l` while the magnifier is enabled.
+Once activated, the magnifier will:
+
+1. Smoothly zoom out to show the full screen (zoom level 1.0)
+2. Monitor mouse movement
+3. When the mouse remains still for approximately 2 seconds, automatically zoom back in to the original zoom level at the mouse position
+
+Spotlight mode automatically deactivates after zooming back in.
+If you move the mouse before the zoom-back occurs, the timer resets, giving you more time to view the full screen.
+
+### Magnifier Settings {#MagnifierSettings}
+
+The magnifier can be configured in the "Magnifier" category of the NVDA Settings dialog (`NVDA+control+w`).
+See the [Magnifier settings](#MagnifierSettingsCategory) section for details on available options.
+
 ## Content Recognition {#ContentRecognition}
 
 When authors don't provide sufficient information for a screen reader user to determine the content of something, various tools can be used to attempt to recognize the content from an image.
@@ -1986,6 +2085,8 @@ Note that the following features depend on WASAPI, and will be disabled if WASAP
 * Rate boost
 * Leading silence trimming
 * Keep audio device awake
+
+Note that in Advanced settings, there is a similar [option for SAPI 4 voices](#UseWASAPIForSAPI4), not to be confused with this one.
 
 ##### Automatic Language switching {#SpeechSettingsLanguageSwitching}
 
@@ -2520,6 +2621,8 @@ This option allows you to choose if NVDA should lower the volume of other applic
 This option is only available if NVDA has been installed.
 It is not possible to support audio ducking for portable and temporary copies of NVDA.
 
+Audio ducking is not available when using [Microsoft Speech API version 4 (SAPI 4)](#SAPI4) or 32 bit [Microsoft Speech API version 5 (SAPI 5)](#SAPI5) voices.
+
 ##### Volume of NVDA sounds follows voice volume {#SoundVolumeFollowsVoice}
 
 | . {.hideHeaderRow} |.|
@@ -2676,6 +2779,90 @@ If you only want to highlight the focus and leave the navigator object and brows
 Additional vision enhancement providers can be provided in [NVDA add-ons](#AddonsManager).
 When these providers have adjustable settings, they will be shown in this settings category in separate groupings.
 For the supported settings per provider, please refer to the documentation for that provider.
+
+#### Magnifier {#MagnifierSettingsCategory}
+
+<!-- KC:setting -->
+
+##### Open Magnifier settings {#OpenMagnifierSettings}
+
+Key: `NVDA+control+w`
+
+The Magnifier category in the NVDA Settings dialog allows you to configure the default behavior of NVDA's built-in [Magnifier](#Magnifier) feature.
+This settings category contains the following options:
+
+##### Default zoom level {#MagnifierDefaultZoom}
+
+This slider allows you to set the default zoom level when the magnifier is first enabled.
+The zoom level can range from 1.0 (no magnification) to 10.0 (maximum magnification).
+The default value is 2.0 (200% zoom).
+
+You can always adjust the zoom level on the fly using the zoom in (`NVDA+shift+equals`) and zoom out (`NVDA+shift+minus`) commands while the magnifier is active.
+
+| . {.hideHeaderRow} |.|
+|---|---|
+|Options |1.0 to 10.0|
+|Default |2.0|
+
+##### Default color filter {#MagnifierDefaultFilter}
+
+This combo box allows you to select the default color filter to apply when the magnifier is first enabled.
+You can cycle through the color filters by pressing `NVDA+shift+i`.
+The available options are:
+
+| . {.hideHeaderRow} |.|
+|---|---|
+|Options | Normal, Grayscale, Inverted |
+|Default |Normal |
+|Toggle command |`NVDA+shift+i` |
+
+| Option | Description |
+|---|---|
+| Normal | No color modification is applied. |
+| Grayscale | Converts all colors to shades of gray, which can help reduce eye strain and improve contrast. |
+| Inverted | Inverts all colors on the screen, which can be helpful for users who prefer light text on dark backgrounds or have photophobia. |
+
+##### Default focus mode {#MagnifierDefaultFullscreenFocusMode}
+
+This combo box allows you to select the default focus tracking mode when the magnifier is first enabled.
+To cycle through the focus tracking modes, please assign a custom gesture using the [Input Gestures dialog](#InputGestures).
+The available options are:
+
+| . {.hideHeaderRow} |.|
+|---|---|
+|Options |Center, Border, Relative|
+|Default |Center|
+|Toggle command |None |
+
+| Option | Description |
+|---|---|
+| Center | The magnified area is always centered on the current focus position. |
+| Border | The magnified area only moves when the focus approaches the edge of the visible area. |
+| Relative | The magnified area maintains the relative position of the focus within the screen. |
+
+##### Use true center {#MagnifierUseTrueCenter}
+
+This checkbox controls whether the magnifier should always keep the focus centered on the screen, or if it should allow the focus to move towards the edges of the screen before moving the magnified area.
+When enabled, the magnifier will always keep the focus centered on the screen, which can be helpful for users who prefer a consistent position of the focus within the magnified view.
+
+This option is disabled by default.
+
+| . {.hideHeaderRow} |.|
+|---|---|
+|Options |Disabled, Enabled|
+|Default |Disabled|
+
+##### Keep mouse centered {#MagnifierKeepMouseCentered}
+
+This checkbox controls whether the mouse pointer should be automatically moved to the center of the magnified area when certain focus events occur.
+When enabled, NVDA will reposition the mouse pointer to keep it centered in the magnified view, which can be helpful for users who navigate primarily using the magnifier's focus tracking rather than the mouse.
+
+This option is disabled by default.
+
+| . {.hideHeaderRow} |.|
+|---|---|
+|Options |Disabled, Enabled|
+|Default |Disabled|
 
 #### Keyboard {#KeyboardSettings}
 
@@ -3601,6 +3788,23 @@ Press this button to test the mirror URL you have entered.
 You must be connected to the internet for the test to succeed.
 It is recommended that you always test the URL before saving it.
 
+#### Copy Add-ons to System-wide Configuration Dialog {#CopyAddonsToSystemProfileDialog}
+
+This dialog allows you to choose which of your [add-ons](#AddonsManager) to [copy to NVDA's system-wide configuration](#GeneralSettingsCopySettings), which is used during sign-in and on [secure screens](#SecureScreens).
+By default, NVDA will not copy any of your add-ons to the system-wide configuration.
+
+Copying add-ons to the system-wide configuration is a serious security risk.
+NVDA uses this configuration when running on secure screens, including the sign-in and User Account Control (UAC) screens.
+When running on secure screens, NVDA runs as the system user, which has privileges even greater than administrators.
+This means that many of the usual security and privacy features of Windows, like User Account Control (UAC), do not apply.
+Allowing add-ons to run in this environment grants them unrestricted access to your entire system.
+
+To copy one or more add-ons to the system-wide configuration, check them in the list of add-ons.
+You are strongly recommended to leave all add-ons that you do not require to access secure screens unchecked.
+
+Please note that you may only copy currently enabled add-ons to the system-wide configuration.
+Add-ons that are "pending restart" cannot be copied.
+
 #### Advanced Settings {#AdvancedSettings}
 
 Warning! The settings in this category are for advanced users and may cause NVDA to not function correctly if configured in the wrong way.
@@ -3798,6 +4002,20 @@ When enabled, NVDA will remove silence from the start of speech audio, which may
 This option is enabled by default, and should only affect the silence at the beginning of speech.
 If you find that some necessary silence periods are also missing (e.g. pause between two sentences) when using a speech synthesizer add-on, you may turn this feature off entirely to resolve the issue.
 
+##### Use WASAPI for SAPI 4 audio output {#UseWASAPIForSAPI4}
+
+This option enables Microsoft Speech API version 4 (SAPI 4) voices to output audio via the Windows Audio Session API (WASAPI).
+This can allow SAPI 4 voices to work with more features, such as leading silence trimming and keeping audio device awake.
+However, some SAPI 4 voices might not work with the current WASAPI implementation.
+If you find that the SAPI 4 voice you are using stops working, you may disable this option.
+
+Note that in Speech settings, there is a similar [option for SAPI 5 voices](#SpeechSettingsUseWasapi), not to be confused with this one.
+
+| . {.hideHeaderRow} |.|
+|---|---|
+|Options |Default (Enabled), Disabled, Enabled|
+|Default |Enabled|
+
 ##### Caret move timeout (in MS) {#AdvancedSettingsCaretMoveTimeout}
 
 This option allows you to configure the number of milliseconds NVDA will wait for the caret (insertion point) to move in editable text controls.
@@ -3821,6 +4039,7 @@ Only turn one of these on if specifically instructed to by an NVDA developer e.g
 This option allows you to specify if NVDA will play an error sound in case an error is logged.
 Choosing Only in test versions (default) makes NVDA play error sounds only if the current NVDA version is a test version (alpha, beta or run from source).
 Choosing Yes allows to enable error sounds whatever your current NVDA version is.
+Choosing No disables error sounds no matter what your current NVDA version is, i.e. even in test versions.
 
 ##### Regular expression for text paragraph quick navigation commands {#TextParagraphRegexEdit}
 
@@ -3859,14 +4078,31 @@ NVDA's speech dictionaries however are much more powerful than simple word repla
 The Add rule dialog also contains a checkbox to say whether or not you want the rule to be case sensitive (meaning that NVDA should care whether the characters are uppercase or lowercase.
 NVDA ignores case by default).
 
-Finally, a set of radio buttons allows you to tell NVDA whether your pattern should match anywhere, should only match if it is a complete word or should be treated as a "Regular expression".
-Setting the pattern to match as a whole word means that the replacement will only be made if the pattern does not occur as part of a larger word.
-This condition is met if the characters immediately before and after the word are anything other than a letter, a number, or an underscore, or if there are no characters at all.
-Thus, using the earlier example of replacing the word "bird" with "frog", if you were to make this a whole word replacement, it would not match "birds" or "bluebird".
+A set of radio buttons allows you to tell NVDA how your pattern should be matched.
+The available types are:
 
-A regular expression is a pattern containing special symbols that allow you to match on more than one character at a time, or match on just numbers, or just letters, as a few examples.
+* Anywhere: The pattern can match anywhere in the text.
+* Whole word: The replacement will only be made if the pattern occurs as a complete word.
+This means the pattern does not occur as part of a larger word.
+The condition is met if the characters immediately before and after the word are anything other than a letter, a number, or an underscore, or if there are no characters at all.
+For example, if you replace "bird" with "frog" using whole word matching, it would not match "birds" or "bluebird".
+* Part of word: The pattern must be preceded or followed by an alphanumeric character or underscore to match.
+This is useful for matching parts of compound words.
+For example, if you replace "bird" with "frog" using part of word matching, it would match "birds", "bluebird", "bluebirds" and "birdsong", but not the standalone word "bird" (because it has neither a preceding nor a following alphanumeric character).
+* Start of word: The pattern must have a word boundary at the start and an alphanumeric character or underscore at the end.
+For example, if you replace "bird" with "frog" using start of word matching, it would match "birds" and "birdsong", but not "bluebird" or the standalone word "bird".
+* End of word: The pattern must have an alphanumeric character or underscore at the start and a word boundary at the end.
+For example, if you replace "bird" with "frog" using end of word matching, it would match "bluebird" and "songbird", but not "birds" or the standalone word "bird".
+* Regular expression: The pattern is treated as a regular expression, which is a pattern containing special symbols that allow you to match on more than one character at a time, or match on just numbers, or just letters, as a few examples.
 Regular expressions are not covered in this user guide.
 For an introductory tutorial, please refer to [Python's Regular Expression Guide](https://docs.python.org/3.13/howto/regex.html).
+* Unix shell-style wildcards: The pattern uses Unix shell-style wildcards for matching.
+For example:
+  * `*` matches any sequence of characters.
+  * `?` matches a single character.
+  * `[az]` matches a or z.
+  * `[a-z]` matches any lowercase letter from a through z.
+  * `[!a-z]` matches any character except lowercase letters a through z.
 
 #### Punctuation/symbol pronunciation {#SymbolPronunciation}
 
@@ -3944,6 +4180,7 @@ To save the settings manually at any time, choose the Save configuration item in
 
 If you ever make a mistake with your settings and need to revert back to the saved settings, choose the "revert to saved configuration" item in the NVDA menu.
 You can also reset your settings to their original factory defaults by choosing Reset Configuration To Factory Defaults, which is also found in the NVDA menu.
+After resetting, a dialog will appear allowing you to undo the reset and restore your previous configuration.
 
 The following NVDA key commands are also useful:
 <!-- KC:beginInclude -->
@@ -3951,7 +4188,7 @@ The following NVDA key commands are also useful:
 | Name |Desktop key |Laptop key |Description|
 |---|---|---|---|
 |Save configuration |`NVDA+control+c` |`NVDA+control+c` |Saves your current configuration so that it is not lost when you exit NVDA|
-|Revert configuration |`NVDA+control+r` |`NVDA+control+r` |Pressing once resets your configuration to when you last saved it. Pressing three times will reset it back to factory defaults.|
+|Revert configuration |`NVDA+control+r` |`NVDA+control+r` |Pressing once resets your configuration to when you last saved it. Pressing three times will reset it back to factory defaults without showing the undo dialog.|
 
 <!-- KC:endInclude -->
 
@@ -4506,11 +4743,23 @@ There are over 43 different languages supported by eSpeak NG.
 
 There are also many variants which can be chosen to alter the sound of the voice.
 
+### Microsoft Speech API version 4 (SAPI 4) {#SAPI4}
+
+SAPI 4 is an older Microsoft standard for software speech synthesizers.
+NVDA still supports this for users who already have SAPI 4 synthesizers installed.
+However, Microsoft no longer support this and needed components are no longer available from Microsoft.
+
+When using this synthesizer with NVDA, the available voices (accessed from the [Speech category](#SpeechSettings) of the [NVDA Settings](#NVDASettings) dialog or by the [Synth Settings Ring](#SynthSettingsRing)) will contain all the voices from all the installed SAPI 4 engines found on your system.
+
 ### Microsoft Speech API version 5 (SAPI 5) {#SAPI5}
 
 SAPI 5 is a Microsoft standard for software speech synthesizers.
+NVDA supports both 32-bit and 64-bit SAPI5 voices.
+For the best performance and feature compatibility, 64-bit voices should be preferred.
 Many speech synthesizers that comply with this standard may be purchased or downloaded for free from various companies and websites, though your system will probably already come with at least one SAPI 5 voice preinstalled.
-When using this synthesizer with NVDA, the available voices (accessed from the [Speech category](#SpeechSettings) of the [NVDA Settings](#NVDASettings) dialog or by the [Synth Settings Ring](#SynthSettingsRing)) will contain all the voices from all the installed SAPI 5 engines found on your system.
+
+When using the 32-bit or 64-bit SAPI 5 synthesizer with NVDA, the available voices (accessed from the [Speech category](#SpeechSettings) of the [NVDA Settings](#NVDASettings) dialog or by the [Synth Settings Ring](#SynthSettingsRing)) will contain all the voices from all the installed 32-bit or 64-bit SAPI 5 engines found on your system, respectively.
+If you are unable to find a SAPI 5 voice that is installed on your system, try switching to the other SAPI 5 synthesizer using the [Select Synthesizer dialog](#SelectSynthesizer).
 
 ### Microsoft Speech Platform {#MicrosoftSpeechPlatform}
 
@@ -5871,8 +6120,8 @@ Secure mode freezes changes to NVDA configuration, so please ensure that NVDA is
 
 NVDA runs in [secure mode](#SecureMode) when executed on secure screens unless the `serviceDebug` [system wide parameter](#SystemWideParameters) is enabled.
 
-When running from a secure screen, NVDA uses a system profile for preferences.
-NVDA user preferences can be copied [for use in secure screens](#GeneralSettingsCopySettings).
+When running on a secure screen, NVDA uses its system-wide configuration for preferences.
+NVDA user preferences can be copied [for use on secure screens](#GeneralSettingsCopySettings).
 
 Secure screens include:
 

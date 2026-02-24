@@ -1,5 +1,5 @@
 # A part of NonVisual Desktop Access (NVDA)
-# Copyright (C) 2006-2025 NV Access Limited, Peter Vágner, Aleksey Sadovoy,
+# Copyright (C) 2006-2026 NV Access Limited, Peter Vágner, Aleksey Sadovoy,
 # Rui Batista, Joseph Lee, Heiko Folkerts, Zahari Yurukov, Leonard de Ruijter,
 # Derek Riemer, Babbage B.V., Davy Kager, Ethan Holliger, Bill Dengler,
 # Thomas Stivers, Julien Cochuyt, Peter Vágner, Cyrille Bougot, Mesar Hameed,
@@ -10,8 +10,10 @@
 # This file is covered by the GNU General Public License.
 # See the file COPYING for more details.
 
+import bisect
 import copy
 import logging
+import math
 import os
 import re
 import typing
@@ -41,6 +43,8 @@ import installer
 import keyboardHandler
 import languageHandler
 import logHandler
+import _magnifier.config as magnifierConfig
+from _magnifier.utils.types import Filter, FullScreenMode
 import queueHandler
 import requests
 import speech
@@ -51,7 +55,6 @@ import vision.providerInfo
 import winUser
 import wx
 from wx.lib import scrolledpanel
-from NVDAState import WritePaths
 
 import screenCurtain._screenCurtain
 from utils import mmdevice
@@ -64,6 +67,7 @@ from config.configFlags import (
 	NVDAKey,
 	OutputMode,
 	ParagraphStartMarker,
+	PlayErrorSound,
 	RemoteConnectionMode,
 	RemoteServerType,
 	ReportCellBorders,
@@ -997,20 +1001,10 @@ class GeneralSettingsPanel(SettingsPanel):
 			evt.Skip()
 
 	def onCopySettings(self, evt):
-		if os.path.isdir(WritePaths.addonsDir) and 0 < len(os.listdir(WritePaths.addonsDir)):
-			message = _(
-				# Translators: A message to warn the user when attempting to copy current
-				# settings to system settings.
-				"Add-ons were detected in your user settings directory. "
-				"Copying these to the system profile could be a security risk. "
-				"Do you still wish to copy your settings?",
-			)
-			# Translators: The title of the warning dialog displayed when trying to
-			# copy settings for use in secure screens.
-			title = _("Warning")
-			style = wx.YES | wx.NO | wx.ICON_WARNING
-			if wx.NO == gui.messageBox(message, title, style, self):
-				return
+		from .addonStoreGui.controls.messageDialogs import _getAddonsToCopy
+
+		if (addonsToCopy := _getAddonsToCopy(self.GetTopLevelParent())) is None:
+			return
 		progressDialog = gui.IndeterminateProgressDialog(
 			gui.mainFrame,
 			# Translators: The title of the dialog presented while settings are being copied
@@ -1021,7 +1015,7 @@ class GeneralSettingsPanel(SettingsPanel):
 		)
 		while True:
 			try:
-				systemUtils.ExecAndPump(config.setSystemConfigToCurrentConfig)
+				systemUtils.ExecAndPump(config.setSystemConfigToCurrentConfig, addonsToCopy=addonsToCopy)
 				res = True
 				break
 			except installer.RetriableFailure:
@@ -2728,6 +2722,23 @@ class MathSettingsPanel(SettingsPanel):
 			# If the selection is invalid, return the first option's value
 			return list(enumClass)[0].value
 
+	def _getPauseFactorSliderValue(
+		self,
+		pauseFactor: int,
+	) -> int:
+		"""Convert a pause factor value to the slider scale used in the UI."""
+		if pauseFactor <= 0:
+			return 0
+		from mathPres.MathCAT.preferences import PauseFactor
+
+		sliderValue: int = round(
+			math.log(
+				pauseFactor / PauseFactor.SCALE.value,
+				PauseFactor.LOG_BASE.value,
+			),
+		)
+		return max(0, min(14, sliderValue))
+
 	def makeSettings(self, settingsSizer: wx.BoxSizer) -> None:
 		from mathPres.MathCAT import localization, preferences
 		from mathPres.MathCAT.preferences import (
@@ -2839,7 +2850,9 @@ class MathSettingsPanel(SettingsPanel):
 			maxValue=14,
 		)
 		self.bindHelpEvent("MathSpeechPauseFactor", self.pauseFactorSlider)
-		self.pauseFactorSlider.SetValue(config.conf["math"]["speech"]["pauseFactor"])
+		pauseFactorValue: int = config.conf["math"]["speech"]["pauseFactor"]
+		sliderValue: int = self._getPauseFactorSliderValue(pauseFactorValue)
+		self.pauseFactorSlider.SetValue(sliderValue)
 
 		# Translators: label for check box controlling a beep sound when math speech starts/ends
 		speechSoundText = pgettext("math", "Beep at the beginning and end of math")
@@ -3023,12 +3036,20 @@ class MathSettingsPanel(SettingsPanel):
 			self.speechAmountList.GetSelection(),
 		)
 		mathConf["speech"]["mathRate"] = self.relativeSpeedSlider.GetValue()
-		pfSlider: int = self.pauseFactorSlider.GetValue()
+		pauseFactorSliderValue: int = self.pauseFactorSlider.GetValue()
 		pauseFactor: int = (
 			0
-			if pfSlider == 0
-			else round(PauseFactor.SCALE.value * math.pow(PauseFactor.LOG_BASE.value, pfSlider))
+			if pauseFactorSliderValue == 0
+			else round(
+				PauseFactor.SCALE.value
+				* math.pow(
+					PauseFactor.LOG_BASE.value,
+					pauseFactorSliderValue,
+				),
+			)
 		)  # avoid log(0)
+		if pauseFactor > 1000:
+			pauseFactor = 1000
 		mathConf["speech"]["pauseFactor"] = pauseFactor
 		if self.speechSoundCheckBox.GetValue():
 			mathConf["speech"]["speechSound"] = "Beep"
@@ -3061,8 +3082,8 @@ class MathSettingsPanel(SettingsPanel):
 		)
 		selectedBrailleIndex = self.brailleMathCodeList.GetSelection()
 		mathConf["braille"]["brailleCode"] = self._brailleCodeIds[selectedBrailleIndex]
-		mcPrefs: MathCATUserPreferences = MathCATUserPreferences.fromNVDAConfig()
-		mcPrefs.save()
+		mcPrefs = MathCATUserPreferences.fromNVDAConfig()
+		mcPrefs.apply()
 
 
 class DocumentFormattingPanel(SettingsPanel):
@@ -3513,7 +3534,7 @@ class AudioPanel(SettingsPanel):
 		self.bindHelpEvent("SelectSynthesizerDuckingMode", self.duckingList)
 		index = config.conf["audio"]["audioDuckingMode"]
 		self.duckingList.SetSelection(index)
-		if not audioDucking.isAudioDuckingSupported():
+		if not audioDucking.isAudioDuckingSupported() or audioDucking._isAudioDuckingSuspended():
 			self.duckingList.Disable()
 
 		# Translators: This is the label for a checkbox control in the
@@ -4460,6 +4481,17 @@ class AdvancedPanelControls(
 		self.trimLeadingSilenceCheckBox.SetValue(config.conf["speech"]["trimLeadingSilence"])
 		self.trimLeadingSilenceCheckBox.defaultValue = self._getDefaultValue(["speech", "trimLeadingSilence"])
 
+		# Translators: This is the label for a combo-box control in the
+		#  Advanced settings panel.
+		label = _("Use WASAPI for SAPI 4 audio output:")
+		self.useWASAPIForSAPI4Combo = speechGroup.addLabeledControl(
+			labelText=label,
+			wxCtrlClass=nvdaControls.FeatureFlagCombo,
+			keyPath=["speech", "useWASAPIForSAPI4"],
+			conf=config.conf,
+		)
+		self.bindHelpEvent("UseWASAPIForSAPI4", self.useWASAPIForSAPI4Combo)
+
 		# Translators: This is the label for a group of advanced options in the
 		#  Advanced settings panel
 		label = _("Virtual Buffers")
@@ -4571,12 +4603,7 @@ class AdvancedPanelControls(
 
 		# Translators: Label for the Play a sound for logged errors combobox, in the Advanced settings panel.
 		label = _("Play a sound for logged e&rrors:")
-		playErrorSoundChoices = (
-			# Translators: Label for a value in the Play a sound for logged errors combobox, in the Advanced settings.
-			pgettext("advanced.playErrorSound", "Only in NVDA test versions"),
-			# Translators: Label for a value in the Play a sound for logged errors combobox, in the Advanced settings.
-			pgettext("advanced.playErrorSound", "Yes"),
-		)
+		playErrorSoundChoices = [i.displayString for i in PlayErrorSound]
 		self.playErrorSoundCombo = debugLogGroup.addLabeledControl(
 			label,
 			wx.Choice,
@@ -4648,6 +4675,7 @@ class AdvancedPanelControls(
 			and self.cancelExpiredFocusSpeechCombo.GetSelection()
 			== self.cancelExpiredFocusSpeechCombo.defaultValue
 			and self.trimLeadingSilenceCheckBox.IsChecked() == self.trimLeadingSilenceCheckBox.defaultValue
+			and self.useWASAPIForSAPI4Combo.isValueConfigSpecDefault()
 			and self.loadChromeVBufWhenBusyCombo.isValueConfigSpecDefault()
 			and self.caretMoveTimeoutSpinControl.GetValue() == self.caretMoveTimeoutSpinControl.defaultValue
 			and self.reportTransparentColorCheckBox.GetValue()
@@ -4677,6 +4705,7 @@ class AdvancedPanelControls(
 		self.wtStrategyCombo.resetToConfigSpecDefault()
 		self.cancelExpiredFocusSpeechCombo.SetSelection(self.cancelExpiredFocusSpeechCombo.defaultValue)
 		self.trimLeadingSilenceCheckBox.SetValue(self.trimLeadingSilenceCheckBox.defaultValue)
+		self.useWASAPIForSAPI4Combo.resetToConfigSpecDefault()
 		self.loadChromeVBufWhenBusyCombo.resetToConfigSpecDefault()
 		self.caretMoveTimeoutSpinControl.SetValue(self.caretMoveTimeoutSpinControl.defaultValue)
 		self.reportTransparentColorCheckBox.SetValue(self.reportTransparentColorCheckBox.defaultValue)
@@ -4690,6 +4719,8 @@ class AdvancedPanelControls(
 
 		shouldResetSynth = (
 			config.conf["speech"]["trimLeadingSilence"] != self.trimLeadingSilenceCheckBox.IsChecked()
+			or config.conf["speech"]["useWASAPIForSAPI4"]
+			!= self.useWASAPIForSAPI4Combo._getControlCurrentFlag()
 		)
 
 		config.conf["development"]["enableScratchpadDir"] = self.scratchpadCheckBox.IsChecked()
@@ -4705,6 +4736,7 @@ class AdvancedPanelControls(
 			self.cancelExpiredFocusSpeechCombo.GetSelection()
 		)
 		config.conf["speech"]["trimLeadingSilence"] = self.trimLeadingSilenceCheckBox.IsChecked()
+		self.useWASAPIForSAPI4Combo.saveCurrentValueToConf()
 		config.conf["UIA"]["allowInChromium"] = self.UIAInChromiumCombo.GetSelection()
 		self.enhancedEventProcessingComboBox.saveCurrentValueToConf()
 		config.conf["terminals"]["speakPasswords"] = self.winConsoleSpeakPasswordsCheckBox.IsChecked()
@@ -5896,6 +5928,117 @@ class VisionProviderSubPanel_Wrapper(
 			self._providerSettings.onSave()
 
 
+class MagnifierPanel(SettingsPanel):
+	# Translators: This is the label for the magnifier settings panel.
+	title = _("Magnifier")
+	helpId = "MagnifierSettings"
+
+	def makeSettings(
+		self,
+		settingsSizer: wx.BoxSizer,
+	):
+		sHelper = guiHelper.BoxSizerHelper(
+			self,
+			sizer=settingsSizer,
+		)
+
+		# ZOOM SETTINGS
+		# Translators: The label for a setting in magnifier settings to select the default zoom level.
+		defaultZoomLabelText = _("Default &zoom level:")
+
+		zoomValues = magnifierConfig.ZoomLevel.zoom_range()
+		zoomChoices = magnifierConfig.ZoomLevel.zoom_strings()
+
+		self.defaultZoomList = sHelper.addLabeledControl(
+			defaultZoomLabelText,
+			wx.Choice,
+			choices=zoomChoices,
+		)
+		self.bindHelpEvent(
+			"MagnifierDefaultZoom",
+			self.defaultZoomList,
+		)
+
+		# Set default value from config
+		defaultZoom = magnifierConfig.getDefaultZoomLevel()
+		index = bisect.bisect_left(zoomValues, defaultZoom)
+		# Find the closest value
+		if index == 0:
+			closestIndex = 0
+		elif index >= len(zoomValues):
+			closestIndex = len(zoomValues) - 1
+		else:
+			closestIndex = min(index - 1, index, key=lambda i: abs(zoomValues[i] - defaultZoom))
+		self.defaultZoomList.SetSelection(closestIndex)
+
+		# FILTER SETTINGS
+		# Translators: The label for a setting in magnifier settings to select the default filter
+		defaultFilterLabelText = _("Default &filter:")
+		filterChoices = [f.displayString for f in Filter]
+		self.defaultFilterList = sHelper.addLabeledControl(
+			defaultFilterLabelText,
+			wx.Choice,
+			choices=filterChoices,
+		)
+		self.bindHelpEvent("MagnifierDefaultFilter", self.defaultFilterList)
+
+		# Set default value from config
+		defaultFilter = magnifierConfig.getDefaultFilter()
+		self.defaultFilterList.SetSelection(list(Filter).index(defaultFilter))
+
+		# FULLSCREEN MODE SETTINGS
+		# Translators: The label for a setting in magnifier settings to select the default full-screen mode
+		defaultFullscreenModeLabelText = _("Default &fullscreen mode:")
+		fullscreenModeChoices = [mode.displayString for mode in FullScreenMode] if FullScreenMode else []
+		self.defaultFullscreenModeList = sHelper.addLabeledControl(
+			defaultFullscreenModeLabelText,
+			wx.Choice,
+			choices=fullscreenModeChoices,
+		)
+		self.bindHelpEvent(
+			"MagnifierDefaultFullscreenFocusMode",
+			self.defaultFullscreenModeList,
+		)
+
+		# TRUE CENTER
+		# Translators: The label for a setting in magnifier settings to select whether true center is used in full-screen mode
+		trueCenterText = _("Use &true center in fullscreen mode")
+		self.trueCenterCheckBox = sHelper.addItem(wx.CheckBox(self, label=trueCenterText))
+		self.bindHelpEvent(
+			"MagnifierUseTrueCenter",
+			self.trueCenterCheckBox,
+		)
+		self.trueCenterCheckBox.SetValue(magnifierConfig.isTrueCentered())
+
+		# Set default value from config
+		defaultFullscreenMode = magnifierConfig.getDefaultFullscreenMode()
+		self.defaultFullscreenModeList.SetSelection(list(FullScreenMode).index(defaultFullscreenMode))
+
+		# KEEP MOUSE CENTERED
+		# Translators: The label for a checkbox to keep the mouse pointer centered in the magnifier view
+		keepMouseCenteredText = _("Keep &mouse pointer centered in magnifier view")
+		self.keepMouseCenteredCheckBox = sHelper.addItem(wx.CheckBox(self, label=keepMouseCenteredText))
+		self.bindHelpEvent(
+			"MagnifierKeepMouseCentered",
+			self.keepMouseCenteredCheckBox,
+		)
+		self.keepMouseCenteredCheckBox.SetValue(magnifierConfig.shouldKeepMouseCentered())
+
+	def onSave(self):
+		"""Save the current selections to config."""
+		selectedZoom = self.defaultZoomList.GetSelection()
+		magnifierConfig.setDefaultZoomLevel(magnifierConfig.ZoomLevel.zoom_range()[selectedZoom])
+
+		selectedFilterIdx = self.defaultFilterList.GetSelection()
+		magnifierConfig.setDefaultFilter(list(Filter)[selectedFilterIdx])
+
+		selectedModeIdx = self.defaultFullscreenModeList.GetSelection()
+		magnifierConfig.setDefaultFullscreenMode(list(FullScreenMode)[selectedModeIdx])
+
+		config.conf["magnifier"]["isTrueCentered"] = self.trueCenterCheckBox.GetValue()
+		config.conf["magnifier"]["keepMouseCentered"] = self.keepMouseCenteredCheckBox.GetValue()
+
+
 class PrivacyAndSecuritySettingsPanel(SettingsPanel):
 	# Translators: The title of the privacy and security category in NVDA's settings.
 	title = _("Privacy and Security")
@@ -5919,11 +6062,16 @@ class PrivacyAndSecuritySettingsPanel(SettingsPanel):
 				label=_("Make screen black (immediate effect)"),
 			),
 		)
-		self._screenCurtainEnabledCheckbox.SetValue(
-			screenCurtain.screenCurtain is not None and screenCurtain.screenCurtain.enabled,
-		)
+		isScreenCurtainAvailable = screenCurtain.screenCurtain is not None
+		if isScreenCurtainAvailable:
+			self._cachedScreenCurtainConfigEnabled = screenCurtain.screenCurtain.settings["enabled"]
+			self._cachedScreenCurtainEnabled = screenCurtain.screenCurtain.enabled
+		else:
+			self._cachedScreenCurtainConfigEnabled = self._screenCurtainConfig["enabled"]
+			self._cachedScreenCurtainEnabled = False
+		self._screenCurtainEnabledCheckbox.SetValue(self._cachedScreenCurtainEnabled)
 		self._screenCurtainEnabledCheckbox.Bind(wx.EVT_CHECKBOX, self._ensureScreenCurtainEnableState)
-		self._screenCurtainEnabledCheckbox.Enable(screenCurtain.screenCurtain is not None)
+		self._screenCurtainEnabledCheckbox.Enable(isScreenCurtainAvailable)
 		self.bindHelpEvent("ScreenCurtainEnable", self._screenCurtainEnabledCheckbox)
 
 		self._screenCurtainWarnOnLoadCheckbox = screenCurtainGroup.addItem(
@@ -5984,6 +6132,19 @@ class PrivacyAndSecuritySettingsPanel(SettingsPanel):
 			self._allowUsageStatsCheckBox.Value = False
 			self._allowUsageStatsCheckBox.Disable()
 
+	def onDiscard(self):
+		# Restore screen curtain state and setting to the most recently saved baseline,
+		# in case the user enabled or disabled it without saving.
+		if screenCurtain.screenCurtain is not None:
+			if screenCurtain.screenCurtain.enabled != self._cachedScreenCurtainEnabled:
+				if self._cachedScreenCurtainEnabled:
+					screenCurtain.screenCurtain.enable(persist=self._cachedScreenCurtainConfigEnabled)
+				else:
+					screenCurtain.screenCurtain.disable(persist=not self._cachedScreenCurtainConfigEnabled)
+			if screenCurtain.screenCurtain.settings["enabled"] != self._cachedScreenCurtainConfigEnabled:
+				screenCurtain.screenCurtain.settings["enabled"] = self._cachedScreenCurtainConfigEnabled
+		super().onDiscard()
+
 	def onSave(self):
 		# We intentionally don't save whether the screen curtain is enabled here,
 		# so we don't unintentionally persist a temporary screen curtain to config.
@@ -6001,6 +6162,10 @@ class PrivacyAndSecuritySettingsPanel(SettingsPanel):
 		if updateCheck:
 			config.conf["update"]["allowUsageStats"] = self._allowUsageStatsCheckBox.IsChecked()
 			# updateCheck queries this value whenever checking for updates, so there's no need to restart it
+
+		if screenCurtain.screenCurtain is not None:
+			self._cachedScreenCurtainConfigEnabled = screenCurtain.screenCurtain.settings["enabled"]
+			self._cachedScreenCurtainEnabled = screenCurtain.screenCurtain.enabled
 
 	def _ocrActive(self) -> bool:
 		"""
@@ -6087,6 +6252,7 @@ class NVDASettingsDialog(MultiCategorySettingsDialog):
 		BrowseModePanel,
 		DocumentFormattingPanel,
 		DocumentNavigationPanel,
+		MagnifierPanel,
 		MathSettingsPanel,
 		RemoteSettingsPanel,
 	]
