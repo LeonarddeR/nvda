@@ -1325,11 +1325,11 @@ class AggregatedSection:
 							stack_info=True,
 						)
 						key = "textWrap"
-						val = BrailleTextWrap.WORD_BOUNDARIES if val else BrailleTextWrap.OFF
+						val = (BrailleTextWrap.WORD_BOUNDARIES if val else BrailleTextWrap.OFF).value
 					case "textWrap":
 						# The "textWrap" setting was added in place of "wordWrap" and became an enum.
 						key = "wordWrap"
-						val = val != BrailleTextWrap.OFF
+						val = val != BrailleTextWrap.OFF.value
 
 					case _:
 						# We don't care about other keys in this section.

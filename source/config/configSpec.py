@@ -13,7 +13,7 @@ from . import configDefaults
 #: provide an upgrade step (@see profileUpgradeSteps.py). An upgrade step does not need to be added when
 #: just adding a new element to (or removing from) the schema, only when old versions of the config
 #: (conforming to old schema versions) will not work correctly with the new schema.
-latestSchemaVersion = 21
+latestSchemaVersion = 22
 
 #: The configuration specification string
 #: @type: String
@@ -89,6 +89,7 @@ schemaVersion = integer(min=0, default={latestSchemaVersion})
 		optionsEnum="ReviewRoutingMovesSystemCaretFlag", behaviorOfDefault="NEVER")
 	readByParagraph = boolean(default=false)
 	paragraphStartMarker = option("", " ", "¶", default="")
+	# Deprecated in 2026.2
 	wordWrap = boolean(default=true)
 	# 0: Off, 1: Word Boundaries, 2: Hyphenate
 	textWrap = integer(0, 2, default=2)

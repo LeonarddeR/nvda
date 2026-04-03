@@ -20,6 +20,7 @@ from configobj import ConfigObj
 from logHandler import log
 
 from config.configFlags import (
+	BrailleTextWrap,
 	NVDAKey,
 	OutputMode,
 	ReportCellBorders,
@@ -662,3 +663,29 @@ def upgradeConfigFrom_20_to_21(profile: ConfigObj):
 		speechConf["sapi5_32"] = sapi5Conf
 		del speechConf["sapi5"]
 		log.debug("Moved old sapi5 configuration values to sapi5_32")
+
+
+def upgradeConfigFrom_21_to_22(profile: ConfigObj) -> None:
+	"""
+	If the wordWrap braille config flag is explicitly set in a profile,
+	set the new text wrap option to word boundaries,
+	rather than the new hyphenate default.
+	"""
+	section = "braille"
+	key = "wordWrap"
+	newKey = "textWrap"
+	try:
+		oldValue: bool = profile[section].as_bool(key)
+	except KeyError:
+		log.debug(f"'{key}' not present in config, no action taken.")
+		return
+	except ValueError:
+		log.error(f"'{key}' is not a boolean, got {profile[section][key]!r}. No action taken.")
+		return
+
+	newValue = BrailleTextWrap.WORD_BOUNDARIES.value if oldValue else BrailleTextWrap.OFF.value
+	profile[section][newKey] = newValue
+	log.debug(
+		f"Converted '{key}' with value {oldValue} to '{newKey}' with value {newValue}"
+		f" ({BrailleTextWrap(newValue).name}).",
+	)
