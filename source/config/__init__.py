@@ -12,7 +12,7 @@ For the latter two actions, one can perform actions prior to and/or after they t
 
 from collections.abc import Collection
 from enum import Enum
-from ..addonAPIVersion import BACK_COMPAT_TO
+from addonAPIVersion import BACK_COMPAT_TO
 import globalVars
 import winreg
 import os

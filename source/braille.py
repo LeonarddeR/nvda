@@ -34,6 +34,7 @@ import ctypes.wintypes
 import threading
 import time
 import wx
+import languageHandler
 import louisHelper
 import louis
 import gui
@@ -559,6 +560,11 @@ class Region(object):
 		#: The end of the selection in L{rawText} (exclusive), C{None} if there is no selection in this region.
 		#: @type: int
 		self.selectionEnd = None
+		#: Language indexes in L{rawText}.
+		#: The last language is assumed to be the final language in the region.
+		self._languageIndexes: dict[int:str] = {
+			0: louisHelper.getTableLanguage(handler.table.fileName) or languageHandler.getLanguage(),
+		}
 		#: The translated braille representation of this region.
 		#: @type: [int, ...]
 		self.brailleCells = []
@@ -1385,12 +1391,24 @@ class TextInfoRegion(Region):
 			typeform |= louis.underline
 		return typeform
 
-	def _addFieldText(self, text, contentPos, separate=True):
+	def _addFieldText(
+		self,
+		text: str,
+		contentPos: int,
+		separate: bool = True,
+	):
 		if separate and self.rawText:
 			# Separate this field text from the rest of the text.
 			text = TEXT_SEPARATOR + text
-		self.rawText += text
 		textLen = len(text)
+		# Fields are reported in NVDA's language
+		fieldLanguage = languageHandler.getLanguage()
+		lastLanguage = self._languageIndexes[max(self._languageIndexes.keys())]
+		if fieldLanguage != lastLanguage:
+			self._languageIndexes[len(self.rawText)] = fieldLanguage
+			# Restore to the previous language
+			self._languageIndexes[len(self.rawText) + textLen] = lastLanguage
+		self.rawText += text
 		self.rawTextTypeforms.extend((louis.plain_text,) * textLen)
 		self._rawToContentPos.extend((contentPos,) * textLen)
 
@@ -1443,16 +1461,20 @@ class TextInfoRegion(Region):
 				field = command.field
 				if cmd == "formatChange":
 					typeform = self._getTypeformFromFormatField(field, formatConfig)
+					language = field.get("language")
 					text = getFormatFieldBraille(
 						field,
 						formatFieldAttributesCache,
 						self._isFormatFieldAtStart,
 						formatConfig,
 					)
+					if text:
+						# Map this field text to the start of the field's content.
+						self._addFieldText(text, self._currentContentPos, language)
+					if language:
+						self._languageIndexes[len(self.rawText)] = language
 					if not text:
 						continue
-					# Map this field text to the start of the field's content.
-					self._addFieldText(text, self._currentContentPos)
 				elif cmd == "controlStart":
 					if self._skipFieldsNotAtStartOfNode and not field.get("_startOfNode"):
 						text = None
