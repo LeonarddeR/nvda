@@ -12,6 +12,7 @@ For the latter two actions, one can perform actions prior to and/or after they t
 
 from collections.abc import Collection
 from enum import Enum
+from ..addonAPIVersion import BACK_COMPAT_TO
 import globalVars
 import winreg
 import os
@@ -37,6 +38,7 @@ import extensionPoints
 from . import profileUpgrader
 from . import aggregatedSection
 from .configSpec import confspec
+from .configFlags import BrailleTextWrap
 from .featureFlag import (
 	_transformSpec_AddFeatureFlagDefault,
 	_validateConfig_featureFlag,
@@ -1285,14 +1287,14 @@ class AggregatedSection:
 
 		# Alias old config items to their new counterparts for backwards compatibility.
 		# Uncomment when there are new links that need to be made.
-		# if BACK_COMPAT_TO < (2027, 1, 0) and NVDAState._allowDeprecatedAPI():
-		# self._linkDeprecatedValues(key, val)
+		if BACK_COMPAT_TO < (2027, 1, 0) and NVDAState._allowDeprecatedAPI():
+			self._linkDeprecatedValues(key, val)
 
 	def _linkDeprecatedValues(self, key: aggregatedSection._cacheKeyT, val: aggregatedSection._cacheValueT):
 		"""Link deprecated config keys and values to their replacements.
 
-		:arg key: The configuration key to link to its new or old counterpart.
-		:arg val: The value associated with the configuration key.
+		:param key: The configuration key to link to its new or old counterpart.
+		:param val: The value associated with the configuration key.
 
 		Example of how to link values:
 
@@ -1314,6 +1316,25 @@ class AggregatedSection:
 		>>> ...
 		"""
 		match self.path:
+			case "braille":
+				match key:
+					case "wordWrap":
+						# The "wordWrap" setting was renamed to "textWrap" and became an enum.
+						log.warning(
+							"braille.wordWrap is deprecated. Use braille.textWrap instead.",
+							stack_info=True,
+						)
+						key = "textWrap"
+						val = BrailleTextWrap.WORD_BOUNDARIES if val else BrailleTextWrap.OFF
+					case "textWrap":
+						# The "textWrap" setting was added in place of "wordWrap" and became an enum.
+						key = "wordWrap"
+						val = val != BrailleTextWrap.OFF
+
+					case _:
+						# We don't care about other keys in this section.
+						return
+
 			case _:
 				# We don't care about other sections.
 				return
