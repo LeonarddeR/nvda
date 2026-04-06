@@ -63,6 +63,7 @@ import wx.lib.newevent
 from addonStore.models.channel import UpdateChannel
 from config.configFlags import (
 	AddonsAutomaticUpdate,
+	BrailleTextWrap,
 	NVDAKey,
 	OutputMode,
 	ParagraphStartMarker,
@@ -5475,10 +5476,16 @@ class BrailleSettingsSubPanel(AutoSettingsMixin, SettingsPanel):
 
 		# Translators: The label for a setting in braille settings to enable word wrap
 		# (try to avoid splitting words at the end of the braille display).
-		wordWrapText = _("Avoid splitting &words when possible")
-		self.wordWrapCheckBox = sHelper.addItem(wx.CheckBox(self, label=wordWrapText))
-		self.bindHelpEvent("BrailleSettingsWordWrap", self.wordWrapCheckBox)
-		self.wordWrapCheckBox.Value = config.conf["braille"]["wordWrap"]
+		textWrapText = _("Text &wrap")
+		self.textWrapComboBox = sHelper.addLabeledControl(
+			textWrapText,
+			wx.Choice,
+			choices=[option.displayString for option in BrailleTextWrap],
+		)
+		self.bindHelpEvent("BrailleSettingsTextWrap", self.textWrapComboBox)
+		self.textWrapComboBox.SetSelection(
+			[option.value for option in BrailleTextWrap].index(config.conf["braille"]["textWrap"]),
+		)
 
 		self.unicodeNormalizationCombo: nvdaControls.FeatureFlagCombo = sHelper.addLabeledControl(
 			labelText=_(
@@ -5544,7 +5551,9 @@ class BrailleSettingsSubPanel(AutoSettingsMixin, SettingsPanel):
 		]
 		config.conf["braille"]["speakOnRouting"] = self.speakOnRoutingCheckBox.Value
 		config.conf["braille"]["speakOnNavigatingByUnit"] = self.speakOnNavigatingCheckBox.Value
-		config.conf["braille"]["wordWrap"] = self.wordWrapCheckBox.Value
+		config.conf["braille"]["textWrap"] = [option.value for option in BrailleTextWrap][
+			self.textWrapComboBox.GetSelection()
+		]
 		self.unicodeNormalizationCombo.saveCurrentValueToConf()
 		config.conf["braille"]["focusContextPresentation"] = self.focusContextPresentationValues[
 			self.focusContextPresentationList.GetSelection()

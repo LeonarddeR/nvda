@@ -1329,7 +1329,7 @@ class AggregatedSection:
 					case "textWrap":
 						# The "textWrap" setting was added in place of "wordWrap" and became an enum.
 						key = "wordWrap"
-						val = val != BrailleTextWrap.OFF.value
+						val = val in (BrailleTextWrap.WORD_BOUNDARIES.value, BrailleTextWrap.HYPHENATE.value)
 
 					case _:
 						# We don't care about other keys in this section.

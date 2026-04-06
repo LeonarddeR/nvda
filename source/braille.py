@@ -4,6 +4,7 @@
 # Copyright (C) 2008-2025 NV Access Limited, Joseph Lee, Babbage B.V., Davy Kager, Bram Duvigneau,
 # Leonard de Ruijter, Burman's Computer and Education Ltd., Julien Cochuyt
 
+import bisect
 from enum import StrEnum
 import itertools
 import typing
@@ -39,6 +40,8 @@ import louisHelper
 import louis
 import gui
 from controlTypes.state import State
+import textUtils
+import textUtils.hyphenation
 import winBindings.kernel32
 import winKernel
 import keyboardHandler
@@ -46,6 +49,7 @@ import baseObject
 import config
 import easeOfAccess
 from config.configFlags import (
+	BrailleTextWrap,
 	ShowMessages,
 	TetherTo,
 	BrailleMode,
@@ -327,6 +331,7 @@ CURSOR_SHAPES = (
 	(0xFF, _("All dots")),
 )
 SELECTION_SHAPE = 0xC0  #: Dots 7 and 8
+CONTINUATION_SHAPE = 0xC0  #: Dots 7 and 8
 
 END_OF_BRAILLE_OUTPUT_SHAPE = 0xFF  # All dots
 """
@@ -562,9 +567,7 @@ class Region(object):
 		self.selectionEnd = None
 		#: Language indexes in L{rawText}.
 		#: The last language is assumed to be the final language in the region.
-		self._languageIndexes: dict[int:str] = {
-			0: louisHelper.getTableLanguage(handler.table.fileName) or languageHandler.getLanguage(),
-		}
+		self._languageIndexes: dict[int:str] = {0: self._getDefaultRegionLanguage()}
 		#: The translated braille representation of this region.
 		#: @type: [int, ...]
 		self.brailleCells = []
@@ -592,6 +595,16 @@ class Region(object):
 		#: Whether this region should be positioned at the absolute left of the display when focused.
 		#: @type: bool
 		self.focusToHardLeft = False
+
+	def _getDefaultRegionLanguage(self) -> str:
+		"""Get the default language for a region."""
+		return louisHelper.getTableLanguage(handler.table.fileName) or languageHandler.getLanguage()
+
+	def _getLanguageAtPos(self, pos: int) -> str:
+		"""Get the language at a given position in L{rawText} based on L{_languageIndexes}."""
+		keys = sorted(self._languageIndexes)
+		i = bisect.bisect_right(keys, pos) - 1
+		return self._languageIndexes[keys[i]]
 
 	def update(self):
 		"""Update this region.
@@ -1403,11 +1416,12 @@ class TextInfoRegion(Region):
 		textLen = len(text)
 		# Fields are reported in NVDA's language
 		fieldLanguage = languageHandler.getLanguage()
-		lastLanguage = self._languageIndexes[max(self._languageIndexes.keys())]
+		rawTextLen = len(self.rawText)
+		lastLanguage = self._getLanguageAtPos(rawTextLen)
 		if fieldLanguage != lastLanguage:
-			self._languageIndexes[len(self.rawText)] = fieldLanguage
+			self._languageIndexes[rawTextLen] = fieldLanguage
 			# Restore to the previous language
-			self._languageIndexes[len(self.rawText) + textLen] = lastLanguage
+			self._languageIndexes[rawTextLen + textLen] = lastLanguage
 		self.rawText += text
 		self.rawTextTypeforms.extend((louis.plain_text,) * textLen)
 		self._rawToContentPos.extend((contentPos,) * textLen)
@@ -1470,9 +1484,10 @@ class TextInfoRegion(Region):
 					)
 					if text:
 						# Map this field text to the start of the field's content.
-						self._addFieldText(text, self._currentContentPos, language)
-					if language:
-						self._languageIndexes[len(self.rawText)] = language
+						self._addFieldText(text, self._currentContentPos)
+					rawTextLen = len(self.rawText)
+					if language and self._getLanguageAtPos(rawTextLen) != language:
+						self._languageIndexes[rawTextLen] = language
 					if not text:
 						continue
 				elif cmd == "controlStart":
@@ -1542,6 +1557,7 @@ class TextInfoRegion(Region):
 		self.rawText = ""
 		self.rawTextTypeforms = []
 		self.cursorPos = None
+		self._languageIndexes: dict[int:str] = {0: self._getDefaultRegionLanguage()}
 		# The output includes text representing fields which isn't part of the real content in the control.
 		# Therefore, maintain a map of positions in the output to positions in the content.
 		self._rawToContentPos = []
@@ -1834,10 +1850,12 @@ def rindex(seq, item, start, end):
 
 
 class BrailleBuffer(baseObject.AutoPropertyObject):
+	handler: "BrailleHandler"
+	regions: list[Region]
+	"""The regions in this buffer."""
+
 	def __init__(self, handler):
 		self.handler = handler
-		#: The regions in this buffer.
-		#: @type: [L{Region}, ...]
 		self.regions = []
 		#: The raw text of the entire buffer.
 		self.rawText = ""
@@ -1853,6 +1871,8 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 		each item being a tuple of start and end braille buffer offsets.
 		Splitting the window into independent rows allows for optional avoidance of splitting words across rows.
 		"""
+		self._continuationRows: list[int] = []
+		"""A list of row indexes which should contain a continuation indicator at the end."""
 
 	def clear(self):
 		"""Clear the entire buffer.
@@ -1881,21 +1901,21 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 			yield RegionWithPositions(region, start, end)
 			start = end
 
-	def _get_rawToBraillePos(self):
-		"""@return: a list mapping positions in L{rawText} to positions in L{brailleCells} for the entire buffer.
-		@rtype: [int, ...]
-		"""
+	rawToBraillePos: list[int]
+	"""Type definition for auto prop '_get_rawToBraillePos'"""
+
+	def _get_rawToBraillePos(self) -> list[int]:
+		""":return: a list mapping positions in L{rawText} to positions in L{brailleCells} for the entire buffer."""
 		rawToBraillePos = []
 		for region, regionStart, regionEnd in self.regionsWithPositions:
 			rawToBraillePos.extend(p + regionStart for p in region.rawToBraillePos)
 		return rawToBraillePos
 
-	brailleToRawPos: List[int]
+	brailleToRawPos: list[int]
+	"""Type definition for auto prop '_get_brailleToRawPos'"""
 
-	def _get_brailleToRawPos(self):
-		"""@return: a list mapping positions in L{brailleCells} to positions in L{rawText} for the entire buffer.
-		@rtype: [int, ...]
-		"""
+	def _get_brailleToRawPos(self) -> list[int]:
+		""":return: a list mapping positions in L{brailleCells} to positions in L{rawText} for the entire buffer."""
 		brailleToRawPos = []
 		start = 0
 		for region in self.visibleRegions:
@@ -1903,13 +1923,31 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 			start += len(region.rawText)
 		return brailleToRawPos
 
-	def bufferPosToRegionPos(self, bufferPos):
+	def bufferPosToRegionPos(self, bufferPos: int) -> tuple[Region, int]:
+		"""Converts a position relative to the braille buffer to a position relative to the region it is in.
+		:param bufferPos: The position relative to the braille buffer.
+		:return: A tuple of the region and the position relative to that region.
+		"""
 		for region, start, end in self.regionsWithPositions:
 			if end > bufferPos:
 				return region, bufferPos - start
 		raise LookupError("No such position")
 
-	def regionPosToBufferPos(self, region, pos, allowNearest=False):
+	def _getLanguageAtBufferPos(self, pos: int) -> str:
+		"""Gets the language at the given position in the braille buffer.
+		:param pos: The position in the braille buffer.
+		:return: The language at the given position.
+		"""
+		region, regionPos = self.bufferPosToRegionPos(pos)
+		return region._getLanguageAtPos(regionPos)
+
+	def regionPosToBufferPos(self, region: Region, pos: int, allowNearest: bool = False) -> int:
+		"""Converts a position relative to a region to a position relative to the braille buffer.
+		:param region: The region the position is relative to.
+		:param pos: The position relative to the region.
+		:param allowNearest: If True, if the position is outside the region, return the nearest position within the region. If False, raise LookupError if the position is outside the region.
+		:return: The position relative to the braille buffer.
+		"""
 		start: int = 0
 		for testRegion, start, end in self.regionsWithPositions:
 			if region == testRegion:
@@ -1926,7 +1964,13 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 			return start
 		raise LookupError("No such position")
 
-	def bufferPositionsToRawText(self, startPos, endPos):
+	def bufferPositionsToRawText(self, startPos: int, endPos: int) -> str:
+		"""
+		Converts a range of positions in the braille buffer to the corresponding raw text.
+		:param startPos: The start position in the braille buffer.
+		:param endPos: The end position in the braille buffer.
+		:return: The corresponding raw text.
+		"""
 		brailleToRawPos = self.brailleToRawPos
 		if not brailleToRawPos or not self.rawText:
 			# if either are empty, just return an empty string.
@@ -1948,6 +1992,11 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 			return ""
 
 	def bufferPosToWindowPos(self, bufferPos: int) -> int:
+		"""
+		Converts a position relative to the braille buffer to a position relative to the braille window.
+		:param bufferPos: The position relative to the braille buffer.
+		:return: The position relative to the braille window.
+		"""
 		for row, (start, end) in enumerate(self._windowRowBufferOffsets):
 			if start <= bufferPos < end:
 				return row * self.handler.displayDimensions.numCols + (bufferPos - start)
@@ -1983,27 +2032,51 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 		:param pos: The start position of the braille window.
 		"""
 		self._windowRowBufferOffsets.clear()
+		self._continuationRows.clear()
 		if len(self.brailleCells) == 0:
 			# Initialising with no actual braille content.
 			self._windowRowBufferOffsets = [(0, 0)]
 			return
-		doWordWrap = config.conf["braille"]["wordWrap"]
+		textWrap = BrailleTextWrap(config.conf["braille"]["textWrap"])
 		bufferEnd = len(self.brailleCells)
 		start = pos
 		clippedEnd = False
 		for row in range(self.handler.displayDimensions.numRows):
+			showContinuationMark = False
 			end = start + self.handler.displayDimensions.numCols
 			if end > bufferEnd:
 				end = bufferEnd
 				clippedEnd = True
-			elif doWordWrap:
+			elif textWrap == BrailleTextWrap.CONTINUATION_ONLY and all(self.brailleCells[end - 1 : end + 1]):
+				end -= 1
+				showContinuationMark = True
+			elif textWrap in (BrailleTextWrap.WORD_BOUNDARIES, BrailleTextWrap.HYPHENATE):
 				try:
 					lastSpaceIndex = rindex(self.brailleCells, 0, start, end + 1)
 					if lastSpaceIndex < end:
 						# The next braille window doesn't start with space.
+						oldEnd = end
 						end = rindex(self.brailleCells, 0, start, end) + 1
+						if end < oldEnd and textWrap == BrailleTextWrap.HYPHENATE:
+							# When hyphenating, we want to split the word after the last space.
+							# Note that, when the below index call fails, it is appropriately handled by the except block,
+							# which means that we won't hyphenate in this case.
+							nextSpace = self.brailleCells.index(0, oldEnd, bufferEnd)
+							word = self.bufferPositionsToRawText(end, nextSpace - 1)
+							if word:
+								language = self._getLanguageAtBufferPos(end)
+								rawPos = self.brailleToRawPos[end]
+								positions = textUtils.hyphenation.getHyphenPositions(word, language)
+								for posInWord in reversed(positions):
+									if (newEnd := self.rawToBraillePos[posInWord + rawPos]) < oldEnd:
+										# We can split the word at this position.
+										end = newEnd
+										showContinuationMark = True
+										break
 				except (ValueError, IndexError):
 					pass  # No space on line
+			if showContinuationMark:
+				self._continuationRows.append(len(self._windowRowBufferOffsets))
 			self._windowRowBufferOffsets.append((start, end))
 			if clippedEnd:
 				break
@@ -2043,7 +2116,10 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 		if startPos <= restrictPos:
 			self.windowStartPos = restrictPos
 			return
-		if not config.conf["braille"]["wordWrap"]:
+		if config.conf["braille"]["textWrap"] in (
+			BrailleTextWrap.OFF.value,
+			BrailleTextWrap.CONTINUATION_ONLY.value,
+		):
 			self.windowStartPos = startPos
 			return
 		try:
@@ -2165,9 +2241,12 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 
 	def _get_windowBrailleCells(self) -> list[int]:
 		windowCells = []
-		for start, end in self._windowRowBufferOffsets:
+		for row, (start, end) in enumerate(self._windowRowBufferOffsets):
 			rowCells = self.brailleCells[start:end]
 			remaining = self.handler.displayDimensions.numCols - len(rowCells)
+			if remaining > 0 and row in self._continuationRows:
+				rowCells.append(CONTINUATION_SHAPE)
+				remaining -= 1
 			if remaining > 0:
 				rowCells.extend([0] * remaining)
 			windowCells.extend(rowCells)

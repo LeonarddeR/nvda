@@ -475,14 +475,20 @@ class BrailleTextWrap(DisplayStringIntEnum):
 	"""
 
 	OFF = 0
-	WORD_BOUNDARIES = 1
-	HYPHENATE = 2
+	CONTINUATION_ONLY = 1
+	WORD_BOUNDARIES = 2
+	HYPHENATE = 3
 
 	@property
 	def _displayStringLabels(self):
 		return {
 			# Translators: A choice in a combo box in the braille settings panel to configure text wrapping.
 			BrailleTextWrap.OFF: pgettext("braille text wrap setting", "Off"),
+			BrailleTextWrap.CONTINUATION_ONLY: pgettext(
+				"braille text wrap setting",
+				# Translators: A choice in a combo box in the braille settings panel to configure text wrapping.
+				"Show continuation mark only",
+			),
 			# Translators: A choice in a combo box in the braille settings panel to configure word wrap.
 			BrailleTextWrap.WORD_BOUNDARIES: pgettext("braille text wrap setting", "At word boundaries"),
 			# Translators: A choice in a combo box in the braille settings panel to configure word wrap.
