@@ -17,7 +17,7 @@ def _pyphenFactory(lang: str) -> Pyphen:
 	elif "_" in lang and "_" not in pyphenLang:
 		raise LookupError(
 			f"Pyphen resolved {lang!r} to {pyphenLang:r} but the original locale contains a region subtag. "
-			"Fallbacks should be handled by LocaleDataMap instead"
+			"Fallbacks should be handled by LocaleDataMap instead",
 		)
 	return Pyphen(lang=pyphenLang)
 
