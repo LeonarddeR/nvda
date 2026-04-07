@@ -2570,15 +2570,17 @@ The following options are available:
 * Off: Text is not wrapped.
 As much of the text as possible will be displayed, but the rest will be cut off.
 When you scroll the display, you will be able to read the rest of the text.
-* Show continuation mark only: A continuation mark (default `...`) will be shown at the end of the braille display to indicate that the text continues, but words will not be split.
-When you scroll the display, you will be able to read the entire word.
+* Show continuation mark only: A continuation mark (dots 7 and 8) will be shown at the end of the braille display to indicate that a word continues.
+When you scroll the display, you will be able to read the rest of the word.
+* Break words with hyphen: Words that do not fit at the end of the braille display will be broken with a continuation mark (dots 7 and 8).
+When you scroll the display, you will be able to read the rest of the word.
+This behavior is equal to how common word processors behave and takes  the language of the word into account, if known.
+For example, the word `behave` will be broken between `be` and `have`.
 * At word boundaries: A word which is too large to fit at the end of the braille display will not be split.
 Instead, there will be some blank space at the end of the display.
 When you scroll the display, you will be able to read the entire word.
 Note that if the word is too large to fit on the display even by itself, the word must still be split.
 This option may allow for more fluent reading, but generally requires you to scroll the display more.
-* Break words with hyphen: Words that do not fit at the end of the braille display will be broken with a hyphen.
-When you scroll the display, you will be able to read the rest of the word.
 
 ##### Unicode normalization {#BrailleUnicodeNormalization}
 
