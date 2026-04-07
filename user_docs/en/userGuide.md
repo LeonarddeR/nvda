@@ -2562,18 +2562,23 @@ Enabling this option will cause NVDA to speak lines or paragraphs reached using 
 
 To toggle this option from anywhere, please assign a custom gesture to "speakOnNavigatingByUnit" in the "Braille" section of the [Input Gestures dialog](#InputGestures).
 
-##### Avoid splitting words when possible {#BrailleSettingsWordWrap}
+##### Text wrap {#BrailleSettingsTextWrap}
 
-If this is enabled, a word which is too large to fit at the end of the braille display will not be split.
+This combo box allows you to configure how NVDA handles text that is too long to fit on the braille display.
+The following options are available:
+
+* Off: Text is not wrapped.
+As much of the text as possible will be displayed, but the rest will be cut off.
+When you scroll the display, you will be able to read the rest of the text.
+* Show continuation mark only: A continuation mark (default `...`) will be shown at the end of the braille display to indicate that the text continues, but words will not be split.
+When you scroll the display, you will be able to read the entire word.
+* At word boundaries: A word which is too large to fit at the end of the braille display will not be split.
 Instead, there will be some blank space at the end of the display.
 When you scroll the display, you will be able to read the entire word.
-This is sometimes called "word wrap".
 Note that if the word is too large to fit on the display even by itself, the word must still be split.
-
-If this is disabled, as much of the word as possible will be displayed, but the rest will be cut off.
-When you scroll the display, you will then be able to read the rest of the word.
-
-Enabling this may allow for more fluent reading, but generally requires you to scroll the display more.
+This option may allow for more fluent reading, but generally requires you to scroll the display more.
+* Break words with hyphen: Words that do not fit at the end of the braille display will be broken with a hyphen.
+When you scroll the display, you will be able to read the rest of the word.
 
 ##### Unicode normalization {#BrailleUnicodeNormalization}
 
