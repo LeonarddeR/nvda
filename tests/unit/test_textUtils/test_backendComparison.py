@@ -12,11 +12,12 @@ when the ICU library is not present on the system.
 
 import unittest
 
-from textInfos.offsets import Offsets, TextBoundaryBackend
+from textInfos.offsets import Offsets
+from textUtils import TextBoundaryBackend
 from winBindings.icu import ICU_AVAILABLE
 from textUtils.icu import splitAtCharacterBoundaries as icu_splitChars
 from textUtils.uniscribe import splitAtCharacterBoundaries as uniscribe_splitChars
-from .textProvider import BasicTextInfo, BasicTextProvider
+from ..textProvider import BasicTextInfo, BasicTextProvider
 
 
 skipIfNoICU = unittest.skipUnless(ICU_AVAILABLE, "ICU library not available on this system")

@@ -17,16 +17,32 @@ from typing import Generator, Optional, Tuple, Type
 
 from logHandler import log
 
+from .types import TextBoundaryBackend
 
-def splitAtCharacterBoundaries(text: str, language: str | None = None) -> Generator[str, None, None]:
-	"""Split text into user-perceived characters (grapheme clusters) using Uniscribe.
+
+def splitAtCharacterBoundaries(
+	text: str,
+	language: str | None = None,
+	backend: TextBoundaryBackend = TextBoundaryBackend.UNISCRIBE,
+) -> Generator[str, None, None]:
+	"""Split text into user-perceived characters (grapheme clusters).
 
 	@param text: The text to split.
-	@param language: Ignored; accepted for API compatibility with the ICU variant.
+	@param language: NVDA language code for locale-aware segmentation.
+		Only used when backend is ICU; ignored otherwise.
+	@param backend: Which backend to use. Defaults to UNISCRIBE.
 	"""
-	from .uniscribe import splitAtCharacterBoundaries as _uniscribeSplit
+	match backend:
+		case TextBoundaryBackend.ICU:
+			from .icu import splitAtCharacterBoundaries as _split
 
-	yield from _uniscribeSplit(text)
+			yield from _split(text, language)
+		case TextBoundaryBackend.UNISCRIBE:
+			from .uniscribe import splitAtCharacterBoundaries as _split
+
+			yield from _split(text)
+		case TextBoundaryBackend.NATIVE:
+			yield from text
 
 
 WCHAR_ENCODING = "utf_16_le"

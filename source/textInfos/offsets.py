@@ -7,7 +7,6 @@ from abc import abstractmethod
 import re
 import ctypes
 import unicodedata
-from enum import Enum
 import NVDAHelper
 import NVDAState
 import config
@@ -15,6 +14,7 @@ import textInfos
 import locationHelper
 from treeInterceptorHandler import TreeInterceptor
 import textUtils
+from textUtils.types import TextBoundaryBackend
 from dataclasses import dataclass
 from typing import (
 	Optional,
@@ -135,30 +135,6 @@ def findEndOfWord(text, offset, lineLength=None):
 	while offset < len(text) and text[offset].isspace():
 		offset += 1
 	return offset
-
-
-class TextBoundaryBackend(Enum):
-	"""Backend used by L{OffsetsTextInfo} to calculate character and word boundaries.
-
-	Set L{OffsetsTextInfo.textBoundaryBackend} on a subclass to choose the backend.
-	The default is L{UNISCRIBE}. Set to L{ICU} to opt in to Unicode Standard Annex #29
-	compliant segmentation with locale-aware dictionary breaking.
-	"""
-
-	UNISCRIBE = "uniscribe"
-	"""Use the Windows Uniscribe library via NVDAHelper (usp10 / ScriptBreak). Default backend."""
-
-	ICU = "icu"
-	"""Use the Windows ICU library (icu.dll / icuuc.dll).
-	Provides Unicode Standard Annex #29 compliant segmentation with locale-aware
-	dictionary breaking for Thai, Lao, Khmer, and CJK scripts.
-	Available from Windows 10 version 1703. Falls back to UNISCRIBE automatically when unavailable.
-	"""
-
-	NATIVE = "native"
-	"""Pure-Python fallback using simple alphanumeric boundary detection.
-	Does not handle complex scripts or grapheme clusters.
-	"""
 
 
 class OffsetsTextInfo(textInfos.TextInfo):
@@ -383,15 +359,12 @@ class OffsetsTextInfo(textInfos.TextInfo):
 		@param offset: Story offset in the TextInfo's internal encoding.
 		@return: NVDA language code (e.g. "en", "ru_RU") or None.
 		"""
-		try:
-			formatField, _ = self._getFormatFieldAndOffsets(
-				offset,
-				config.conf["documentFormatting"],
-				calculateOffsets=False,
-			)
-			return formatField.get("language")
-		except (NotImplementedError, LookupError):
-			return None
+		formatField, _ = self._getFormatFieldAndOffsets(
+			offset,
+			config.conf["documentFormatting"],
+			calculateOffsets=False,
+		)
+		return formatField.get("language")
 
 	def _calculateBoundaryOffsets(
 		self,
@@ -399,12 +372,12 @@ class OffsetsTextInfo(textInfos.TextInfo):
 		unit: str,
 		relOffset: int,
 		language: str | None = None,
-	) -> Optional[Tuple[int, int]]:
+	) -> Tuple[int, int]:
 		"""Calculate the bounds of a unit at a relative offset within a line of text.
 
-		Dispatches to the Uniscribe, ICU, or native backend depending on
-		L{textBoundaryBackend}. When the ICU backend is selected but the ICU library
-		is unavailable (Windows < 1703), Uniscribe is used automatically.
+		Dispatches to ICU, Uniscribe, or native backend in order. Always returns a result.
+		When ICU is selected but unavailable, falls back to Uniscribe.
+		When Uniscribe fails, falls back to native pure-Python detection.
 
 		Offsets are always in the internal encoding of the TextInfo (typically UTF-16).
 		When L{encoding} is not UTF-16, relOffset is converted to UTF-16 before the
@@ -414,7 +387,7 @@ class OffsetsTextInfo(textInfos.TextInfo):
 		@param unit: L{textInfos.UNIT_CHARACTER} or L{textInfos.UNIT_WORD}.
 		@param relOffset: Offset within lineText in the TextInfo's internal encoding.
 		@param language: NVDA language code for locale-aware ICU segmentation, or None.
-		@return: (relStart, relEnd) in the TextInfo's internal encoding, or None on failure.
+		@return: (relStart, relEnd) in the TextInfo's internal encoding.
 		"""
 		if unit not in (textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD):
 			raise NotImplementedError(f"Unit: {unit}")
@@ -460,7 +433,15 @@ class OffsetsTextInfo(textInfos.TextInfo):
 				log.debugWarning(f"Uniscribe failed to calculate {unit} offsets for text {lineText!r}")
 
 		if result is None:
-			return None
+			# Native fallback: pure-Python alphanumeric boundary detection.
+			if unit is textInfos.UNIT_CHARACTER:
+				relStrStart, relStrEnd = offsetConverter.encodedToStrOffsets(wideRelOffset, wideRelOffset + 1)
+				result = offsetConverter.strToEncodedOffsets(relStrStart, relStrEnd)
+			else:
+				relStrOffset = offsetConverter.encodedToStrOffsets(wideRelOffset, wideRelOffset)[0]
+				relStrStart = findStartOfWord(lineText, relStrOffset)
+				relStrEnd = findEndOfWord(lineText, relStrOffset)
+				result = offsetConverter.strToEncodedOffsets(relStrStart, relStrEnd)
 
 		relStart, relEnd = result
 		# Convert the wide-string result back to the TextInfo's internal encoding.
@@ -479,17 +460,19 @@ class OffsetsTextInfo(textInfos.TextInfo):
 		lineStart, lineEnd = self._getLineOffsets(offset)
 		lineText = self._getTextRange(lineStart, lineEnd)
 		relOffset = offset - lineStart
-		if self.textBoundaryBackend is not TextBoundaryBackend.NATIVE:
-			language = self._getLanguageForOffset(offset)
-			offsets = self._calculateBoundaryOffsets(lineText, textInfos.UNIT_CHARACTER, relOffset, language)
-			if offsets is not None:
-				return (offsets[0] + lineStart, offsets[1] + lineStart)
-		if self.encoding == textUtils.WCHAR_ENCODING:
-			offsetConverter = textUtils.WideStringOffsetConverter(lineText)
-			relStrStart, relStrEnd = offsetConverter.encodedToStrOffsets(relOffset, relOffset + 1)
-			relWideStringStart, relWideStringEnd = offsetConverter.strToEncodedOffsets(relStrStart, relStrEnd)
-			return (relWideStringStart + lineStart, relWideStringEnd + lineStart)
-		return (offset, offset + 1)
+		language = None
+		if self.textBoundaryBackend is TextBoundaryBackend.ICU:
+			try:
+				language = self._getLanguageForOffset(offset)
+			except (NotImplementedError, LookupError):
+				pass
+		relStart, relEnd = self._calculateBoundaryOffsets(
+			lineText,
+			textInfos.UNIT_CHARACTER,
+			relOffset,
+			language,
+		)
+		return (relStart + lineStart, relEnd + lineStart)
 
 	def _getWordOffsets(self, offset):
 		if not (
@@ -504,22 +487,14 @@ class OffsetsTextInfo(textInfos.TextInfo):
 		# Convert NULL and non-breaking space to space so words break on them.
 		lineText = lineText.translate({0: " ", 0xA0: " "})
 		relOffset = offset - lineStart
-		if self.textBoundaryBackend is not TextBoundaryBackend.NATIVE:
-			language = self._getLanguageForOffset(offset)
-			offsets = self._calculateBoundaryOffsets(lineText, textInfos.UNIT_WORD, relOffset, language)
-			if offsets is not None:
-				return (offsets[0] + lineStart, offsets[1] + lineStart)
-		# Native fallback: simple alphanumeric boundary detection.
-		if self.encoding == textUtils.WCHAR_ENCODING:
-			offsetConverter = textUtils.WideStringOffsetConverter(lineText)
-			relStrOffset = offsetConverter.encodedToStrOffsets(relOffset, relOffset)[0]
-			relStrStart = findStartOfWord(lineText, relStrOffset)
-			relStrEnd = findEndOfWord(lineText, relStrOffset)
-			relWideStringStart, relWideStringEnd = offsetConverter.strToEncodedOffsets(relStrStart, relStrEnd)
-			return (relWideStringStart + lineStart, relWideStringEnd + lineStart)
-		start = findStartOfWord(lineText, offset - lineStart) + lineStart
-		end = findEndOfWord(lineText, offset - lineStart) + lineStart
-		return [start, end]
+		language = None
+		if self.textBoundaryBackend is TextBoundaryBackend.ICU:
+			try:
+				language = self._getLanguageForOffset(offset)
+			except (NotImplementedError, LookupError):
+				pass
+		relStart, relEnd = self._calculateBoundaryOffsets(lineText, textInfos.UNIT_WORD, relOffset, language)
+		return (relStart + lineStart, relEnd + lineStart)
 
 	def _getLineNumFromOffset(self, offset):
 		return None

@@ -12,6 +12,7 @@ iterator handle and the buffer so neither is freed prematurely.
 """
 
 import ctypes
+import functools
 import threading
 from typing import Generator
 
@@ -19,11 +20,7 @@ import winBindings.icu as _icu
 from logHandler import log
 
 
-# Per-thread cache: maps (kind: int, locale: bytes) to (bi_handle: int, text_buffer: ctypes.Array).
-# The buffer must stay alive for as long as ICU references it (i.e. until the next setText call).
-_local = threading.local()
-
-
+@functools.lru_cache(maxsize=32)
 def _resolveLocale(language: str | None) -> bytes:
 	"""Convert an optional NVDA language code to a null-terminated ICU locale byte string.
 
@@ -33,43 +30,48 @@ def _resolveLocale(language: str | None) -> bytes:
 	return (language or "").encode("ascii", errors="ignore")
 
 
-def _getBreakIterator(kind: int, locale: bytes, text: str) -> int:
-	"""Return a cached BreakIterator handle bound to text, opening one if necessary.
+class _IteratorCache(threading.local):
+	"""Per-thread cache for ICU BreakIterator handles.
 
-	@param kind: One of the UBRK_* constants from winBindings.icu.
-	@param locale: ICU locale byte string (from _resolveLocale).
-	@param text: Python str to analyze. A ctypes unicode buffer is created and retained
-	    in the thread-local cache to prevent the buffer from being freed while ICU
-	    references it.
-	@return: Opaque iterator handle (int) suitable for passing to ubrk_* functions.
-	@raise RuntimeError: If ICU reports an error opening or rebinding the iterator.
+	Each thread gets its own iterator instances because ubrk_* functions
+	are not thread-safe.  Buffers are kept alive per (kind, locale) key
+	because ICU holds a pointer to the text rather than copying it.
 	"""
-	cache: dict = getattr(_local, "iterators", None)
-	if cache is None:
-		_local.iterators = cache = {}
 
-	key = (kind, locale)
-	entry: tuple[int, ctypes.Array] | None = cache.get(key)
+	def __init__(self):
+		self._handles: dict[tuple[int, bytes], int] = {}
+		self._buffers: dict[tuple[int, bytes], ctypes.Array] = {}
 
-	# A new buffer is always created so its lifetime is tied to this call scope.
-	# We store it in the cache to extend its lifetime past this function.
-	buf = ctypes.create_unicode_buffer(text)
-	textLength = len(buf) - 1  # exclude NUL terminator; equals UTF-16 code unit count
-	status = _icu.UErrorCode(0)
+	def get(self, kind: int, locale: bytes, text: str) -> int:
+		"""Return a BreakIterator bound to *text*, opening one if necessary.
 
-	if entry is None:
-		bi = _icu.ubrk_open(kind, locale, buf, textLength, ctypes.byref(status))
-		if _icu.U_FAILURE(status.value) or not bi:
-			raise RuntimeError(f"ubrk_open failed with status {status.value}")
-	else:
-		bi, _oldBuf = entry
-		_icu.ubrk_setText(bi, buf, textLength, ctypes.byref(status))
-		if _icu.U_FAILURE(status.value):
-			raise RuntimeError(f"ubrk_setText failed with status {status.value}")
+		@param kind: One of the UBRK_* constants from winBindings.icu.
+		@param locale: ICU locale byte string (from _resolveLocale).
+		@param text: Python str to analyze.
+		@return: Opaque iterator handle (int) suitable for passing to ubrk_* functions.
+		@raise RuntimeError: If ICU reports an error opening or rebinding the iterator.
+		"""
+		key = (kind, locale)
+		buf = ctypes.create_unicode_buffer(text)
+		textLength = len(buf) - 1
+		status = _icu.UErrorCode(0)
 
-	# Store updated (bi, buf) so buf stays alive while ICU holds the reference.
-	cache[key] = (bi, buf)
-	return bi
+		bi = self._handles.get(key)
+		if bi is None:
+			bi = _icu.ubrk_open(kind, locale, buf, textLength, ctypes.byref(status))
+			if _icu.U_FAILURE(status.value) or not bi:
+				raise RuntimeError(f"ubrk_open failed with status {status.value}")
+			self._handles[key] = bi
+		else:
+			_icu.ubrk_setText(bi, buf, textLength, ctypes.byref(status))
+			if _icu.U_FAILURE(status.value):
+				raise RuntimeError(f"ubrk_setText failed with status {status.value}")
+
+		self._buffers[key] = buf  # keep buf alive while ICU references it
+		return bi
+
+
+_iteratorCache = _IteratorCache()
 
 
 def splitAtCharacterBoundaries(
@@ -82,14 +84,14 @@ def splitAtCharacterBoundaries(
 	multi-codepoint grapheme clusters, with locale-aware behaviour where relevant.
 
 	@param text: The text to split.
-	@param language: Optional NVDA language code (e.g. "en", "ru_RU"). Defaults to
-	    the current NVDA UI language via languageHandler.
+	@param language: Optional NVDA language code (e.g. "en", "ru_RU"). When None,
+	    ICU's root locale is used.
 	"""
 	if not text:
 		return
 	locale = _resolveLocale(language)
 	try:
-		bi = _getBreakIterator(_icu.UBRK_CHARACTER, locale, text)
+		bi = _iteratorCache.get(_icu.UBRK_CHARACTER, locale, text)
 	except RuntimeError:
 		log.debugWarning("ICU character break iterator failed", exc_info=True)
 		return
@@ -120,13 +122,12 @@ def calculateCharacterOffsets(
 	@return: (startOffset, endOffset) as UTF-16 code unit indices (endOffset exclusive),
 	    or None if the ICU call failed.
 	"""
-	buf = ctypes.create_unicode_buffer(text)
-	textLength = len(buf) - 1
+	textLength = len(text.encode("utf-16-le", errors="surrogatepass")) // 2
 	if offset >= textLength:
 		return (offset, offset + 1)
 	locale = _resolveLocale(language)
 	try:
-		bi = _getBreakIterator(_icu.UBRK_CHARACTER, locale, text)
+		bi = _iteratorCache.get(_icu.UBRK_CHARACTER, locale, text)
 	except RuntimeError:
 		log.debugWarning("ICU character break iterator failed", exc_info=True)
 		return None
@@ -161,13 +162,12 @@ def calculateWordOffsets(
 	@return: (startOffset, endOffset) as UTF-16 code unit indices (endOffset exclusive),
 	    or None if the ICU call failed.
 	"""
-	buf = ctypes.create_unicode_buffer(text)
-	textLength = len(buf) - 1
+	textLength = len(text.encode("utf-16-le", errors="surrogatepass")) // 2
 	if offset >= textLength:
 		return (offset, offset + 1)
 	locale = _resolveLocale(language)
 	try:
-		bi = _getBreakIterator(_icu.UBRK_WORD, locale, text)
+		bi = _iteratorCache.get(_icu.UBRK_WORD, locale, text)
 	except RuntimeError:
 		log.debugWarning("ICU word break iterator failed", exc_info=True)
 		return None

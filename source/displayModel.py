@@ -16,7 +16,8 @@ from winAPI.winUser.constants import SysColorIndex
 import mouseHandler
 import NVDAHelper
 import textInfos
-from textInfos.offsets import OffsetsTextInfo, TextBoundaryBackend
+from textInfos.offsets import OffsetsTextInfo
+from textUtils import TextBoundaryBackend
 import watchdog
 from logHandler import log
 import windowUtils
