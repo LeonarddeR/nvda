@@ -25,7 +25,7 @@ import speechDictHandler
 import characterProcessing
 import languageHandler
 from textUtils import unicodeNormalize
-from textUtils.uniscribe import splitAtCharacterBoundaries
+from textUtils import splitAtCharacterBoundaries
 from . import manager, languageHandling
 from .extensions import speechCanceled, post_speechPaused, pre_speechCanceled, pre_speech
 from .extensions import filter_speechSequence

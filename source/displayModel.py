@@ -16,7 +16,7 @@ from winAPI.winUser.constants import SysColorIndex
 import mouseHandler
 import NVDAHelper
 import textInfos
-from textInfos.offsets import OffsetsTextInfo
+from textInfos.offsets import OffsetsTextInfo, TextBoundaryBackend
 import watchdog
 from logHandler import log
 import windowUtils
@@ -525,7 +525,7 @@ class DisplayModelTextInfo(OffsetsTextInfo):
 			return lineEndOffsets[-1]
 		return 0
 
-	useUniscribe = False
+	textBoundaryBackend = TextBoundaryBackend.NATIVE
 
 	def _getTextRange(self, start, end):
 		return "".join(x for x in self._getFieldsInRange(start, end) if isinstance(x, str))

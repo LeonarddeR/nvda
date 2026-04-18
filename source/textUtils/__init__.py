@@ -17,7 +17,17 @@ from typing import Generator, Optional, Tuple, Type
 
 from logHandler import log
 
-from .uniscribe import splitAtCharacterBoundaries
+
+def splitAtCharacterBoundaries(text: str, language: str | None = None) -> Generator[str, None, None]:
+	"""Split text into user-perceived characters (grapheme clusters) using Uniscribe.
+
+	@param text: The text to split.
+	@param language: Ignored; accepted for API compatibility with the ICU variant.
+	"""
+	from .uniscribe import splitAtCharacterBoundaries as _uniscribeSplit
+
+	yield from _uniscribeSplit(text)
+
 
 WCHAR_ENCODING = "utf_16_le"
 UTF8_ENCODING = "utf-8"
