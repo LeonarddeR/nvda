@@ -500,7 +500,7 @@ def _getSpellingSpeechWithoutCharMode(
 	if localeHasConjuncts:
 		charDescList = getCharDescListFromText(text, locale)
 	elif not textIsNormalized and unicodeNormalization:
-		charDescList = list(splitAtCharacterBoundaries(text))
+		charDescList = list(splitAtCharacterBoundaries(text, locale))
 	else:
 		charDescList = text
 	for item in charDescList:
