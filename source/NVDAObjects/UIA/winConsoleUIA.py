@@ -297,8 +297,8 @@ class ConsoleUIATextInfoWorkaroundEndInclusive(ConsoleUIATextInfo):
 		"""
 		Given a caret textInfo expanded to line, returns the index into the
 		line where the caret is located.
-		UIA only allows relative movement, so we calculate the UTF-16 offset
-		by measuring the text from the start of the line to the caret.
+		This is necessary since Uniscribe requires indices into the text to
+		find word boundaries, but UIA only allows for relative movement.
 		"""
 		# position a textInfo from the start of the line up to the current position.
 		charInfo = lineInfo.copy()
@@ -309,22 +309,16 @@ class ConsoleUIATextInfoWorkaroundEndInclusive(ConsoleUIATextInfo):
 
 	def _getWordOffsetsInThisLine(self, offset, lineInfo):
 		lineText = lineInfo._rangeObj.getText(-1)
-		# Convert NULL and non-breaking space to space so words break on them.
+		# Convert NULL and non-breaking space to space to make sure
+		# that words will break on them
 		lineText = lineText.translate({0: " ", 0xA0: " "})
-		from winBindings.icu import ICU_AVAILABLE
-
-		if ICU_AVAILABLE:
-			from textUtils.icu import calculateWordOffsets as _icuWord
-
-			result = _icuWord(lineText, offset)
-			if result is not None:
-				return result
-		# Uniscribe fallback: inject "xx" at the end to work around a Uniscribe quirk
-		# where strings with fewer than two alphanumeric characters produce odd results.
-		lineText += "xx"
-		lineTextLen = textUtils.WideStringOffsetConverter(lineText).encodedStringLength
 		start = ctypes.c_int()
 		end = ctypes.c_int()
+		# Uniscribe does some strange things when you give it a string  with
+		# not more than two alphanumeric chars in a row.
+		# Inject two alphanumeric characters at the end to fix this.
+		lineText += "xx"
+		lineTextLen = textUtils.WideStringOffsetConverter(lineText).encodedStringLength
 		NVDAHelper.localLib.calculateWordOffsets(
 			lineText,
 			lineTextLen,
