@@ -178,19 +178,22 @@ class TestCalculateWordOffsetsEnglish(unittest.TestCase):
 	"""calculateWordOffsets with English text."""
 
 	def test_first_word(self):
+		# Trailing space is included in the word segment.
 		text = "hello world"
-		self.assertEqual(calculateWordOffsets(text, 0), (0, 5))
+		self.assertEqual(calculateWordOffsets(text, 0), (0, 6))
 
 	def test_mid_first_word(self):
 		text = "hello world"
-		self.assertEqual(calculateWordOffsets(text, 2), (0, 5))
+		self.assertEqual(calculateWordOffsets(text, 2), (0, 6))
 
 	def test_space_between_words(self):
-		# ICU treats the space as its own (non-word) segment.
+		# Space is attached to the preceding word, so querying at the space
+		# returns the same segment as querying inside "hello".
 		text = "hello world"
-		self.assertEqual(calculateWordOffsets(text, 5), (5, 6))
+		self.assertEqual(calculateWordOffsets(text, 5), (0, 6))
 
 	def test_second_word(self):
+		# No trailing space after "world" (end of string).
 		text = "hello world"
 		self.assertEqual(calculateWordOffsets(text, 6), (6, 11))
 
@@ -222,17 +225,18 @@ class TestCalculateWordOffsetsHebrew(unittest.TestCase):
 	"""calculateWordOffsets with Hebrew text."""
 
 	def test_first_word(self):
-		# "שלום עולם" — shalom (0-3), space (4), olam (5-8).
+		# "שלום עולם" — shalom (0-3), space (4), olam (5-8). Trailing space included.
 		text = "\u05e9\u05dc\u05d5\u05dd \u05e2\u05d5\u05dc\u05dd"
-		self.assertEqual(calculateWordOffsets(text, 0), (0, 4))
+		self.assertEqual(calculateWordOffsets(text, 0), (0, 5))
 
 	def test_mid_first_word(self):
 		text = "\u05e9\u05dc\u05d5\u05dd \u05e2\u05d5\u05dc\u05dd"
-		self.assertEqual(calculateWordOffsets(text, 2), (0, 4))
+		self.assertEqual(calculateWordOffsets(text, 2), (0, 5))
 
 	def test_space_between_words(self):
+		# Space at offset 4 is attached to the preceding word "שלום".
 		text = "\u05e9\u05dc\u05d5\u05dd \u05e2\u05d5\u05dc\u05dd"
-		self.assertEqual(calculateWordOffsets(text, 4), (4, 5))
+		self.assertEqual(calculateWordOffsets(text, 4), (0, 5))
 
 	def test_second_word(self):
 		text = "\u05e9\u05dc\u05d5\u05dd \u05e2\u05d5\u05dc\u05dd"

@@ -123,11 +123,12 @@ def calculateWordOffsets(
 	"""Calculate the UTF-16 start and end offsets of the word at the given offset.
 
 	Word boundaries follow Unicode Standard Annex #29 with locale-aware dictionary
-	segmentation for scripts such as Thai, Lao, Khmer, and CJK ideographs, where
-	words are not separated by spaces.
+	segmentation for scripts such as Thai, Lao, Khmer, and CJK ideographs.
 
-	Each whitespace or punctuation run between words is its own segment, unlike the
-	Uniscribe implementation which attached trailing whitespace to the preceding word.
+	Trailing whitespace is included in the preceding word segment, matching the
+	behaviour of NVDA's Uniscribe implementation (textUtils.cpp).  When the offset
+	falls inside a whitespace run, the returned segment is the preceding word plus
+	the whitespace.
 
 	@param text: The line text as a Python str.
 	@param offset: UTF-16 code unit offset within text at which to find the boundary.
@@ -135,20 +136,42 @@ def calculateWordOffsets(
 	@return: (startOffset, endOffset) as UTF-16 code unit indices (endOffset exclusive),
 	    or None if the ICU call failed.
 	"""
-	textLength = len(text.encode("utf-16-le", errors="surrogatepass")) // 2
+	utf16_bytes = text.encode("utf-16-le", errors="surrogatepass")
+	textLength = len(utf16_bytes) // 2
 	if offset >= textLength:
 		return (offset, offset + 1)
 	locale = _resolveLocale(language)
+
+	def _segText(segStart: int, segEnd: int) -> str:
+		return utf16_bytes[segStart * 2 : segEnd * 2].decode("utf-16-le", errors="surrogatepass")
+
 	try:
 		with _breakIterator(_icu.UBRK_WORD, locale, text) as bi:
-			# ubrk_preceding(offset + 1) yields the largest boundary <= offset,
-			# giving the start of the segment that contains offset.
+			# Find [start, end) — the ICU segment containing offset.
+			# ubrk_preceding positions the iterator at the boundary before offset+1,
+			# then ubrk_next advances to the next boundary giving us end.
 			start = _icu.ubrk_preceding(bi, offset + 1)
 			if start == _icu.UBRK_DONE:
 				start = 0
-			end = _icu.ubrk_following(bi, offset)
+			end = _icu.ubrk_next(bi)
 			if end == _icu.UBRK_DONE:
 				end = textLength
+
+			if _segText(start, end).isspace():
+				# Offset is inside a whitespace run.  Attach this run to the
+				# preceding segment (mirroring the Uniscribe trailing-space rule).
+				if start > 0:
+					wordStart = _icu.ubrk_preceding(bi, start)
+					if wordStart == _icu.UBRK_DONE:
+						wordStart = 0
+					return (wordStart, end)
+			else:
+				# Offset is inside a word/punctuation segment.  Extend the end
+				# through any immediately following whitespace run.
+				nextEnd = _icu.ubrk_next(bi)
+				if nextEnd != _icu.UBRK_DONE and _segText(end, nextEnd).isspace():
+					return (start, nextEnd)
+
 			return (start, end)
 	except RuntimeError:
 		log.debugWarning("ICU word break iterator failed", exc_info=True)

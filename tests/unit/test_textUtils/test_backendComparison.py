@@ -163,7 +163,7 @@ class TestCharacterOffsetsDivergence(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# calculateWordOffsets — the main area of divergence
+# calculateWordOffsets — backends now agree on whitespace handling
 # ---------------------------------------------------------------------------
 
 
@@ -171,8 +171,9 @@ class TestCharacterOffsetsDivergence(unittest.TestCase):
 class TestWordOffsetsEnglish(unittest.TestCase):
 	"""Word offset comparison for English text.
 
-	The key difference: Uniscribe includes trailing whitespace as part of the
-	preceding word, while ICU treats each whitespace run as its own segment.
+	Both backends include trailing whitespace as part of the preceding word.
+	NVDA's Uniscribe implementation (textUtils.cpp) does this natively;
+	the ICU implementation mirrors that behaviour explicitly.
 	"""
 
 	TEXT = "hello world"
@@ -181,35 +182,39 @@ class TestWordOffsetsEnglish(unittest.TestCase):
 		self.icu = _ICUTextProvider(text=self.TEXT)
 		self.uni = _UniscribeTextProvider(text=self.TEXT)
 
-	def test_first_word_icu(self):
-		# ICU: "hello" only, no trailing space.
-		self.assertEqual(_wordOffsets(self.icu, 0), (0, 5))
+	def _assertSameWordOffsets(self, storyOffset):
+		icu_result = _wordOffsets(self.icu, storyOffset)
+		uni_result = _wordOffsets(self.uni, storyOffset)
+		self.assertEqual(
+			icu_result,
+			uni_result,
+			f"Backends disagree on word offsets for {self.TEXT!r} at offset {storyOffset}: "
+			f"ICU={icu_result!r} Uniscribe={uni_result!r}",
+		)
+		return icu_result
 
-	def test_first_word_uniscribe(self):
-		# Uniscribe: "hello " — includes the trailing space.
-		self.assertEqual(_wordOffsets(self.uni, 0), (0, 6))
+	def test_first_word(self):
+		# Both backends: "hello " — trailing space included.
+		result = self._assertSameWordOffsets(0)
+		self.assertEqual(result, (0, 6))
 
-	def test_space_icu(self):
-		# ICU: space is its own non-word segment.
-		self.assertEqual(_wordOffsets(self.icu, 5), (5, 6))
+	def test_mid_first_word(self):
+		result = self._assertSameWordOffsets(2)
+		self.assertEqual(result, (0, 6))
 
-	def test_space_uniscribe(self):
-		# Uniscribe: space is absorbed into the preceding word; asking at the space
-		# offset returns the preceding word+space segment "hello ".
-		self.assertEqual(_wordOffsets(self.uni, 5), (0, 6))
+	def test_space(self):
+		# Both backends: querying at the space returns the preceding word+space.
+		result = self._assertSameWordOffsets(5)
+		self.assertEqual(result, (0, 6))
 
-	def test_second_word_agreement(self):
-		# Both agree that offset 6 is inside "world".
-		icu_result = _wordOffsets(self.icu, 6)
-		uni_result = _wordOffsets(self.uni, 6)
-		self.assertEqual(icu_result, (6, 11))
-		self.assertEqual(uni_result, (6, 11))
+	def test_second_word(self):
+		# Both backends: "world" — no trailing space at end of string.
+		result = self._assertSameWordOffsets(6)
+		self.assertEqual(result, (6, 11))
 
-	def test_mid_second_word_agreement(self):
-		icu_result = _wordOffsets(self.icu, 8)
-		uni_result = _wordOffsets(self.uni, 8)
-		self.assertEqual(icu_result, uni_result)
-		self.assertEqual(icu_result, (6, 11))
+	def test_mid_second_word(self):
+		result = self._assertSameWordOffsets(8)
+		self.assertEqual(result, (6, 11))
 
 
 @skipIfNoICU
@@ -222,24 +227,32 @@ class TestWordOffsetsHebrew(unittest.TestCase):
 		self.icu = _ICUTextProvider(text=self.TEXT)
 		self.uni = _UniscribeTextProvider(text=self.TEXT)
 
-	def test_first_word_icu(self):
-		# ICU: "שלום" only, UTF-16 offsets (0, 4).
-		self.assertEqual(_wordOffsets(self.icu, 0), (0, 4))
+	def _assertSameWordOffsets(self, storyOffset):
+		icu_result = _wordOffsets(self.icu, storyOffset)
+		uni_result = _wordOffsets(self.uni, storyOffset)
+		self.assertEqual(
+			icu_result,
+			uni_result,
+			f"Backends disagree on word offsets for {self.TEXT!r} at offset {storyOffset}: "
+			f"ICU={icu_result!r} Uniscribe={uni_result!r}",
+		)
+		return icu_result
 
-	def test_first_word_uniscribe(self):
-		# Uniscribe: "שלום " — includes trailing space, (0, 5).
-		self.assertEqual(_wordOffsets(self.uni, 0), (0, 5))
+	def test_first_word(self):
+		# Both backends: "שלום " — trailing space included, offsets (0, 5).
+		result = self._assertSameWordOffsets(0)
+		self.assertEqual(result, (0, 5))
 
-	def test_space_icu(self):
-		self.assertEqual(_wordOffsets(self.icu, 4), (4, 5))
+	def test_mid_first_word(self):
+		result = self._assertSameWordOffsets(2)
+		self.assertEqual(result, (0, 5))
 
-	def test_space_uniscribe(self):
-		# Uniscribe: space is absorbed into the preceding word; asking at the space
-		# offset returns the preceding word+space segment "שלום ".
-		self.assertEqual(_wordOffsets(self.uni, 4), (0, 5))
+	def test_space(self):
+		# Both backends: querying at offset 4 (space) returns the preceding word+space.
+		result = self._assertSameWordOffsets(4)
+		self.assertEqual(result, (0, 5))
 
-	def test_second_word_agreement(self):
-		icu_result = _wordOffsets(self.icu, 5)
-		uni_result = _wordOffsets(self.uni, 5)
-		self.assertEqual(icu_result, (5, 9))
-		self.assertEqual(uni_result, (5, 9))
+	def test_second_word(self):
+		# Both backends: "עולם" — no trailing space.
+		result = self._assertSameWordOffsets(5)
+		self.assertEqual(result, (5, 9))
