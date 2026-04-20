@@ -101,10 +101,8 @@ class TestCalculate(unittest.TestCase):
 		braille.handler.buffer._calculateWindowRowBufferOffsets(0)
 		self.assertEqual(braille.handler.buffer._windowRowBufferOffsets, expectedOffsets)
 
-	# --- Tests #1-#8 from the plan ------------------------------------------------
-
 	def test_none_hardCutsAtDisplayEdge(self):
-		"""#1: NONE wraps at the raw display edge with no continuation marker, even mid-word."""
+		"""NONE wraps at the raw display edge with no continuation marker, even mid-word."""
 		_setTextWrap(BrailleTextWrapFlag.NONE)
 		# 25 consecutive non-zero cells: no space anywhere in the first row.
 		braille.handler.buffer.brailleCells = [1] * 25
@@ -113,7 +111,7 @@ class TestCalculate(unittest.TestCase):
 		self.assertEqual(braille.handler.buffer._continuationRows, [])
 
 	def test_markWordCuts_oneCellEarlierAndMarksRow(self):
-		"""#2: MARK_WORD_CUTS cuts one cell earlier than NONE and records the row in _continuationRows."""
+		"""MARK_WORD_CUTS cuts one cell earlier than NONE and records the row in _continuationRows."""
 		_setTextWrap(BrailleTextWrapFlag.MARK_WORD_CUTS)
 		braille.handler.buffer.brailleCells = [1] * 25
 		braille.handler.buffer._calculateWindowRowBufferOffsets(0)
@@ -122,7 +120,7 @@ class TestCalculate(unittest.TestCase):
 		self.assertIn(0, braille.handler.buffer._continuationRows)
 
 	def test_markWordCuts_cleanRowHasNoMarker(self):
-		"""#3: MARK_WORD_CUTS does not mark a row that ends naturally at a space."""
+		"""MARK_WORD_CUTS does not mark a row that ends naturally at a space."""
 		_setTextWrap(BrailleTextWrapFlag.MARK_WORD_CUTS)
 		# Row of 20 cells where cell 19 is a space (0): no mid-word cut.
 		cells = [1] * 19 + [0] + [1] * 10
@@ -131,7 +129,7 @@ class TestCalculate(unittest.TestCase):
 		self.assertNotIn(0, braille.handler.buffer._continuationRows)
 
 	def test_atWordBoundaries_noSpaceInWindowMarksCut(self):
-		"""#4: AT_WORD_BOUNDARIES with no whitespace in the window hard-cuts AND marks the row (rule A)."""
+		"""AT_WORD_BOUNDARIES with no whitespace in the window hard-cuts AND marks the row."""
 		_setTextWrap(BrailleTextWrapFlag.AT_WORD_BOUNDARIES)
 		# No zero anywhere in row 0; the `rindex` call raises and falls through.
 		braille.handler.buffer.brailleCells = [1] * 25
@@ -140,7 +138,7 @@ class TestCalculate(unittest.TestCase):
 		self.assertIn(0, braille.handler.buffer._continuationRows)
 
 	def test_atWordOrSyllableBoundaries_success(self):
-		"""#5: AT_WORD_OR_SYLLABLE_BOUNDARIES splits at a syllable boundary and marks the row."""
+		"""AT_WORD_OR_SYLLABLE_BOUNDARIES splits at a syllable boundary and marks the row."""
 		_setTextWrap(BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES)
 		# Layout:
 		#   cells 0..9     -> short word
@@ -179,7 +177,7 @@ class TestCalculate(unittest.TestCase):
 		self.assertIn(0, braille.handler.buffer._continuationRows)
 
 	def test_atWordOrSyllableBoundaries_emptyPositions(self):
-		"""#6: AT_WORD_OR_SYLLABLE_BOUNDARIES with no hyphen positions falls back to a word boundary with no marker."""
+		"""AT_WORD_OR_SYLLABLE_BOUNDARIES with no hyphen positions falls back to a word boundary with no marker."""
 		_setTextWrap(BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES)
 		# Provide a real space so `rindex(... end+1)` / `rindex(... end)` succeeds.
 		cells = [1] * 15 + [0] + [1] * 9 + [0] + [1] * 10
@@ -208,7 +206,7 @@ class TestCalculate(unittest.TestCase):
 		self.assertNotIn(0, braille.handler.buffer._continuationRows)
 
 	def test_atWordOrSyllableBoundaries_positionPastEdge(self):
-		"""#7: AT_WORD_OR_SYLLABLE_BOUNDARIES with newEnd >= oldEnd falls back to word boundary."""
+		"""AT_WORD_OR_SYLLABLE_BOUNDARIES with newEnd >= oldEnd falls back to word boundary."""
 		_setTextWrap(BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES)
 		cells = [1] * 15 + [0] + [1] * 9 + [0] + [1] * 10
 		braille.handler.buffer.brailleCells = cells
@@ -237,9 +235,7 @@ class TestCalculate(unittest.TestCase):
 		self.assertNotIn(0, braille.handler.buffer._continuationRows)
 
 	def test_atWordOrSyllableBoundaries_unknownLanguage(self):
-		"""#8: AT_WORD_OR_SYLLABLE_BOUNDARIES with an unknown language behaves like empty positions."""
-		# getHyphenPositions swallows LookupError itself, so from braille.py's perspective
-		# it just returns an empty tuple. Behaviour must match #6.
+		"""AT_WORD_OR_SYLLABLE_BOUNDARIES with an unknown language behaves like empty positions."""
 		_setTextWrap(BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES)
 		cells = [1] * 15 + [0] + [1] * 9 + [0] + [1] * 10
 		braille.handler.buffer.brailleCells = cells

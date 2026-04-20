@@ -23,7 +23,7 @@ def _makeTextInfoRegion() -> braille.TextInfoRegion:
 
 class TestLanguageIndexes(unittest.TestCase):
 	def test_freshRegion_defaultLanguageAtAnyPos(self):
-		"""#11: A region returns the default language for any non-negative pos."""
+		"""A region returns the default language for any non-negative pos."""
 		with patch.object(braille.Region, "_getDefaultRegionLanguage", return_value="en"):
 			region = braille.Region()
 		self.assertEqual(region._getLanguageAtPos(0), "en")
@@ -31,7 +31,7 @@ class TestLanguageIndexes(unittest.TestCase):
 		self.assertEqual(region._getLanguageAtPos(100), "en")
 
 	def test_addFieldText_insertsSwitchAndRestore(self):
-		"""#12: _addFieldText inserts a switch entry at len(rawText) and a restore entry at len+textLen when the field language differs."""
+		"""_addFieldText inserts a switch entry at len(rawText) and a restore entry at len+textLen when the field language differs."""
 		region = _makeTextInfoRegion()
 		# Pre-existing raw text to make `len(rawText)` non-zero and exercise the separator logic.
 		region.rawText = "hello"
@@ -49,7 +49,7 @@ class TestLanguageIndexes(unittest.TestCase):
 		self.assertEqual(region._languageIndexes[rawTextLenBefore + addedLen], "en")
 
 	def test_addTextWithFields_formatChangeInsertsLanguageIndex(self):
-		"""#13: Processing a formatChange command whose field has a `language` attribute inserts an index entry."""
+		"""Processing a formatChange command whose field has a `language` attribute inserts an index entry."""
 		region = _makeTextInfoRegion()
 		region.rawText = ""
 		region.rawTextTypeforms = []
@@ -98,7 +98,7 @@ class TestLanguageIndexes(unittest.TestCase):
 		self.assertEqual(region._languageIndexes[4], "de")
 
 	def test_textInfoRegion_update_resetsLanguageIndexes(self):
-		"""#14: TextInfoRegion.update resets _languageIndexes to {0: default} — no stale indexes carry across updates."""
+		"""TextInfoRegion.update resets _languageIndexes to {0: default} — no stale indexes carry across updates."""
 		region = _makeTextInfoRegion()
 		# Pollute _languageIndexes with stale entries.
 		region._languageIndexes = {0: "en", 10: "de", 30: "en"}
