@@ -6,10 +6,12 @@
 """Unit tests for the _calculateWindowRowBufferOffsets function in the braille module."""
 
 import unittest
+from unittest.mock import patch
 
 import braille
 import config
-from config.configFlags import BrailleTextWrap
+from config.featureFlag import FeatureFlag
+from config.featureFlagEnums import BrailleTextWrapFlag
 
 
 def _getDisplayDimensions(dimensions: braille.DisplayDimensions) -> braille.DisplayDimensions:
@@ -20,13 +22,27 @@ def _getDisplayDimensions(dimensions: braille.DisplayDimensions) -> braille.Disp
 	)
 
 
+def _setTextWrap(mode: BrailleTextWrapFlag) -> None:
+	"""Write a `BrailleTextWrapFlag` value to the config as a `FeatureFlag`.
+
+	`behaviorOfDefault` is only meaningful when `mode` is `DEFAULT`; for any explicit value,
+	we pick an arbitrary non-DEFAULT member to satisfy the `FeatureFlag` constructor assertions.
+	"""
+	behaviorOfDefault = (
+		BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES
+		if mode != BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES
+		else BrailleTextWrapFlag.AT_WORD_BOUNDARIES
+	)
+	config.conf["braille"]["textWrap"] = FeatureFlag(mode, behaviorOfDefault)
+
+
 class TestCalculate(unittest.TestCase):
 	def setUp(self):
 		braille.filter_displayDimensions.register(_getDisplayDimensions)
 
 	def tearDown(self):
 		braille.filter_displayDimensions.unregister(_getDisplayDimensions)
-		config.conf["braille"]["textWrap"] = BrailleTextWrap.OFF.value
+		_setTextWrap(BrailleTextWrapFlag.NONE)
 
 	def test_noCells(self):
 		"""Check that, if list of braille cells is empty, offsets will be (0, 0)."""
@@ -58,7 +74,7 @@ class TestCalculate(unittest.TestCase):
 
 	def test_wordWrapFirstRowWithSpace(self):
 		"""Check that the first row will be truncated if it contains a space, only if text wrap is set to word boundaries."""
-		config.conf["braille"]["textWrap"] = BrailleTextWrap.WORD_BOUNDARIES.value
+		_setTextWrap(BrailleTextWrapFlag.AT_WORD_BOUNDARIES)
 		cells = [1] * (braille.handler.displayDimensions.numCols - 5)
 		cells.append(0)
 		cells.extend([1] * (braille.handler.displayDimensions.numCols + 4))
@@ -66,14 +82,14 @@ class TestCalculate(unittest.TestCase):
 		braille.handler.buffer._calculateWindowRowBufferOffsets(0)
 		expectedOffsets = [(0, 16), (16, 36)]
 		self.assertEqual(braille.handler.buffer._windowRowBufferOffsets, expectedOffsets)
-		config.conf["braille"]["textWrap"] = BrailleTextWrap.OFF.value
+		_setTextWrap(BrailleTextWrapFlag.NONE)
 		braille.handler.buffer._calculateWindowRowBufferOffsets(0)
 		expectedOffsets = [(0, 20), (20, 40)]
 		self.assertEqual(braille.handler.buffer._windowRowBufferOffsets, expectedOffsets)
 
 	def test_wordWrapSecondRowStartsWithSpace(self):
 		"""Check that the first row won't be truncated if the next row starts with a space, even if word wrap is True."""
-		config.conf["braille"]["textWrap"] = BrailleTextWrap.WORD_BOUNDARIES.value
+		_setTextWrap(BrailleTextWrapFlag.AT_WORD_BOUNDARIES)
 		cells = [1] * braille.handler.displayDimensions.numCols
 		cells.append(0)
 		cells.extend([1] * (braille.handler.displayDimensions.numCols - 1))
@@ -81,6 +97,170 @@ class TestCalculate(unittest.TestCase):
 		braille.handler.buffer._calculateWindowRowBufferOffsets(0)
 		expectedOffsets = [(0, 20), (20, 40)]
 		self.assertEqual(braille.handler.buffer._windowRowBufferOffsets, expectedOffsets)
-		config.conf["braille"]["textWrap"] = BrailleTextWrap.OFF.value
+		_setTextWrap(BrailleTextWrapFlag.NONE)
 		braille.handler.buffer._calculateWindowRowBufferOffsets(0)
 		self.assertEqual(braille.handler.buffer._windowRowBufferOffsets, expectedOffsets)
+
+	# --- Tests #1-#8 from the plan ------------------------------------------------
+
+	def test_none_hardCutsAtDisplayEdge(self):
+		"""#1: NONE wraps at the raw display edge with no continuation marker, even mid-word."""
+		_setTextWrap(BrailleTextWrapFlag.NONE)
+		# 25 consecutive non-zero cells: no space anywhere in the first row.
+		braille.handler.buffer.brailleCells = [1] * 25
+		braille.handler.buffer._calculateWindowRowBufferOffsets(0)
+		self.assertEqual(braille.handler.buffer._windowRowBufferOffsets, [(0, 20), (20, 25)])
+		self.assertEqual(braille.handler.buffer._continuationRows, [])
+
+	def test_markWordCuts_oneCellEarlierAndMarksRow(self):
+		"""#2: MARK_WORD_CUTS cuts one cell earlier than NONE and records the row in _continuationRows."""
+		_setTextWrap(BrailleTextWrapFlag.MARK_WORD_CUTS)
+		braille.handler.buffer.brailleCells = [1] * 25
+		braille.handler.buffer._calculateWindowRowBufferOffsets(0)
+		# With MARK_WORD_CUTS, the end is pulled back by 1 to leave room for the marker.
+		self.assertEqual(braille.handler.buffer._windowRowBufferOffsets[0], (0, 19))
+		self.assertIn(0, braille.handler.buffer._continuationRows)
+
+	def test_markWordCuts_cleanRowHasNoMarker(self):
+		"""#3: MARK_WORD_CUTS does not mark a row that ends naturally at a space."""
+		_setTextWrap(BrailleTextWrapFlag.MARK_WORD_CUTS)
+		# Row of 20 cells where cell 19 is a space (0): no mid-word cut.
+		cells = [1] * 19 + [0] + [1] * 10
+		braille.handler.buffer.brailleCells = cells
+		braille.handler.buffer._calculateWindowRowBufferOffsets(0)
+		self.assertNotIn(0, braille.handler.buffer._continuationRows)
+
+	def test_atWordBoundaries_noSpaceInWindowMarksCut(self):
+		"""#4: AT_WORD_BOUNDARIES with no whitespace in the window hard-cuts AND marks the row (rule A)."""
+		_setTextWrap(BrailleTextWrapFlag.AT_WORD_BOUNDARIES)
+		# No zero anywhere in row 0; the `rindex` call raises and falls through.
+		braille.handler.buffer.brailleCells = [1] * 25
+		braille.handler.buffer._calculateWindowRowBufferOffsets(0)
+		self.assertEqual(braille.handler.buffer._windowRowBufferOffsets[0], (0, 20))
+		self.assertIn(0, braille.handler.buffer._continuationRows)
+
+	def test_atWordOrSyllableBoundaries_success(self):
+		"""#5: AT_WORD_OR_SYLLABLE_BOUNDARIES splits at a syllable boundary and marks the row."""
+		_setTextWrap(BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES)
+		# Layout:
+		#   cells 0..9     -> short word
+		#   cell  10       -> space
+		#   cells 11..29   -> 19-cell long word that crosses the 20-cell display edge
+		#   cell  30       -> space
+		#   cells 31..35   -> tail
+		cells = [1] * 10 + [0] + [1] * 19 + [0] + [1] * 5
+		braille.handler.buffer.brailleCells = cells
+		with (
+			patch.object(
+				braille.handler.buffer,
+				"bufferPositionsToRawText",
+				return_value="abcdefghijklmnopqrs",
+			),
+			patch.object(braille.handler.buffer, "_getLanguageAtBufferPos", return_value="en_US"),
+			patch(
+				"braille.textUtils.hyphenation.getHyphenPositions",
+				return_value=(3,),
+			),
+			# Identity mapping between raw text and braille cells is sufficient for this synthetic buffer.
+			patch.object(
+				type(braille.handler.buffer),
+				"rawToBraillePos",
+				new=list(range(len(cells))),
+			),
+			patch.object(
+				type(braille.handler.buffer),
+				"brailleToRawPos",
+				new=list(range(len(cells))),
+			),
+		):
+			braille.handler.buffer._calculateWindowRowBufferOffsets(0)
+		# Syllable split at rawPos 3 + brailleStart 11 = 14.
+		self.assertEqual(braille.handler.buffer._windowRowBufferOffsets[0], (0, 14))
+		self.assertIn(0, braille.handler.buffer._continuationRows)
+
+	def test_atWordOrSyllableBoundaries_emptyPositions(self):
+		"""#6: AT_WORD_OR_SYLLABLE_BOUNDARIES with no hyphen positions falls back to a word boundary with no marker."""
+		_setTextWrap(BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES)
+		# Provide a real space so `rindex(... end+1)` / `rindex(... end)` succeeds.
+		cells = [1] * 15 + [0] + [1] * 9 + [0] + [1] * 10
+		braille.handler.buffer.brailleCells = cells
+		with (
+			patch.object(braille.handler.buffer, "bufferPositionsToRawText", return_value="word"),
+			patch.object(braille.handler.buffer, "_getLanguageAtBufferPos", return_value="en_US"),
+			patch(
+				"braille.textUtils.hyphenation.getHyphenPositions",
+				return_value=(),
+			),
+			patch.object(
+				type(braille.handler.buffer),
+				"rawToBraillePos",
+				new=list(range(len(cells))),
+			),
+			patch.object(
+				type(braille.handler.buffer),
+				"brailleToRawPos",
+				new=list(range(len(cells))),
+			),
+		):
+			braille.handler.buffer._calculateWindowRowBufferOffsets(0)
+		# End should be just after the last space in row 0 (index 15 -> end = 16).
+		self.assertEqual(braille.handler.buffer._windowRowBufferOffsets[0], (0, 16))
+		self.assertNotIn(0, braille.handler.buffer._continuationRows)
+
+	def test_atWordOrSyllableBoundaries_positionPastEdge(self):
+		"""#7: AT_WORD_OR_SYLLABLE_BOUNDARIES with newEnd >= oldEnd falls back to word boundary."""
+		_setTextWrap(BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES)
+		cells = [1] * 15 + [0] + [1] * 9 + [0] + [1] * 10
+		braille.handler.buffer.brailleCells = cells
+		with (
+			patch.object(braille.handler.buffer, "bufferPositionsToRawText", return_value="word"),
+			patch.object(braille.handler.buffer, "_getLanguageAtBufferPos", return_value="en_US"),
+			# Position that maps past the display edge.
+			patch(
+				"braille.textUtils.hyphenation.getHyphenPositions",
+				return_value=(22,),
+			),
+			patch.object(
+				type(braille.handler.buffer),
+				"rawToBraillePos",
+				new=list(range(len(cells))),
+			),
+			patch.object(
+				type(braille.handler.buffer),
+				"brailleToRawPos",
+				new=list(range(len(cells))),
+			),
+		):
+			braille.handler.buffer._calculateWindowRowBufferOffsets(0)
+		# Falls back to word boundary at position 16.
+		self.assertEqual(braille.handler.buffer._windowRowBufferOffsets[0], (0, 16))
+		self.assertNotIn(0, braille.handler.buffer._continuationRows)
+
+	def test_atWordOrSyllableBoundaries_unknownLanguage(self):
+		"""#8: AT_WORD_OR_SYLLABLE_BOUNDARIES with an unknown language behaves like empty positions."""
+		# getHyphenPositions swallows LookupError itself, so from braille.py's perspective
+		# it just returns an empty tuple. Behaviour must match #6.
+		_setTextWrap(BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES)
+		cells = [1] * 15 + [0] + [1] * 9 + [0] + [1] * 10
+		braille.handler.buffer.brailleCells = cells
+		with (
+			patch.object(braille.handler.buffer, "bufferPositionsToRawText", return_value="word"),
+			patch.object(braille.handler.buffer, "_getLanguageAtBufferPos", return_value="zz_ZZ"),
+			patch(
+				"braille.textUtils.hyphenation.getHyphenPositions",
+				return_value=(),
+			),
+			patch.object(
+				type(braille.handler.buffer),
+				"rawToBraillePos",
+				new=list(range(len(cells))),
+			),
+			patch.object(
+				type(braille.handler.buffer),
+				"brailleToRawPos",
+				new=list(range(len(cells))),
+			),
+		):
+			braille.handler.buffer._calculateWindowRowBufferOffsets(0)
+		self.assertEqual(braille.handler.buffer._windowRowBufferOffsets[0], (0, 16))
+		self.assertNotIn(0, braille.handler.buffer._continuationRows)
