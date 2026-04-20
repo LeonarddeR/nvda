@@ -139,6 +139,23 @@ class FontFormattingBrailleModeFlag(DisplayStringEnum):
 		}
 
 
+class RegexBackendFlag(DisplayStringEnum):
+	"""Feature flag for selecting the regular expression backend."""
+
+	DEFAULT = enum.auto()
+	RE = enum.auto()
+	REGEX = enum.auto()
+
+	@property
+	def _displayStringLabels(self) -> dict["RegexBackendFlag", str]:
+		return {
+			# Translators: Label for the regex backend feature flag option using stdlib re.
+			RegexBackendFlag.RE: _("Python re"),
+			# Translators: Label for the regex backend feature flag option using the regex module.
+			RegexBackendFlag.REGEX: _("regex"),
+		}
+
+
 def getAvailableEnums() -> typing.Generator[typing.Tuple[str, FlagValueEnum], None, None]:
 	for name, value in globals().items():
 		if (

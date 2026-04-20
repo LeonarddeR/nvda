@@ -35,8 +35,9 @@ def initialize() -> None:
 	if _backend is not _re:
 		return
 	import config
+	from config.featureFlagEnums import RegexBackendFlag
 
-	if config.conf["featureFlag"]["regexBackend"] != 1:
+	if config.conf["featureFlag"]["regexBackend"].calculated() != RegexBackendFlag.REGEX:
 		return
 	import regex
 
