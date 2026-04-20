@@ -5,7 +5,7 @@
 # For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
 from abc import abstractmethod
-from re import error as RegexpError
+from textUtils import _regex as re
 
 import globalVars
 import wx
@@ -104,7 +104,7 @@ class DictionaryEntryDialog(
 				bool(self.caseSensitiveCheckBox.GetValue()),
 				entryType,
 			)
-		except RegexpError as e:
+		except re.error as e:
 			log.debugWarning(f"Could not add dictionary entry due to regex error in the pattern field : {e}")
 			if entryType != EntryType.REGEXP:
 				raise e
@@ -120,7 +120,7 @@ class DictionaryEntryDialog(
 			return
 		try:
 			dictEntry.sub("test")  # Ensure there are no grouping error (#11407)
-		except RegexpError as e:
+		except re.error as e:
 			log.debugWarning(
 				f"Could not add dictionary entry due to regex error in the replacement field : {e}",
 			)

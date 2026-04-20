@@ -356,6 +356,8 @@ schemaVersion = integer(min=0, default={latestSchemaVersion})
 	cancelExpiredFocusSpeech = integer(0, 2, default=0)
 	# 0: Only in test versions, 1: Yes, 2: No
 	playErrorSound = integer(0, 2, default=0)
+	# 0:default (re), 1:regex, 2:re
+	regexBackend = integer(0, 2, default=0)
 
 [addonStore]
 	automaticUpdates = option("notify", "update", "disabled", default="notify")

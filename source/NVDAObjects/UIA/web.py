@@ -20,7 +20,7 @@ from . import (
 from logHandler import log
 import controlTypes
 import cursorManager
-import re
+from textUtils import _regex as re
 import aria
 import textInfos
 from UIAHandler.browseMode import (

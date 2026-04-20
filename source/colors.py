@@ -6,7 +6,7 @@
 from collections import namedtuple
 import colorsys
 from ctypes.wintypes import COLORREF
-import re
+from textUtils import _regex as re
 from functools import lru_cache
 from typing import Union
 

@@ -5,7 +5,7 @@
 
 from collections import defaultdict
 from typing import Dict, Any, List, Union
-import re
+from textUtils import _regex as re
 
 from io import BytesIO
 import serial

@@ -5,7 +5,7 @@
 
 """Functions to create speech sequences for shortcut keys."""
 
-import re
+from textUtils import _regex as re
 
 import characterProcessing
 from logHandler import log

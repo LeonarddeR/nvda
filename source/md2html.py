@@ -6,7 +6,7 @@
 import argparse
 from copy import deepcopy
 import io
-import re
+from textUtils import _regex as re
 import shutil
 from typing import Any
 from l2m4m import LaTeX2MathMLExtension

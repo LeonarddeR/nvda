@@ -4,7 +4,7 @@
 # Copyright (C) 2006-2021 NV Access Limited, Peter Vágner, Aleksey Sadovoy, Babbage B.V., Bill Dengler,
 # Julien Cochuyt
 
-import re
+from textUtils import _regex as re
 
 from .commands import (
 	# Commands that are used in this file.

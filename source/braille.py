@@ -60,7 +60,7 @@ import textInfos
 import brailleDisplayDrivers
 import inputCore
 import brailleTables
-import re
+from textUtils import _regex as re
 import scriptHandler
 import collections
 import extensionPoints

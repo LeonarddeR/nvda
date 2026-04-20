@@ -712,6 +712,9 @@ def main():
 	import config
 
 	config.initialize()
+	from textUtils import _regex
+
+	_regex.initialize()
 	if config.conf["development"]["enableScratchpadDir"]:
 		log.info("Developer Scratchpad mode enabled")
 	if languageHandler.isLanguageForced():

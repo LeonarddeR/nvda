@@ -7,7 +7,7 @@
 
 import fnmatch
 import os
-import regex as re
+from textUtils import _regex as re
 from dataclasses import dataclass, field
 from functools import cached_property
 from typing import (

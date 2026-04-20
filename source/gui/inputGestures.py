@@ -8,7 +8,7 @@
 # See the file COPYING for more details.
 
 import itertools
-import re
+from textUtils import _regex as re
 from typing import Tuple, Union, Dict
 
 import wx

@@ -15,7 +15,7 @@ import code
 import codeop
 import sys
 import pydoc
-import re
+from textUtils import _regex as re
 import itertools
 import rlcompleter
 import wx

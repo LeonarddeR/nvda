@@ -5,7 +5,7 @@
 
 
 import buildVersion
-import re
+from textUtils import _regex as re
 
 
 """

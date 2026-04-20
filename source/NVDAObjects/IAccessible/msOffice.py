@@ -10,7 +10,7 @@ import controlTypes
 import winUser
 from . import IAccessible, getNVDAObjectFromEvent
 import eventHandler
-import re
+from textUtils import _regex as re
 
 """Miscellaneous support for Microsoft Office applications.
 """

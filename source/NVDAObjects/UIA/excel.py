@@ -28,7 +28,7 @@ from scriptHandler import script
 import ui
 from logHandler import log
 from . import UIA
-import re
+from textUtils import _regex as re
 
 
 class ExcelCustomProperties:

@@ -15,7 +15,7 @@ import copy
 import logging
 import math
 import os
-import re
+from textUtils import _regex as re
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable, Container
 from enum import IntEnum
@@ -4695,6 +4695,27 @@ class AdvancedPanelControls(
 			["virtualBuffers", "textParagraphRegex"],
 		)
 
+		regexBackendChoices = [
+			# Translators: One of the choices for the regex backend combobox in the Advanced settings panel.
+			_("Default (re)"),
+			# Translators: One of the choices for the regex backend combobox in the Advanced settings panel.
+			_("regex"),
+			# Translators: One of the choices for the regex backend combobox in the Advanced settings panel.
+			_("re"),
+		]
+		# Translators: Label for the regex backend combobox in the Advanced settings panel.
+		regexBackendLabel = _(
+			"Regular expression &backend (already-loaded patterns keep their original backend until restart):",
+		)
+		self.regexBackendCombo: wx.Choice = sHelper.addLabeledControl(
+			regexBackendLabel,
+			wx.Choice,
+			choices=regexBackendChoices,
+		)
+		self.bindHelpEvent("RegexBackend", self.regexBackendCombo)
+		self.regexBackendCombo.SetSelection(config.conf["featureFlag"]["regexBackend"])
+		self.regexBackendCombo.defaultValue = self._getDefaultValue(["featureFlag", "regexBackend"])
+
 		self.Layout()
 
 	def isValid(self) -> bool:
@@ -4751,6 +4772,7 @@ class AdvancedPanelControls(
 			and set(self.logCategoriesList.CheckedItems) == set(self.logCategoriesList.defaultCheckedItems)
 			and self.playErrorSoundCombo.GetSelection() == self.playErrorSoundCombo.defaultValue
 			and self.textParagraphRegexEdit.GetValue() == self.textParagraphRegexEdit.defaultValue
+			and self.regexBackendCombo.GetSelection() == self.regexBackendCombo.defaultValue
 			and True  # reduce noise in diff when the list is extended.
 		)
 
@@ -4780,6 +4802,7 @@ class AdvancedPanelControls(
 		self.logCategoriesList.CheckedItems = self.logCategoriesList.defaultCheckedItems
 		self.playErrorSoundCombo.SetSelection(self.playErrorSoundCombo.defaultValue)
 		self.textParagraphRegexEdit.SetValue(self.textParagraphRegexEdit.defaultValue)
+		self.regexBackendCombo.SetSelection(self.regexBackendCombo.defaultValue)
 		self._defaultsRestored = True
 
 	def onSave(self):
@@ -4825,6 +4848,7 @@ class AdvancedPanelControls(
 			config.conf["debugLog"][key] = self.logCategoriesList.IsChecked(index)
 		config.conf["featureFlag"]["playErrorSound"] = self.playErrorSoundCombo.GetSelection()
 		config.conf["virtualBuffers"]["textParagraphRegex"] = self.textParagraphRegexEdit.GetValue()
+		config.conf["featureFlag"]["regexBackend"] = self.regexBackendCombo.GetSelection()
 
 		if shouldResetSynth:
 			currentSynth = getSynth()

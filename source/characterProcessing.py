@@ -12,7 +12,7 @@ from locale import strxfrm
 import os
 import codecs
 import collections
-import re
+from textUtils import _regex as re
 from typing import (
 	Callable,
 	Dict,

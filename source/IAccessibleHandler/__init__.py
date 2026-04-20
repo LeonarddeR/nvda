@@ -11,7 +11,7 @@ from winBindings import user32
 # should be used to export it.
 from .types import RelationType  # noqa: F401
 
-import re
+from textUtils import _regex as re
 import struct
 from typing import (
 	Optional,

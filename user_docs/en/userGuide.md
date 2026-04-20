@@ -4181,6 +4181,13 @@ Choosing No disables error sounds no matter what your current NVDA version is, i
 This field allows users to customize regular expression for detecting text paragraphs in browse mode.
 The [text paragraph navigation command](#TextNavigationCommand) searches for paragraphs matched by this regular expression.
 
+##### Regular expression backend {#RegexBackend}
+
+This combobox lets you choose which regular expression engine NVDA uses internally for pattern matching.
+The default option uses the standard Python `re` module, which preserves NVDA's historical behavior.
+Selecting `regex` switches to the third-party `regex` module, which offers improved Unicode handling (helpful for non-Latin scripts such as Hebrew with niqqud, Arabic, or CJK), variable-width lookbehind, and the ability to release the GIL during long matches.
+A change to this setting takes effect immediately for newly compiled patterns; patterns already loaded keep their original backend until NVDA is restarted.
+
 ### miscellaneous Settings {#MiscSettings}
 
 Besides the [NVDA Settings](#NVDASettings) dialog, The Preferences sub-menu of the NVDA Menu contains several other items which are outlined below.

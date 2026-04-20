@@ -12,7 +12,7 @@ A default implementation, L{NVDAObjects.NVDAObjectTextInfo}, is used to enable t
 from abc import abstractmethod
 from enum import Enum
 import weakref
-import re
+from textUtils import _regex as re
 import typing
 from typing import (
 	Any,

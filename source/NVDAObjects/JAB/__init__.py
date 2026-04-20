@@ -4,7 +4,7 @@
 # See the file COPYING for more details.
 
 import ctypes
-import re
+from textUtils import _regex as re
 from typing import (
 	Any,
 )

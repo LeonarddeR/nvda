@@ -11,7 +11,7 @@ import math
 import controlTypes
 import colors
 import inputCore
-import re
+from textUtils import _regex as re
 from logHandler import log
 import browseMode
 from scriptHandler import script
