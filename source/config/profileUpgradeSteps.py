@@ -665,7 +665,32 @@ def upgradeConfigFrom_20_to_21(profile: ConfigObj):
 		log.debug("Moved old sapi5 configuration values to sapi5_32")
 
 
-def upgradeConfigFrom_21_to_22(profile: ConfigObj) -> None:
+def upgradeConfigFrom_21_to_22(profile: ConfigObj):
+	"""Change math speech language from 'Auto' to 'en'."""
+	mathConf = profile.get("math")
+	if not mathConf:
+		log.debug("No math section in profile. No action taken.")
+		return
+	speechConf = mathConf.get("speech")
+	if not speechConf:
+		log.debug("No math.speech section in profile. No action taken.")
+		return
+	language = speechConf.get("language")
+	if language is None:
+		log.debug("math.speech.language not set in profile. No action taken.")
+		return
+	if not isinstance(language, str):
+		log.error(
+			f"Invalid math.speech.language value during profile upgrade: "
+			f"expected str, got {type(language).__name__}. Skipping upgrade step.",
+		)
+		return
+	if language.casefold() == "auto":
+		speechConf["language"] = "en"
+		log.debug("Changed math.speech.language from 'Auto' to 'en'.")
+
+
+def upgradeConfigFrom_22_to_23(profile: ConfigObj) -> None:
 	"""
 	If the wordWrap braille config flag is explicitly set in a profile,
 	set the new text wrap option to word boundaries,

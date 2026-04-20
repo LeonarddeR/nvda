@@ -84,6 +84,8 @@ schemaVersion = integer(min=0, default={latestSchemaVersion})
 	showMessages = integer(0, 2, default=1)
 	# Timeout after the message will disappear from braille display
 	messageTimeout = integer(default=4, min=1, max=20)
+	# Rate for automatic scroll (cells/sec)
+	autoScrollRate = float(default=10, min=1, max=20)
 	tetherTo = option("auto", "focus", "review", default="auto")
 	reviewRoutingMovesSystemCaret = featureFlag(\
 		optionsEnum="ReviewRoutingMovesSystemCaretFlag", behaviorOfDefault="NEVER")
@@ -391,7 +393,7 @@ schemaVersion = integer(min=0, default={latestSchemaVersion})
 	[[speech]]
 		impairment = option("LearningDisability", "Blindness", "LowVision", default="Blindness")
 		# any known language code and sub-code -- could be en-uk, etc
-		language = string(default="Auto")
+		language = string(default="en")
 		verbosity = option("Terse", "Medium", "Verbose", default="Medium")
 		# Change from text speech rate (%)
 		mathRate = integer(default=100, min=10, max=100)

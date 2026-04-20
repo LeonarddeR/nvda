@@ -2929,14 +2929,6 @@ class MathSettingsPanel(SettingsPanel):
 		else:
 			self.navSpeechList.SetSelection(0)
 
-		# Translators: label for checkbox to use native math speech instead of MathCAT in Word and Outlook
-		useWordNativeMathText = pgettext("math", "Use native math speech in Word and Outlook")
-		self.useWordNativeMathCheckBox = speechGroup.addItem(
-			wx.CheckBox(speechGroupBox, label=useWordNativeMathText),
-		)
-		self.bindHelpEvent("MathUseWordNative", self.useWordNativeMathCheckBox)
-		self.useWordNativeMathCheckBox.SetValue(config.conf["math"]["other"]["useWordNativeMath"])
-
 		# Translators: Text for the navigation group.
 		navGroupText = pgettext("math", "Navigation")
 		navGroupSizer = wx.StaticBoxSizer(wx.VERTICAL, self, label=navGroupText)
@@ -3046,6 +3038,24 @@ class MathSettingsPanel(SettingsPanel):
 				config.conf["math"]["braille"]["brailleNavHighlight"],
 			),
 		)
+
+		appSupportGroupSizer = wx.StaticBoxSizer(
+			wx.VERTICAL,
+			self,
+			# Translators: Text for the application support group in MathCAT options.
+			label=pgettext("math", "Application support"),
+		)
+		appSupportGroupBox = appSupportGroupSizer.GetStaticBox()
+		appSupportGroup = guiHelper.BoxSizerHelper(self, sizer=appSupportGroupSizer)
+		sHelper.addItem(appSupportGroup)
+
+		# Translators: label for checkbox to use native math presentation support instead of MathCAT in Word and Outlook
+		useWordNativeMathText = pgettext("math", "Use native math support in Word and Outlook")
+		self.useWordNativeMathCheckBox = appSupportGroup.addItem(
+			wx.CheckBox(appSupportGroupBox, label=useWordNativeMathText),
+		)
+		self.bindHelpEvent("MathUseWordNative", self.useWordNativeMathCheckBox)
+		self.useWordNativeMathCheckBox.SetValue(config.conf["math"]["other"]["useWordNativeMath"])
 
 	def onSave(self):
 		from mathPres.MathCAT.preferences import MathCATUserPreferences
@@ -5509,6 +5519,24 @@ class BrailleSettingsSubPanel(AutoSettingsMixin, SettingsPanel):
 		)
 		self.bindHelpEvent("BrailleSettingsInterruptSpeech", self.brailleInterruptSpeechCombo)
 
+		# Translators: The label for a setting in braille settings to change the rate for autoscroll.
+		autoScrollRateText = _("Auto&matic scroll rate")
+		self.autoScrollRateSlider: nvdaControls.EnhancedInputSlider = sHelper.addLabeledControl(
+			autoScrollRateText,
+			nvdaControls.EnhancedInputSlider,
+			minValue=0,
+			maxValue=100,
+		)
+
+		self.autoScrollRateSlider.SetValue(
+			config.conf.valueToPercentage(
+				"braille",
+				"autoScrollRate",
+			),
+		)
+		self.autoScrollRateSlider.SetPageSize(10)
+		self.bindHelpEvent("BrailleAutoScrollRate", self.autoScrollRateSlider)
+
 		if gui._isDebug():
 			log.debug("Finished making settings, now at %.2f seconds from start" % (time.time() - startTime))
 
@@ -5539,6 +5567,12 @@ class BrailleSettingsSubPanel(AutoSettingsMixin, SettingsPanel):
 		]
 		config.conf["braille"]["showMessages"] = self.showMessagesList.GetSelection()
 		config.conf["braille"]["messageTimeout"] = self.messageTimeoutEdit.GetValue()
+
+		config.conf["braille"]["autoScrollRate"] = config.conf.percentageToValue(
+			"braille",
+			"autoScrollRate",
+			percentage=self.autoScrollRateSlider.GetValue(),
+		)
 		tetherChoice = [x.value for x in TetherTo][self.tetherList.GetSelection()]
 		if tetherChoice == TetherTo.AUTO.value:
 			config.conf["braille"]["tetherTo"] = TetherTo.AUTO.value
