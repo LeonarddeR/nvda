@@ -4,7 +4,7 @@
 # For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
 from abc import abstractmethod
-from textUtils import _regex as re
+import _regex as re
 import ctypes
 import unicodedata
 import NVDAHelper

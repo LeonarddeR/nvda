@@ -15,7 +15,7 @@ import copy
 import logging
 import math
 import os
-from textUtils import _regex as re
+import _regex as re
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable, Container
 from enum import IntEnum

@@ -12,7 +12,7 @@ Changes to the setting therefore require an NVDA restart.
 
 Intended usage::
 
-	from textUtils import _regex as re
+	import _regex as re
 
 	pattern = re.compile(r"\\w+", re.IGNORECASE)
 

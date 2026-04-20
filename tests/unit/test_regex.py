@@ -8,7 +8,7 @@
 import re as _stdlibRe
 import unittest
 
-from textUtils import _regex as shim
+import _regex as shim
 
 
 class TestRegexShim(unittest.TestCase):

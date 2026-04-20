@@ -7,7 +7,7 @@
 
 import ctypes
 import time
-from textUtils import _regex as re
+import _regex as re
 import typing
 from typing import (
 	Tuple,

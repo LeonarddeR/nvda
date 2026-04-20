@@ -10,7 +10,7 @@ Plugins can register their own implementation for any or all of these
 using L{registerProvider}.
 """
 
-from textUtils import _regex as re
+import _regex as re
 import typing
 from typing import List, Optional, Union
 

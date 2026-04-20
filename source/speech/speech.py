@@ -19,7 +19,7 @@ from controlTypes import OutputReason, TextPosition
 from controlTypes.state import State
 import tones
 from synthDriverHandler import getSynth
-from textUtils import _regex as re
+import _regex as re
 import textInfos
 import speechDictHandler
 import characterProcessing

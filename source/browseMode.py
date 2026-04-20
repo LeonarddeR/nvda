@@ -12,7 +12,7 @@ import collections
 import winsound
 import time
 import weakref
-from textUtils import _regex as re
+import _regex as re
 from comtypes import COMError
 
 import wx

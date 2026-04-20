@@ -8,7 +8,7 @@
 import api
 import appModuleHandler
 import controlTypes
-from textUtils import _regex as re
+import _regex as re
 from collections import deque
 from logHandler import log
 from NVDAObjects.behaviors import EditableTextBase

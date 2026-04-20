@@ -8,7 +8,7 @@ Braille display driver for Seika Notetaker, a product from Nippon Telesoft
 see www.seika-braille.com for more details
 """
 
-from textUtils import _regex as re
+import _regex as re
 from io import BytesIO
 import typing
 from typing import Dict, List, Optional, Set

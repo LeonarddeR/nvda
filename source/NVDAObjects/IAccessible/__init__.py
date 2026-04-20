@@ -23,7 +23,7 @@ from comtypes.hresult import S_OK, S_FALSE
 import comtypes.client
 import ctypes
 import os
-from textUtils import _regex as re
+import _regex as re
 import sys
 import itertools
 import importlib

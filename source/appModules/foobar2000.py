@@ -5,7 +5,7 @@
 # See the file COPYING for more details.
 
 from datetime import datetime
-from textUtils import _regex as re
+import _regex as re
 from typing import (
 	Dict,
 	NamedTuple,

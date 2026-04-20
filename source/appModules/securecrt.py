@@ -6,7 +6,7 @@
 
 """App module for SecureCRT"""
 
-from textUtils import _regex as re
+import _regex as re
 import oleacc
 from NVDAObjects.behaviors import Terminal
 from NVDAObjects.window import DisplayModelEditableText, DisplayModelLiveText

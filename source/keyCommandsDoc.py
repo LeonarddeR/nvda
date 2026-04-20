@@ -14,7 +14,7 @@ https://github.com/nvaccess/nvda/blob/master/projectDocs/dev/userGuideStandards.
 """
 
 from enum import auto, Enum, IntEnum, StrEnum
-from textUtils import _regex as re
+import _regex as re
 from collections.abc import Iterator
 
 from markdown import Extension, Markdown

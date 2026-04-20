@@ -10,7 +10,7 @@ You can subclass this to support specific XML schemas.
 L{SsmlConverter} is an implementation for conversion to SSML.
 """
 
-from textUtils import _regex as re
+import _regex as re
 from collections import OrderedDict, namedtuple
 from collections.abc import Callable, Generator
 from xml.parsers import expat

@@ -37,7 +37,7 @@ from ctypes.wintypes import (
 	MSG,
 	RECT,
 )
-from textUtils import _regex as re
+import _regex as re
 from winAPI.winUser.constants import SystemMetrics
 import winBindings.kernel32
 from winBindings import user32

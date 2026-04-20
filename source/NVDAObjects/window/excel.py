@@ -21,7 +21,7 @@ import inputCore
 import wx
 import time
 import winsound
-from textUtils import _regex as re
+import _regex as re
 import uuid
 import NVDAHelper
 import oleacc

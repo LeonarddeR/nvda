@@ -31,7 +31,7 @@ import winUser
 import config
 import appModuleHandler
 from baseObject import AutoPropertyObject
-from textUtils import _regex as re
+import _regex as re
 from winAPI import messageWindow
 import extensionPoints
 from logHandler import log

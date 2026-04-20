@@ -3,7 +3,7 @@
 # See the file COPYING for more details.
 # Copyright (C) 2021-2023 NV Access Limited, Cyrille Bougot
 
-from textUtils import _regex as re
+import _regex as re
 from typing import Dict
 
 from logHandler import log

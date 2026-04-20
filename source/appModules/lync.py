@@ -10,7 +10,7 @@ from NVDAObjects.UIA import UIA
 import appModuleHandler
 from logHandler import log
 
-from textUtils import _regex as re
+import _regex as re
 
 
 class NetUIRicherLabel(UIA):
