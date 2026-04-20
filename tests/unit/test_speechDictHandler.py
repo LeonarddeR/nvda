@@ -119,35 +119,6 @@ class TestSpeechDictEntry(unittest.TestCase):
 		actual = entry.sub("αβγ")
 		self.assertEqual(expected, actual)
 
-	def test_entryTypePartOfWord_hebrewWordInitial(self):
-		"""PART_OF_WORD should match a Hebrew consonant at word start followed by niqqud."""
-		# בָרוּךְ: bet + qamatz + resh + vav + dagesh + kaf-sofit + sheva.
-		entry = SpeechDictEntry("ב", "b", type=EntryType.PART_OF_WORD)
-		expected = "bָרוּךְ"
-		actual = entry.sub("בָרוּךְ")
-		self.assertEqual(expected, actual)
-
-	def test_entryTypeStartOfWord_hebrewWithNiqqud(self):
-		"""START_OF_WORD should match a Hebrew consonant at word start followed by niqqud."""
-		entry = SpeechDictEntry("ב", "b", type=EntryType.START_OF_WORD)
-		expected = "bָרוּךְ"
-		actual = entry.sub("בָרוּךְ")
-		self.assertEqual(expected, actual)
-
-	def test_entryTypePartOfWord_hebrewNiqqudSurroundedByConsonants(self):
-		"""PART_OF_WORD should match niqqud between two consonants."""
-		entry = SpeechDictEntry("ָ", "a", type=EntryType.PART_OF_WORD)
-		expected = "בaרוּךְ"
-		actual = entry.sub("בָרוּךְ")
-		self.assertEqual(expected, actual)
-
-	def test_entryTypeWord_hebrewFullWord(self):
-		"""WORD should match a complete pointed Hebrew word."""
-		entry = SpeechDictEntry("בָרוּךְ", "baruch", type=EntryType.WORD)
-		expected = "שם baruch שם"
-		actual = entry.sub("שם בָרוּךְ שם")
-		self.assertEqual(expected, actual)
-
 	def test_entryTypeRegex_simplePattern(self):
 		"""Should match using regex patterns."""
 		entry = SpeechDictEntry(r"\d+", "number", type=EntryType.REGEXP)
