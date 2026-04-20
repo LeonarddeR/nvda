@@ -464,33 +464,3 @@ class PlayErrorSound(DisplayStringIntEnum):
 			# Translators: Label for a value in the Play a sound for logged errors combobox, in the Advanced settings.
 			PlayErrorSound.NO: pgettext("advanced.playErrorSound", "No"),
 		}
-
-
-@unique
-class BrailleTextWrap(DisplayStringIntEnum):
-	"""Enumeration containing the possible config values for braille text wrap.
-
-	Use BrailleTextWrap.MEMBER.value to compare with the config;
-	use BrailleTextWrap.MEMBER.displayString in the UI for a translatable description of this member.
-	"""
-
-	OFF = 0
-	CONTINUATION_ONLY = 1
-	WORD_BOUNDARIES = 2
-	HYPHENATE = 3
-
-	@property
-	def _displayStringLabels(self):
-		return {
-			# Translators: A choice in a combo box in the braille settings panel to configure text wrapping.
-			BrailleTextWrap.OFF: pgettext("braille text wrap setting", "Off"),
-			BrailleTextWrap.CONTINUATION_ONLY: pgettext(
-				"braille text wrap setting",
-				# Translators: A choice in a combo box in the braille settings panel to configure text wrapping.
-				"Show continuation mark only",
-			),
-			# Translators: A choice in a combo box in the braille settings panel to configure word wrap.
-			BrailleTextWrap.WORD_BOUNDARIES: pgettext("braille text wrap setting", "At word boundaries"),
-			# Translators: A choice in a combo box in the braille settings panel to configure word wrap.
-			BrailleTextWrap.HYPHENATE: pgettext("braille text wrap setting", "Break words with hyphen"),
-		}

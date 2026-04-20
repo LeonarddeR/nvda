@@ -93,8 +93,7 @@ schemaVersion = integer(min=0, default={latestSchemaVersion})
 	paragraphStartMarker = option("", " ", "¶", default="")
 	# Deprecated in 2026.2
 	wordWrap = boolean(default=true)
-	# 0: Off, 1: Continuation Only, 2: Word Boundaries, 3: Hyphenate
-	textWrap = integer(0, 3, default=3)
+	textWrap = featureFlag(optionsEnum="BrailleTextWrapFlag", behaviorOfDefault="AT_WORD_OR_SYLLABLE_BOUNDARIES")
 	unicodeNormalization = featureFlag(optionsEnum="BoolFlag", behaviorOfDefault="disabled")
 	focusContextPresentation = option("changedContext", "fill", "scroll", default="changedContext")
 	interruptSpeechWhileScrolling = featureFlag(optionsEnum="BoolFlag", behaviorOfDefault="enabled")

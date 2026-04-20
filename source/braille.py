@@ -49,7 +49,6 @@ import baseObject
 import config
 import easeOfAccess
 from config.configFlags import (
-	BrailleTextWrap,
 	ShowMessages,
 	TetherTo,
 	BrailleMode,
@@ -57,7 +56,11 @@ from config.configFlags import (
 	OutputMode,
 	ReportSpellingErrors,
 )
-from config.featureFlagEnums import ReviewRoutingMovesSystemCaretFlag, FontFormattingBrailleModeFlag
+from config.featureFlagEnums import (
+	BrailleTextWrapFlag,
+	FontFormattingBrailleModeFlag,
+	ReviewRoutingMovesSystemCaretFlag,
+)
 from logHandler import log
 import controlTypes
 import api
@@ -2038,7 +2041,7 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 			# Initialising with no actual braille content.
 			self._windowRowBufferOffsets = [(0, 0)]
 			return
-		textWrap = BrailleTextWrap(config.conf["braille"]["textWrap"])
+		textWrap: BrailleTextWrapFlag = config.conf["braille"]["textWrap"].calculated()
 		bufferEnd = len(self.brailleCells)
 		start = pos
 		clippedEnd = False
@@ -2048,20 +2051,23 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 			if end > bufferEnd:
 				end = bufferEnd
 				clippedEnd = True
-			elif textWrap == BrailleTextWrap.CONTINUATION_ONLY and all(self.brailleCells[end - 1 : end + 1]):
+			elif textWrap == BrailleTextWrapFlag.MARK_WORD_CUTS and all(self.brailleCells[end - 1 : end + 1]):
 				end -= 1
 				showContinuationMark = True
-			elif textWrap in (BrailleTextWrap.WORD_BOUNDARIES, BrailleTextWrap.HYPHENATE):
+			elif textWrap in (
+				BrailleTextWrapFlag.AT_WORD_BOUNDARIES,
+				BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES,
+			):
 				try:
 					lastSpaceIndex = rindex(self.brailleCells, 0, start, end + 1)
 					if lastSpaceIndex < end:
 						# The next braille window doesn't start with space.
 						oldEnd = end
 						end = rindex(self.brailleCells, 0, start, end) + 1
-						if end < oldEnd and textWrap == BrailleTextWrap.HYPHENATE:
-							# When hyphenating, we want to split the word after the last space.
+						if end < oldEnd and textWrap == BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES:
+							# Prefer splitting the word at a syllable boundary closer to the display edge.
 							# Note that, when the below index call fails, it is appropriately handled by the except block,
-							# which means that we won't hyphenate in this case.
+							# which means that we won't split at a syllable boundary in this case.
 							nextSpace = self.brailleCells.index(0, oldEnd, bufferEnd)
 							word = self.bufferPositionsToRawText(end, nextSpace - 1)
 							if word:
@@ -2075,7 +2081,10 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 										showContinuationMark = True
 										break
 				except (ValueError, IndexError):
-					pass  # No space on line
+					# No space on line - fall back to display-edge cut.
+					# Under rule A, mark this as a word cut since a word was split mid-way.
+					if all(self.brailleCells[end - 1 : end + 1]):
+						showContinuationMark = True
 			if showContinuationMark:
 				self._continuationRows.append(len(self._windowRowBufferOffsets))
 			self._windowRowBufferOffsets.append((start, end))
@@ -2117,9 +2126,9 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 		if startPos <= restrictPos:
 			self.windowStartPos = restrictPos
 			return
-		if config.conf["braille"]["textWrap"] in (
-			BrailleTextWrap.OFF.value,
-			BrailleTextWrap.CONTINUATION_ONLY.value,
+		if config.conf["braille"]["textWrap"].calculated() in (
+			BrailleTextWrapFlag.NONE,
+			BrailleTextWrapFlag.MARK_WORD_CUTS,
 		):
 			self.windowStartPos = startPos
 			return

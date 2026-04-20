@@ -2579,22 +2579,22 @@ Commands can be assigned to toggle the automatic scroll option, and to increase 
 ##### Text wrap {#BrailleSettingsTextWrap}
 
 This combo box allows you to configure how NVDA handles text that is too long to fit on the braille display.
+When a word is cut across rows, the continuation mark (dots 7 and 8) is shown in the last cell of the row, unless otherwise noted below.
 The following options are available:
 
-* Off: Text is not wrapped.
+* Off: Text is not wrapped and no continuation mark is shown.
 As much of the text as possible will be displayed, but the rest will be cut off.
 When you scroll the display, you will be able to read the rest of the text.
-* Show continuation mark only: A continuation mark (dots 7 and 8) will be shown at the end of the braille display to indicate that a word continues.
+* Show mark when words are cut: Text is not wrapped, but whenever a word is cut at the end of the display, a continuation mark is shown.
 When you scroll the display, you will be able to read the rest of the word.
-* Break words with hyphen: Words that do not fit at the end of the braille display will be broken with a continuation mark (dots 7 and 8).
-When you scroll the display, you will be able to read the rest of the word.
-This behavior is equal to how common word processors behave and takes  the language of the word into account, if known.
-For example, the word `behave` will be broken between `be` and `have`.
 * At word boundaries: A word which is too large to fit at the end of the braille display will not be split.
 Instead, there will be some blank space at the end of the display.
 When you scroll the display, you will be able to read the entire word.
-Note that if the word is too large to fit on the display even by itself, the word must still be split.
+Note that if the word is too large to fit on the display even by itself, the word must still be split; the continuation mark is then shown.
 This option may allow for more fluent reading, but generally requires you to scroll the display more.
+* At word or syllable boundaries: Like "At word boundaries", but long words that don't fit are split at a syllable boundary when possible, using the language of the word if known.
+For example, the word `behave` may be split between `be` and `have`.
+The continuation mark is shown whenever a word is split.
 
 ##### Unicode normalization {#BrailleUnicodeNormalization}
 

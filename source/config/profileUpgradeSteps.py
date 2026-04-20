@@ -20,7 +20,6 @@ from configobj import ConfigObj
 from logHandler import log
 
 from config.configFlags import (
-	BrailleTextWrap,
 	NVDAKey,
 	OutputMode,
 	ReportCellBorders,
@@ -31,6 +30,7 @@ from config.configFlags import (
 	TetherTo,
 	TypingEcho,
 )
+from config.featureFlagEnums import BrailleTextWrapFlag
 
 
 def upgradeConfigFrom_0_to_1(profile: ConfigObj) -> None:
@@ -694,7 +694,7 @@ def upgradeConfigFrom_22_to_23(profile: ConfigObj) -> None:
 	"""
 	If the wordWrap braille config flag is explicitly set in a profile,
 	set the new text wrap option to word boundaries,
-	rather than the new hyphenate default.
+	rather than the new default of word or syllable boundaries.
 	"""
 	section = "braille"
 	key = "wordWrap"
@@ -708,9 +708,8 @@ def upgradeConfigFrom_22_to_23(profile: ConfigObj) -> None:
 		log.error(f"'{key}' is not a boolean, got {profile[section][key]!r}. No action taken.")
 		return
 
-	newValue = BrailleTextWrap.WORD_BOUNDARIES.value if oldValue else BrailleTextWrap.OFF.value
+	newValue = BrailleTextWrapFlag.AT_WORD_BOUNDARIES.name if oldValue else BrailleTextWrapFlag.NONE.name
 	profile[section][newKey] = newValue
 	log.debug(
-		f"Converted '{key}' with value {oldValue} to '{newKey}' with value {newValue}"
-		f" ({BrailleTextWrap(newValue).name}).",
+		f"Converted '{key}' with value {oldValue} to '{newKey}' with value {newValue}.",
 	)

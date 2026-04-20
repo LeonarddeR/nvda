@@ -39,7 +39,7 @@ import functools
 from . import profileUpgrader
 from . import aggregatedSection
 from .configSpec import confspec
-from .configFlags import BrailleTextWrap
+from .featureFlagEnums import BrailleTextWrapFlag
 from .featureFlag import (
 	_transformSpec_AddFeatureFlagDefault,
 	_validateConfig_featureFlag,
@@ -1401,17 +1401,23 @@ class AggregatedSection:
 			case "braille":
 				match key:
 					case "wordWrap":
-						# The "wordWrap" setting was renamed to "textWrap" and became an enum.
+						# The "wordWrap" setting was renamed to "textWrap" and became a feature flag.
 						log.warning(
 							"braille.wordWrap is deprecated. Use braille.textWrap instead.",
 							stack_info=True,
 						)
 						key = "textWrap"
-						val = (BrailleTextWrap.WORD_BOUNDARIES if val else BrailleTextWrap.OFF).value
+						val = (
+							BrailleTextWrapFlag.AT_WORD_BOUNDARIES if val else BrailleTextWrapFlag.NONE
+						).name
 					case "textWrap":
-						# The "textWrap" setting was added in place of "wordWrap" and became an enum.
+						# The "textWrap" setting was added in place of "wordWrap" and became a feature flag.
 						key = "wordWrap"
-						val = val in (BrailleTextWrap.WORD_BOUNDARIES.value, BrailleTextWrap.HYPHENATE.value)
+						calculated: BrailleTextWrapFlag = val.calculated()
+						val = calculated in (
+							BrailleTextWrapFlag.AT_WORD_BOUNDARIES,
+							BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES,
+						)
 
 					case _:
 						# We don't care about other keys in this section.
