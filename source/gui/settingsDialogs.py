@@ -4704,9 +4704,7 @@ class AdvancedPanelControls(
 			_("re"),
 		]
 		# Translators: Label for the regex backend combobox in the Advanced settings panel.
-		regexBackendLabel = _(
-			"Regular expression &backend (already-loaded patterns keep their original backend until restart):",
-		)
+		regexBackendLabel = _("Regular expression &backend (requires restart):")
 		self.regexBackendCombo: wx.Choice = sHelper.addLabeledControl(
 			regexBackendLabel,
 			wx.Choice,

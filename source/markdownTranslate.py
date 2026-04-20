@@ -11,7 +11,7 @@ import contextlib
 import lxml.etree
 import argparse
 import uuid
-from textUtils import _regex as re
+import re
 from itertools import zip_longest
 from xml.sax.saxutils import escape as xmlEscape
 import difflib

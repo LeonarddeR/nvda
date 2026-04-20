@@ -13,7 +13,7 @@ import markdownTranslate
 import md2html
 import requests
 import codecs
-from textUtils import _regex as re
+import re
 import subprocess
 import sys
 import zipfile

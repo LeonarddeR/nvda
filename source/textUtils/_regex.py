@@ -6,7 +6,9 @@
 """Internal regex backend shim.
 
 Forwards attribute access to either stdlib :mod:`re` or the third-party :mod:`regex`
-module, selected at every access via the ``regexBackend`` feature flag in user config.
+module. The backend is chosen once by :func:`initialize` from the ``regexBackend``
+feature flag in user config and is then frozen for the lifetime of the process.
+Changes to the setting therefore require an NVDA restart.
 
 Intended usage::
 
@@ -14,49 +16,33 @@ Intended usage::
 
 	pattern = re.compile(r"\\w+", re.IGNORECASE)
 
-Because module attributes are not cached after :pep:`562` ``__getattr__`` returns,
-each ``re.compile(...)``/``re.IGNORECASE``/``re.error`` access re-resolves the active
-backend. Toggling the feature flag therefore takes effect immediately for new
-compilations; ``Pattern`` objects already compiled stay bound to the backend that
-created them until NVDA is restarted.
-
-Before :func:`initialize` runs (early bootstrap, unit tests outside startup) or if
-config is unavailable, attribute access falls back to stdlib :mod:`re`.
+Before :func:`initialize` runs (early bootstrap, unit tests outside startup),
+attribute access falls back to stdlib :mod:`re`.
 """
 
 import re as _re
 
 
-_regexModule = None
+_backend = _re
 
 
 def initialize() -> None:
-	"""Eagerly import the :mod:`regex` module and configure VERSION1 semantics.
+	"""Resolve the regex backend from user config and freeze it for this process.
 
-	Call once after :func:`config.initialize` so that subsequent attribute access can
-	resolve the ``regex`` backend without paying import cost on a hot path. Idempotent.
+	Call once after :func:`config.initialize`. Subsequent calls are ignored.
 	"""
-	global _regexModule
-	if _regexModule is not None:
+	global _backend
+	if _backend is not _re:
+		return
+	import config
+
+	if config.conf["featureFlag"]["regexBackend"] != 1:
 		return
 	import regex
 
 	regex.DEFAULT_VERSION = regex.VERSION1
-	_regexModule = regex
-
-
-def _getBackend():
-	if _regexModule is None:
-		return _re
-	try:
-		import config
-
-		if config.conf["featureFlag"]["regexBackend"] == 1:
-			return _regexModule
-	except Exception:
-		pass
-	return _re
+	_backend = regex
 
 
 def __getattr__(name: str):
-	return getattr(_getBackend(), name)
+	return getattr(_backend, name)

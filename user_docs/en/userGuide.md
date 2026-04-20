@@ -4186,7 +4186,7 @@ The [text paragraph navigation command](#TextNavigationCommand) searches for par
 This combobox lets you choose which regular expression engine NVDA uses internally for pattern matching.
 The default option uses the standard Python `re` module, which preserves NVDA's historical behavior.
 Selecting `regex` switches to the third-party `regex` module, which offers improved Unicode handling (helpful for non-Latin scripts such as Hebrew with niqqud, Arabic, or CJK), variable-width lookbehind, and the ability to release the GIL during long matches.
-A change to this setting takes effect immediately for newly compiled patterns; patterns already loaded keep their original backend until NVDA is restarted.
+A change to this setting requires NVDA to be restarted before it takes effect.
 
 ### miscellaneous Settings {#MiscSettings}
 
