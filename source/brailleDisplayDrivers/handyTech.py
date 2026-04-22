@@ -24,6 +24,7 @@ from hwIo import intToByte, boolToByte
 import api
 import braille
 import brailleInput
+from autoSettingsUtils.driverSetting import BooleanDriverSetting, NumericDriverSetting
 import inputCore
 import ui
 from baseObject import ScriptableObject, AutoPropertyObject
@@ -260,8 +261,17 @@ class AtcMixin(object):
 	"""
 
 	supportedSettings = (
-		braille.BrailleDisplayDriver.AtcSetting(defaultVal=True, useConfig=True),
-		braille.BrailleDisplayDriver.AtcSensitivitySetting(defaultVal=3, minVal=0, maxVal=6, useConfig=True),
+		# Translators: Label for a setting in braille settings dialog.
+		BooleanDriverSetting("atc", _("&Active tactile control"), defaultVal=True, useConfig=True),
+		# Translators: Label for a setting in braille settings dialog.
+		NumericDriverSetting(
+			"atcSensitivity",
+			_("ATC &sensitivity"),
+			defaultVal=3,
+			minVal=0,
+			maxVal=6,
+			useConfig=True,
+		),
 	)
 
 	def sendSensitivity(self, display: "BrailleDisplayDriver", value: int) -> None:
@@ -1135,7 +1145,7 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 				pos = _parseAtcReadingPosition(packet[1:], self.numCells)
 				if pos is not None:
 					inputCore.manager.executeGesture(
-						InputGesture(self._model, atcReadingPosition=pos),
+						InputGesture(self._model, atc=pos),
 					)
 			elif extPacketType == HT_EXTPKT_GET_PROTOCOL_PROPERTIES:
 				self.numCells = packet[3]
@@ -1190,7 +1200,7 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 	script_toggleBrailleInput.__doc__ = _("Toggle braille input")
 
 	def script_atcRouteReview(self, gesture: "InputGesture") -> None:
-		pos = getattr(gesture, "atcReadingPosition", None)
+		pos = gesture.routingIndex
 		if pos is None:
 			return
 		bufferPos = braille.handler.buffer.windowStartPos + pos
@@ -1207,7 +1217,7 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 	script_atcRouteReview.__doc__ = _("Move the review cursor to the braille cell touched by the user")
 
 	__gestures = {
-		"br(handytech):atcReadingPosition": "atcRouteReview",
+		"br(handytech):atc": "atcRouteReview",
 		"br(handytech):space+b1+b3+b4": "toggleBrailleInput",
 		"br(handytech):leftSpace+b1+b3+b4": "toggleBrailleInput",
 		"br(handytech):rightSpace+b1+b3+b4": "toggleBrailleInput",
@@ -1278,12 +1288,12 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGesture):
 	source = BrailleDisplayDriver.name
 
-	def __init__(self, model, keys=(), isBrailleInput=False, atcReadingPosition=None):
+	def __init__(self, model, keys=(), isBrailleInput=False, atc=None):
 		super(InputGesture, self).__init__()
 		self.model = model.genericName.replace(" ", "")
-		if atcReadingPosition is not None:
-			self.atcReadingPosition = atcReadingPosition
-			self.id = "atcReadingPosition"
+		if atc is not None:
+			self.routingIndex = atc
+			self.id = "atc"
 			return
 		self.keys = set(keys)
 
