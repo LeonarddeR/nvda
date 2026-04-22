@@ -1147,6 +1147,16 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 					inputCore.manager.executeGesture(
 						InputGesture(self._model, atc=pos),
 					)
+			elif extPacketType == HT_EXTPKT_READING_POSITION:
+				log.error(packet)
+				# Older ATC format used by Modular Evolution: a single byte
+				# containing the 0-based cell index, or 0xFF for no touch.
+				# See brltty Drivers/Braille/HandyTech/braille.c case HT_EXTPKT_ReadingPosition.
+				rawPos = packet[1] if len(packet) > 1 else 0xFF
+				if rawPos != 0xFF and rawPos < self.numCells:
+					inputCore.manager.executeGesture(
+						InputGesture(self._model, atc=rawPos),
+					)
 			elif extPacketType == HT_EXTPKT_GET_PROTOCOL_PROPERTIES:
 				self.numCells = packet[3]
 			elif isinstance(self._model, TimeSyncFirmnessMixin):
