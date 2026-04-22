@@ -21,6 +21,7 @@ import serial
 import weakref
 import hwIo
 from hwIo import intToByte, boolToByte
+import api
 import braille
 import brailleInput
 import inputCore
@@ -253,12 +254,28 @@ class OldProtocolMixin(object):
 
 
 class AtcMixin(object):
-	"""Support for displays with Active Tactile Control (ATC)"""
+	"""Support for displays with Active Tactile Control (ATC).
 
-	def postInit(self):
-		super(AtcMixin, self).postInit()
-		log.debug("Enabling ATC")
-		self._display.atc = True
+	Used by ActiveBraille-family devices (sensitivity packet 0x53, range 0-6).
+	"""
+
+	supportedSettings = (
+		braille.BrailleDisplayDriver.AtcSetting(defaultVal=True, useConfig=True),
+		braille.BrailleDisplayDriver.AtcSensitivitySetting(defaultVal=3, minVal=0, maxVal=6, useConfig=True),
+	)
+
+	def sendSensitivity(self, display: "BrailleDisplayDriver", value: int) -> None:
+		"""Send ATC sensitivity to the device (ActiveBraille family: packet 0x53, range 0-6)."""
+		display.sendExtendedPacket(HT_EXTPKT_SET_ATC_SENSITIVITY_2, intToByte(value))
+
+
+class AtcEvolutionMixin(AtcMixin):
+	"""ATC support for Modular Evolution devices (sensitivity packet 0x51, inverse byte 0x0F-0xFF)."""
+
+	def sendSensitivity(self, display: "BrailleDisplayDriver", value: int) -> None:
+		"""Send ATC sensitivity to the device (Evolution: packet 0x51, 0=0xFF, 6=0x0F)."""
+		raw = 0xFF - (value * 0x28)
+		display.sendExtendedPacket(HT_EXTPKT_SET_ATC_SENSITIVITY, intToByte(raw))
 
 
 class TimeSyncFirmnessMixin(object):
@@ -401,7 +418,7 @@ class ModularConnect88(TripleActionKeysMixin, Model):
 	numCells = 88
 
 
-class ModularEvolution(AtcMixin, TripleActionKeysMixin, Model):
+class ModularEvolution(AtcEvolutionMixin, TripleActionKeysMixin, Model):
 	genericName = "Modular Evolution"
 
 	def _get_name(self):
@@ -674,6 +691,31 @@ HT_HID_RPT_InBaud = b"\xfe"  # set baud rate of serial connection
 HT_HID_CMD_FlushBuffers = b"\x01"  # flush input and output buffers
 
 
+def _parseAtcReadingPosition(payload: bytes, cellCount: int) -> Optional[int]:
+	"""Parse an HT_EXTPKT_ATC_INFO payload and return the cell index with highest touch pressure.
+
+	Payload layout (from brltty braille.c:1813-1850):
+	- Byte 0: 1-based starting cell index; 0 means no touch.
+	- Bytes 1..N: packed 4-bit pressure values, high nibble first, for consecutive cells.
+
+	Returns the 0-based cell index with highest pressure, or None if no touch or out of range.
+	"""
+	if not payload or payload[0] == 0:
+		return None
+	cellIndex = payload[0] - 1
+	highestPressure = 0
+	readingPosition: Optional[int] = None
+	for byte in payload[1:]:
+		for pressure in ((byte >> 4) & 0x0F, byte & 0x0F):
+			if pressure > highestPressure:
+				highestPressure = pressure
+				readingPosition = cellIndex
+			cellIndex += 1
+	if readingPosition is None or readingPosition >= cellCount:
+		return None
+	return readingPosition
+
+
 class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 	name = "handyTech"
 	# Translators: The name of a series of braille displays.
@@ -770,6 +812,7 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 		self._dotFirmness = 1
 		self._hidSerialBuffer = b""
 		self._atc = False
+		self._atcSensitivity = 3
 
 		for portType, portId, port, portInfo in self._getTryPorts(port):
 			# At this point, a port bound to this display has been found.
@@ -937,6 +980,19 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 		# Regardless whether this setting is supported or not, we want to safe its state.
 		self._dotFirmness = value
 
+	def _get_atcSensitivity(self) -> int:
+		return self._atcSensitivity
+
+	def _set_atcSensitivity(self, value: int) -> None:
+		if self._atcSensitivity == value:
+			return
+		if isinstance(self._model, AtcMixin):
+			self._model.sendSensitivity(self, value)
+		else:
+			log.debugWarning("Changing ATC sensitivity for unsupported device %s" % self._model.name)
+		# Regardless whether this setting is supported or not, we want to save its state.
+		self._atcSensitivity = value
+
 	def sendPacket(self, packetType: bytes, data: bytes = b""):
 		if BrailleDisplayDriver._sleepcounter > 0:
 			return
@@ -1076,8 +1132,11 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 			elif extPacketType == HT_EXTPKT_KEY:
 				self._handleInput(packet[1])
 			elif extPacketType == HT_EXTPKT_ATC_INFO:
-				# Ignore ATC packets for now
-				pass
+				pos = _parseAtcReadingPosition(packet[1:], self.numCells)
+				if pos is not None:
+					inputCore.manager.executeGesture(
+						InputGesture(self._model, atcReadingPosition=pos),
+					)
 			elif extPacketType == HT_EXTPKT_GET_PROTOCOL_PROPERTIES:
 				self.numCells = packet[3]
 			elif isinstance(self._model, TimeSyncFirmnessMixin):
@@ -1130,7 +1189,25 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 	# Translators: description of the script to toggle braille input
 	script_toggleBrailleInput.__doc__ = _("Toggle braille input")
 
+	def script_atcRouteReview(self, gesture: "InputGesture") -> None:
+		pos = getattr(gesture, "atcReadingPosition", None)
+		if pos is None:
+			return
+		bufferPos = braille.handler.buffer.windowStartPos + pos
+		try:
+			region, localPos = braille.handler.buffer.bufferPosToRegionPos(bufferPos)
+		except LookupError:
+			return
+		if not isinstance(region, braille.ReviewTextInfoRegion):
+			return
+		info = region.getTextInfoForBraillePos(localPos)
+		api.setReviewPosition(info)
+
+	# Translators: description of the script to move the review cursor to the braille cell touched by the user
+	script_atcRouteReview.__doc__ = _("Move the review cursor to the braille cell touched by the user")
+
 	__gestures = {
+		"br(handytech):atcReadingPosition": "atcRouteReview",
 		"br(handytech):space+b1+b3+b4": "toggleBrailleInput",
 		"br(handytech):leftSpace+b1+b3+b4": "toggleBrailleInput",
 		"br(handytech):rightSpace+b1+b3+b4": "toggleBrailleInput",
@@ -1201,9 +1278,13 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGesture):
 	source = BrailleDisplayDriver.name
 
-	def __init__(self, model, keys, isBrailleInput=False):
+	def __init__(self, model, keys=(), isBrailleInput=False, atcReadingPosition=None):
 		super(InputGesture, self).__init__()
 		self.model = model.genericName.replace(" ", "")
+		if atcReadingPosition is not None:
+			self.atcReadingPosition = atcReadingPosition
+			self.id = "atcReadingPosition"
+			return
 		self.keys = set(keys)
 
 		self.keyNames = names = []

@@ -3829,6 +3829,36 @@ class BrailleDisplayDriver(driverHandler.Driver):
 			useConfig=useConfig,
 		)
 
+	@classmethod
+	def AtcSetting(cls, defaultVal: bool = False, useConfig: bool = True) -> "BooleanDriverSetting":
+		"""Factory function for creating an Active Tactile Control on/off setting."""
+		return BooleanDriverSetting(
+			"atc",
+			# Translators: Label for a setting in braille settings dialog.
+			_("&Active tactile control"),
+			defaultVal=defaultVal,
+			useConfig=useConfig,
+		)
+
+	@classmethod
+	def AtcSensitivitySetting(
+		cls,
+		defaultVal: int,
+		minVal: int,
+		maxVal: int,
+		useConfig: bool = True,
+	) -> "NumericDriverSetting":
+		"""Factory function for creating an Active Tactile Control sensitivity setting."""
+		return NumericDriverSetting(
+			"atcSensitivity",
+			# Translators: Label for a setting in braille settings dialog.
+			_("ATC &sensitivity"),
+			defaultVal=defaultVal,
+			minVal=minVal,
+			maxVal=maxVal,
+			useConfig=useConfig,
+		)
+
 
 class BrailleDisplayGesture(inputCore.InputGesture):
 	"""A button, wheel or other control pressed on a braille display.
