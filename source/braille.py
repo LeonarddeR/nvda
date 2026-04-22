@@ -3834,10 +3834,16 @@ class BrailleDisplayGesture(inputCore.InputGesture):
 	"""A button, wheel or other control pressed on a braille display.
 	Subclasses must provide L{source} and L{id}.
 	Optionally, L{model} can be provided to facilitate model specific gestures.
-	L{routingIndex} should be provided for routing buttons.
+	L{cellIndexes} should be provided for gestures addressed to specific braille cells,
+	such as routing keys or touch-sensitive cells (e.g. Handy Tech Active Tactile Control).
 	Subclasses can also inherit from L{brailleInput.BrailleInputGesture} if the display has a braille keyboard.
 	If the braille display driver is a L{baseObject.ScriptableObject}, it can provide scripts specific to input gestures from this display.
 	"""
+
+	#: Gesture id used when a single cell index is provided.
+	ID_ROUTING: str = "routing"
+	#: Gesture id used when multiple cell indexes are provided simultaneously.
+	ID_MULTI_ROUTING: str = "multiRouting"
 
 	shouldPreventSystemIdle = True
 
@@ -3868,9 +3874,43 @@ class BrailleDisplayGesture(inputCore.InputGesture):
 		"""
 		raise NotImplementedError
 
-	#: The index of the routing key or C{None} if this is not a routing key.
-	#: @type: int
-	routingIndex = None
+	#: Indexes of braille cells addressed by this gesture, e.g. routing keys or touch cells.
+	#: Empty if this gesture is not cell-addressed.
+	cellIndexes: list[int] = []
+
+	@classmethod
+	def idForCellCount(cls, count: int) -> str:
+		"""Return the conventional gesture id suffix for a cell-addressed gesture.
+
+		:param count: Number of cells addressed.
+		:return: :attr:`ID_MULTI_ROUTING` for more than one cell, :attr:`ID_ROUTING` otherwise.
+		"""
+		return cls.ID_MULTI_ROUTING if count > 1 else cls.ID_ROUTING
+
+	def _get_routingIndex(self) -> int | None:
+		"""Deprecated. Use :attr:`cellIndexes` instead.
+
+		Returns the first cell index, or ``None`` if no cells are addressed.
+		"""
+		import NVDAState
+
+		if NVDAState._allowDeprecatedAPI():
+			log.warning(
+				"BrailleDisplayGesture.routingIndex is deprecated, use cellIndexes instead.",
+				stack_info=True,
+			)
+		return self.cellIndexes[0] if self.cellIndexes else None
+
+	def _set_routingIndex(self, value: int | None) -> None:
+		"""Deprecated. Set :attr:`cellIndexes` instead."""
+		import NVDAState
+
+		if NVDAState._allowDeprecatedAPI():
+			log.warning(
+				"Setting BrailleDisplayGesture.routingIndex is deprecated, set cellIndexes instead.",
+				stack_info=True,
+			)
+		self.cellIndexes = [value] if value is not None else []
 
 	def _get_identifiers(self):
 		ids = ["br({source}):{id}".format(source=self.source, id=self.id)]

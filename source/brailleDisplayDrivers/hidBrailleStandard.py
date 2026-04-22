@@ -354,7 +354,7 @@ class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGestu
 				# We must assume that any input in the router set is a routing key,
 				# Because some devices expose the routing keys as 1-bit values
 				# which Windows then combines into a usage range.
-				self.routingIndex = buttonCapsInfo.relativeIndexInCollection
+				self.cellIndexes = [buttonCapsInfo.relativeIndexInCollection]
 				usageID = BraillePageUsageID.ROUTER_KEY
 				# Prefix the gesture name with the specific routing collection name (E.g. routerSet1)
 				namePrefix = self._usageIDToGestureName(linkUsagePage, linkUsageID)

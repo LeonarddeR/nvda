@@ -1209,6 +1209,7 @@ class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGestu
 		self.keyNames = names = []
 		if isBrailleInput:
 			self.dots = self._calculateDots()
+		routingIndexes: list[int] = []
 		for key in keys:
 			if isBrailleInput and (
 				key in KEY_SPACES or (key in (KEY_LEFT, KEY_RIGHT) and isinstance(model, EasyBraille))
@@ -1218,13 +1219,16 @@ class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGestu
 			elif isBrailleInput and key in KEY_DOTS:
 				names.append("dot%d" % KEY_DOTS[key])
 			elif KEY_ROUTING <= key < KEY_ROUTING + model.numCells:
-				self.routingIndex = key - KEY_ROUTING
-				names.append("routing")
+				routingIndexes.append(key - KEY_ROUTING)
 			else:
 				try:
 					names.append(model.keys[key])
 				except KeyError:
 					log.debugWarning("Unknown key %d" % key)
+		if routingIndexes:
+			routingIndexes.sort()
+			self.cellIndexes = routingIndexes
+			names.append(braille.BrailleDisplayGesture.idForCellCount(len(routingIndexes)))
 
 		self.id = "+".join(names)
 

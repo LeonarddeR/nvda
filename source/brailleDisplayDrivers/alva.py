@@ -526,10 +526,10 @@ class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGestu
 			if group == ALVA_CR_GROUP:
 				if number & ALVA_2ND_CR_MASK:
 					keyName = "secondRouting"
-					self.routingIndex = number & ~ALVA_2ND_CR_MASK
+					self.cellIndexes = [number & ~ALVA_2ND_CR_MASK]
 				else:
 					keyName = "routing"
-					self.routingIndex = number
+					self.cellIndexes = [number]
 				names.append(keyName)
 				if isNoBC640:
 					secondaryNames.append(keyName)

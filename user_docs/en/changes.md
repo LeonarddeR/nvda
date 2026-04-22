@@ -32,6 +32,8 @@ The triple-press keyboard shortcut (`NVDA+ctrl+r`) is not affected, as it is int
 * DotPad braille displays now support multi-button combination gestures. (#19565, @bramd)
   * You can now press multiple buttons simultaneously to create custom gestures (e.g., `f1+panLeft`).
 * A new voice setting "Natural pause after punctuation" was added for OneCore voices, allowing users to turn punctuation pauses on or off. (#11876, @gexgd0419)
+* On supported braille displays, pressing multiple routing keys simultaneously can now be bound to a new "multi routing" gesture. (#20001, @LeonarddeR)
+  * An unassigned command has been added that selects the text between the first and last pressed routing cells.
 
 ### Changes
 
@@ -100,8 +102,14 @@ Use the individual test commands instead: `runcheckpot.bat`, `rununittests.bat`,
     * Added a `percentageToValue` function to convert a percentage to the corresponding configuration value.
     * Added a `clampedIncrementAndUpdateConfig` function to update a configuration value by applying a step, constrained within its valid range.
 
+* `braille.BrailleDisplayGesture` now exposes a `cellIndexes` list attribute, replacing the single-valued `routingIndex`. (#20001, @LeonarddeR)
+  * Drivers should set `cellIndexes` directly instead of `routingIndex`.
+  * When a gesture addresses more than one cell, its `id` should be set to `"multiRouting"` (or be built via the new `BrailleDisplayGesture.idForCellCount(n)` helper).
+  * `cellIndexes` is not limited to routing keys; touch-sensitive cells (e.g. Handy Tech Active Tactile Control) can reuse the same attribute.
+
 #### Deprecations
 
+* `braille.BrailleDisplayGesture.routingIndex` is deprecated. Use `cellIndexes` instead. (#20001, @LeonarddeR)
 * The `speechDictHandler.ENTRY_TYPE_*` constants are deprecated.
 Use the `speechDictHandler.types.EntryType` enumeration instead. (#19430, @LeonarddeR)
 * `speechDictHandler.SpeechDictEntry` and `speechDictHandler.SpeechDict` have been moved to `speechDictHandler.types`. (#19430, @LeonarddeR)

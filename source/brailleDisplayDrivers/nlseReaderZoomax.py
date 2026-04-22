@@ -264,11 +264,11 @@ class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGestu
 				self.dots = groupKeysDown >> 8
 				self.space = groupKeysDown & SPACEBAR_KEYS_MASK
 			if group == DeviceCommand.ROUTING_KEYS:
-				for index in range(braille.handler.display.numCells):
-					if groupKeysDown & (1 << index):
-						self.routingIndex = index
-						names.append("routing")
-						break
+				self.cellIndexes = [
+					index for index in range(braille.handler.display.numCells) if groupKeysDown & (1 << index)
+				]
+				if self.cellIndexes:
+					names.append(braille.BrailleDisplayGesture.idForCellCount(len(self.cellIndexes)))
 			else:
 				for index, name in enumerate(COMMAND_RESPONSE_INFO.get(group).keys):
 					if groupKeysDown & (1 << index):

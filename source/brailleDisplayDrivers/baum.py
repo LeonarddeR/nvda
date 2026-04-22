@@ -407,14 +407,14 @@ class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGestu
 				self.dots = groupKeysDown >> 8
 				self.space = groupKeysDown & 0x3
 			if group == BAUM_ROUTING_KEYS:
-				for index in range(braille.handler.display.numCells):
-					if groupKeysDown & (1 << index):
-						self.routingIndex = index
-						names.append("routing")
-						break
+				self.cellIndexes = [
+					index for index in range(braille.handler.display.numCells) if groupKeysDown & (1 << index)
+				]
+				if self.cellIndexes:
+					names.append(braille.BrailleDisplayGesture.idForCellCount(len(self.cellIndexes)))
 			elif group == BAUM_ROUTING_KEY:
-				self.routingIndex = groupKeysDown - 1
-				names.append("routing")
+				self.cellIndexes = [groupKeysDown - 1]
+				names.append(braille.BrailleDisplayGesture.ID_ROUTING)
 			else:
 				for index, name in enumerate(KEY_NAMES[group]):
 					if groupKeysDown & (1 << index):
