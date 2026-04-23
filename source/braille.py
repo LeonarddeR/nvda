@@ -3840,10 +3840,10 @@ class BrailleDisplayGesture(inputCore.InputGesture):
 	If the braille display driver is a L{baseObject.ScriptableObject}, it can provide scripts specific to input gestures from this display.
 	"""
 
-	#: Gesture id used when a single cell index is provided.
 	ID_ROUTING: str = "routing"
-	#: Gesture id used when multiple cell indexes are provided simultaneously.
+	"""Gesture id used when a single cell index is provided."""
 	ID_MULTI_ROUTING: str = "multiRouting"
+	"""Gesture id used when multiple cell indexes are provided simultaneously."""
 
 	shouldPreventSystemIdle = True
 
@@ -3874,9 +3874,10 @@ class BrailleDisplayGesture(inputCore.InputGesture):
 		"""
 		raise NotImplementedError
 
-	#: Indexes of braille cells addressed by this gesture, e.g. routing keys or touch cells.
-	#: Empty if this gesture is not cell-addressed.
-	cellIndexes: list[int] = []
+	cellIndexes: list[int] | None = None
+	"""Indexes of braille cells addressed by this gesture, e.g. routing keys or touch cells.
+	C{None} if this gesture is not cell-addressed.
+	"""
 
 	@classmethod
 	def idForCellCount(cls, count: int) -> str:
@@ -3910,7 +3911,7 @@ class BrailleDisplayGesture(inputCore.InputGesture):
 				"Setting BrailleDisplayGesture.routingIndex is deprecated, set cellIndexes instead.",
 				stack_info=True,
 			)
-		self.cellIndexes = [value] if value is not None else []
+		self.cellIndexes = [value] if value is not None else None
 
 	def _get_identifiers(self):
 		ids = ["br({source}):{id}".format(source=self.source, id=self.id)]

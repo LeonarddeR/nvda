@@ -188,9 +188,9 @@ class TestBrailleDisplayGestureCellIndexes(unittest.TestCase):
 
 		return _Gesture()
 
-	def test_default_cellIndexes_empty(self):
+	def test_default_cellIndexes_none(self):
 		g = self._makeGesture()
-		self.assertEqual([], g.cellIndexes)
+		self.assertIsNone(g.cellIndexes)
 
 	def test_idForCellCount(self):
 		self.assertEqual("routing", braille.BrailleDisplayGesture.idForCellCount(0))
@@ -216,7 +216,7 @@ class TestBrailleDisplayGestureCellIndexes(unittest.TestCase):
 		g = self._makeGesture()
 		g.cellIndexes = [1, 2]
 		g.routingIndex = None
-		self.assertEqual([], g.cellIndexes)
+		self.assertIsNone(g.cellIndexes)
 
 	def test_multiRouting_identifier_matches_regex(self):
 		class _Gesture(braille.BrailleDisplayGesture):
