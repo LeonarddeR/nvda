@@ -3840,11 +3840,6 @@ class BrailleDisplayGesture(inputCore.InputGesture):
 	If the braille display driver is a L{baseObject.ScriptableObject}, it can provide scripts specific to input gestures from this display.
 	"""
 
-	ID_ROUTING: str = "routing"
-	"""Gesture id used when a single cell index is provided."""
-	ID_MULTI_ROUTING: str = "multiRouting"
-	"""Gesture id used when multiple cell indexes are provided simultaneously."""
-
 	shouldPreventSystemIdle = True
 
 	def _get_source(self):
