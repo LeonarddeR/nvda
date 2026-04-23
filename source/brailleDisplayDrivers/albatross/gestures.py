@@ -95,26 +95,24 @@ class InputGestureKeys(braille.BrailleDisplayGesture):
 		self.source = name
 		self.keyCodes = set(keys)
 		names = []
-		routingIndexes: list[int] = []
+		cellIndexesByRange: dict[str, list[int]] = {}
 		for key in self.keyCodes:
 			routingTuple = self._getRoutingIndex(key)
 			if routingTuple:
 				rangeName, index = routingTuple
-				if rangeName == "routing":
-					routingIndexes.append(index)
-				else:
-					# Non-primary routing ranges (e.g. secondRouting) keep original single-cell behavior.
-					names.append(rangeName)
-					self.cellIndexes = [index]
+				cellIndexesByRange.setdefault(rangeName, []).append(index)
 			else:
 				try:
 					names.append(Keys(key).name)
 				except (KeyError, ValueError):
 					log.debug(f"Unknown key with id {key}")
-		if routingIndexes:
-			routingIndexes.sort()
-			self.cellIndexes = routingIndexes
-			names.append(braille.BrailleDisplayGesture.idForCellCount(len(routingIndexes)))
+		if cellIndexesByRange:
+			allIndexes: list[int] = []
+			for rangeName, indexes in sorted(cellIndexesByRange.items()):
+				indexes.sort()
+				allIndexes.extend(indexes)
+				names.append(braille.BrailleDisplayGesture.idForCellCount(len(indexes), rangeName))
+			self.cellIndexes = allIndexes
 		self.id = "+".join(names)
 		# Try to fix the first valid key press was not recognized as a gesture
 		if self.id and not self.script:

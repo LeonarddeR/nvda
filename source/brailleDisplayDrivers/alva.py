@@ -522,17 +522,16 @@ class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGestu
 		secondaryNames = []
 		dots = 0
 		space = False
+		cellIndexesByRange: dict[str, list[int]] = {}
 		for group, number in self.keyCodes:
 			if group == ALVA_CR_GROUP:
 				if number & ALVA_2ND_CR_MASK:
-					keyName = "secondRouting"
-					self.cellIndexes = [number & ~ALVA_2ND_CR_MASK]
+					rangeName = "secondRouting"
+					cellIndex = number & ~ALVA_2ND_CR_MASK
 				else:
-					keyName = "routing"
-					self.cellIndexes = [number]
-				names.append(keyName)
-				if isNoBC640:
-					secondaryNames.append(keyName)
+					rangeName = "routing"
+					cellIndex = number
+				cellIndexesByRange.setdefault(rangeName, []).append(cellIndex)
 			else:
 				try:
 					keyName = ALVA_KEYS[group][number]
@@ -556,6 +555,17 @@ class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGestu
 						brailleInput = False
 				else:
 					brailleInput = False
+
+		if cellIndexesByRange:
+			allIndexes: list[int] = []
+			for rangeName, indexes in sorted(cellIndexesByRange.items()):
+				indexes.sort()
+				allIndexes.extend(indexes)
+				idName = braille.BrailleDisplayGesture.idForCellCount(len(indexes), rangeName)
+				names.append(idName)
+				if isNoBC640:
+					secondaryNames.append(idName)
+			self.cellIndexes = allIndexes
 
 		self.id = "+".join(names)
 		self.secondaryId = "+".join(secondaryNames) if isNoBC640 else self.id

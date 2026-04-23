@@ -3879,14 +3879,24 @@ class BrailleDisplayGesture(inputCore.InputGesture):
 	C{None} if this gesture is not cell-addressed.
 	"""
 
-	@classmethod
-	def idForCellCount(cls, count: int) -> str:
+	@staticmethod
+	def idForCellCount(count: int, baseName: str = "routing") -> str:
 		"""Return the conventional gesture id suffix for a cell-addressed gesture.
 
+		When more than one cell is addressed, the base name is prefixed with ``"multi"``
+		and its first character is uppercased.  For example::
+
+			idForCellCount(1, "routing")        # "routing"
+			idForCellCount(2, "routing")        # "multiRouting"
+			idForCellCount(2, "secondRouting")  # "multiSecondRouting"
+
 		:param count: Number of cells addressed.
-		:return: :attr:`ID_MULTI_ROUTING` for more than one cell, :attr:`ID_ROUTING` otherwise.
+		:param baseName: The gesture id for a single-cell press in this range.
+		:return: The base name if *count* <= 1, otherwise the multi-prefixed form.
 		"""
-		return cls.ID_MULTI_ROUTING if count > 1 else cls.ID_ROUTING
+		if count > 1:
+			return f"multi{baseName[0].upper()}{baseName[1:]}"
+		return baseName
 
 	def _get_routingIndex(self) -> int | None:
 		"""Deprecated. Use :attr:`cellIndexes` instead.

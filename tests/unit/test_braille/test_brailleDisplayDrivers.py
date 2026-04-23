@@ -198,6 +198,15 @@ class TestBrailleDisplayGestureCellIndexes(unittest.TestCase):
 		self.assertEqual("multiRouting", braille.BrailleDisplayGesture.idForCellCount(2))
 		self.assertEqual("multiRouting", braille.BrailleDisplayGesture.idForCellCount(5))
 
+	def test_idForCellCount_custom_baseName(self):
+		self.assertEqual("secondRouting", braille.BrailleDisplayGesture.idForCellCount(1, "secondRouting"))
+		self.assertEqual(
+			"multiSecondRouting", braille.BrailleDisplayGesture.idForCellCount(2, "secondRouting")
+		)
+		self.assertEqual("route", braille.BrailleDisplayGesture.idForCellCount(1, "route"))
+		self.assertEqual("multiRoute", braille.BrailleDisplayGesture.idForCellCount(2, "route"))
+		self.assertEqual("multiUpperRouting", braille.BrailleDisplayGesture.idForCellCount(3, "upperRouting"))
+
 	def test_routingIndex_getter_returns_first_cell(self):
 		g = self._makeGesture()
 		g.cellIndexes = [3, 7]
