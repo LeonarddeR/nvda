@@ -268,7 +268,7 @@ class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGestu
 					index for index in range(braille.handler.display.numCells) if groupKeysDown & (1 << index)
 				]
 				if self.cellIndexes:
-					names.append(braille.BrailleDisplayGesture.idForCellCount(len(self.cellIndexes)))
+					names.append(self.idForCellCount(len(self.cellIndexes)))
 			else:
 				for index, name in enumerate(COMMAND_RESPONSE_INFO.get(group).keys):
 					if groupKeysDown & (1 << index):

@@ -320,6 +320,8 @@ class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGestu
 		self.keyNames = names = []
 		namePrefix = None
 		isBrailleInput = True
+		routingIndexes: list[int] = []
+		routingNamePrefix: str | None = None
 		for index in dataIndices:
 			buttonCapsInfo = driver._inputButtonCapsByDataIndex.get(index)
 			buttonCaps = buttonCapsInfo.buttonCaps
@@ -354,14 +356,23 @@ class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGestu
 				# We must assume that any input in the router set is a routing key,
 				# Because some devices expose the routing keys as 1-bit values
 				# which Windows then combines into a usage range.
-				self.cellIndexes = [buttonCapsInfo.relativeIndexInCollection]
+				routingIndexes.append(buttonCapsInfo.relativeIndexInCollection)
 				usageID = BraillePageUsageID.ROUTER_KEY
 				# Prefix the gesture name with the specific routing collection name (E.g. routerSet1)
-				namePrefix = self._usageIDToGestureName(linkUsagePage, linkUsageID)
+				routingNamePrefix = self._usageIDToGestureName(linkUsagePage, linkUsageID)
+				continue
 			name = self._usageIDToGestureName(usagePage, usageID)
 			if namePrefix:
 				name = "_".join([namePrefix, name])
 			names.append(name)
+		if routingIndexes:
+			routingIndexes.sort()
+			self.cellIndexes = routingIndexes
+			routingIdName = self._usageIDToGestureName(HID_USAGE_PAGE_BRAILLE, BraillePageUsageID.ROUTER_KEY)
+			routingIdName = self.idForCellCount(len(routingIndexes), routingIdName)
+			if routingNamePrefix:
+				routingIdName = "_".join([routingNamePrefix, routingIdName])
+			names.append(routingIdName)
 		self.id = "+".join(names)
 
 	def _usageIDToGestureName(self, usagePage: int, usageID: int):

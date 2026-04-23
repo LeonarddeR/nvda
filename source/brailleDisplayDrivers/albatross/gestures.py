@@ -111,7 +111,7 @@ class InputGestureKeys(braille.BrailleDisplayGesture):
 			for rangeName, indexes in sorted(cellIndexesByRange.items()):
 				indexes.sort()
 				allIndexes.extend(indexes)
-				names.append(braille.BrailleDisplayGesture.idForCellCount(len(indexes), rangeName))
+				names.append(self.idForCellCount(len(indexes), rangeName))
 			self.cellIndexes = allIndexes
 		self.id = "+".join(names)
 		# Try to fix the first valid key press was not recognized as a gesture

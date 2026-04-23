@@ -411,7 +411,7 @@ class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGestu
 					index for index in range(braille.handler.display.numCells) if groupKeysDown & (1 << index)
 				]
 				if self.cellIndexes:
-					names.append(braille.BrailleDisplayGesture.idForCellCount(len(self.cellIndexes)))
+					names.append(self.idForCellCount(len(self.cellIndexes)))
 			elif group == BAUM_ROUTING_KEY:
 				self.cellIndexes = [groupKeysDown - 1]
 				names.append("routing")

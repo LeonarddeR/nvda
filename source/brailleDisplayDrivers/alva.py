@@ -561,7 +561,7 @@ class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGestu
 			for rangeName, indexes in sorted(cellIndexesByRange.items()):
 				indexes.sort()
 				allIndexes.extend(indexes)
-				idName = braille.BrailleDisplayGesture.idForCellCount(len(indexes), rangeName)
+				idName = self.idForCellCount(len(indexes), rangeName)
 				names.append(idName)
 				if isNoBC640:
 					secondaryNames.append(idName)

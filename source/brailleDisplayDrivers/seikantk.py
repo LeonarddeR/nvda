@@ -370,7 +370,7 @@ class InputGestureRouting(braille.BrailleDisplayGesture):
 	def __init__(self, indexes: list[int]):
 		super().__init__()
 		self.cellIndexes = list(indexes)
-		self.id = braille.BrailleDisplayGesture.idForCellCount(len(self.cellIndexes))
+		self.id = self.idForCellCount(len(self.cellIndexes))
 
 
 def _getKeyNames(keys: int, names: Dict[int, str]) -> Set[str]:

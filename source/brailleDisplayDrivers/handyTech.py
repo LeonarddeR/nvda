@@ -1228,7 +1228,7 @@ class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGestu
 		if routingIndexes:
 			routingIndexes.sort()
 			self.cellIndexes = routingIndexes
-			names.append(braille.BrailleDisplayGesture.idForCellCount(len(routingIndexes)))
+			names.append(self.idForCellCount(len(routingIndexes)))
 
 		self.id = "+".join(names)
 
