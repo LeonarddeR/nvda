@@ -4260,7 +4260,6 @@ class GlobalCommands(ScriptableObject):
 			# Translators: Reported when selection via multiple routing keys is not possible.
 			ui.message(_("Cannot select from braille cells"))
 			return
-		endInfo.move(textInfos.UNIT_CHARACTER, 1, endPoint="end")
 		startInfo.setEndPoint(endInfo, "endToEnd")
 		try:
 			startInfo.updateSelection()
