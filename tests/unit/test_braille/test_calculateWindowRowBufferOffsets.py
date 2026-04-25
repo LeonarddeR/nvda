@@ -148,6 +148,10 @@ class TestCalculate(unittest.TestCase):
 		#   cells 31..35   -> tail
 		cells = [1] * 10 + [0] + [1] * 19 + [0] + [1] * 5
 		braille.handler.buffer.brailleCells = cells
+		# Stub methods and auto-properties on the buffer instance to isolate
+		# syllable-boundary logic from the real braille translation pipeline.
+		# rawToBraillePos/brailleToRawPos are Getter (non-data) descriptors via
+		# AutoPropertyObject, so setting them on the instance shadows the descriptor.
 		with (
 			patch.object(
 				braille.handler.buffer,
@@ -159,16 +163,15 @@ class TestCalculate(unittest.TestCase):
 				"braille.textUtils.hyphenation.getHyphenPositions",
 				return_value=(3,),
 			),
-			# Identity mapping between raw text and braille cells is sufficient for this synthetic buffer.
 			patch.object(
-				type(braille.handler.buffer),
+				braille.handler.buffer,
 				"rawToBraillePos",
-				new=list(range(len(cells))),
+				list(range(len(cells))),
 			),
 			patch.object(
-				type(braille.handler.buffer),
+				braille.handler.buffer,
 				"brailleToRawPos",
-				new=list(range(len(cells))),
+				list(range(len(cells))),
 			),
 		):
 			braille.handler.buffer._calculateWindowRowBufferOffsets(0)
@@ -182,6 +185,7 @@ class TestCalculate(unittest.TestCase):
 		# Provide a real space so `rindex(... end+1)` / `rindex(... end)` succeeds.
 		cells = [1] * 15 + [0] + [1] * 9 + [0] + [1] * 10
 		braille.handler.buffer.brailleCells = cells
+		# Stub methods and auto-properties; see test_atWordOrSyllableBoundaries_success for explanation.
 		with (
 			patch.object(braille.handler.buffer, "bufferPositionsToRawText", return_value="word"),
 			patch.object(braille.handler.buffer, "_getLanguageAtBufferPos", return_value="en_US"),
@@ -190,14 +194,14 @@ class TestCalculate(unittest.TestCase):
 				return_value=(),
 			),
 			patch.object(
-				type(braille.handler.buffer),
+				braille.handler.buffer,
 				"rawToBraillePos",
-				new=list(range(len(cells))),
+				list(range(len(cells))),
 			),
 			patch.object(
-				type(braille.handler.buffer),
+				braille.handler.buffer,
 				"brailleToRawPos",
-				new=list(range(len(cells))),
+				list(range(len(cells))),
 			),
 		):
 			braille.handler.buffer._calculateWindowRowBufferOffsets(0)
@@ -210,6 +214,7 @@ class TestCalculate(unittest.TestCase):
 		_setTextWrap(BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES)
 		cells = [1] * 15 + [0] + [1] * 9 + [0] + [1] * 10
 		braille.handler.buffer.brailleCells = cells
+		# Stub methods and auto-properties; see test_atWordOrSyllableBoundaries_success for explanation.
 		with (
 			patch.object(braille.handler.buffer, "bufferPositionsToRawText", return_value="word"),
 			patch.object(braille.handler.buffer, "_getLanguageAtBufferPos", return_value="en_US"),
@@ -219,14 +224,14 @@ class TestCalculate(unittest.TestCase):
 				return_value=(22,),
 			),
 			patch.object(
-				type(braille.handler.buffer),
+				braille.handler.buffer,
 				"rawToBraillePos",
-				new=list(range(len(cells))),
+				list(range(len(cells))),
 			),
 			patch.object(
-				type(braille.handler.buffer),
+				braille.handler.buffer,
 				"brailleToRawPos",
-				new=list(range(len(cells))),
+				list(range(len(cells))),
 			),
 		):
 			braille.handler.buffer._calculateWindowRowBufferOffsets(0)
@@ -239,6 +244,7 @@ class TestCalculate(unittest.TestCase):
 		_setTextWrap(BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES)
 		cells = [1] * 15 + [0] + [1] * 9 + [0] + [1] * 10
 		braille.handler.buffer.brailleCells = cells
+		# Stub methods and auto-properties; see test_atWordOrSyllableBoundaries_success for explanation.
 		with (
 			patch.object(braille.handler.buffer, "bufferPositionsToRawText", return_value="word"),
 			patch.object(braille.handler.buffer, "_getLanguageAtBufferPos", return_value="zz_ZZ"),
@@ -247,14 +253,14 @@ class TestCalculate(unittest.TestCase):
 				return_value=(),
 			),
 			patch.object(
-				type(braille.handler.buffer),
+				braille.handler.buffer,
 				"rawToBraillePos",
-				new=list(range(len(cells))),
+				list(range(len(cells))),
 			),
 			patch.object(
-				type(braille.handler.buffer),
+				braille.handler.buffer,
 				"brailleToRawPos",
-				new=list(range(len(cells))),
+				list(range(len(cells))),
 			),
 		):
 			braille.handler.buffer._calculateWindowRowBufferOffsets(0)

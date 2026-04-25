@@ -24,6 +24,7 @@ def _makeTextInfoRegion() -> braille.TextInfoRegion:
 class TestLanguageIndexes(unittest.TestCase):
 	def test_freshRegion_defaultLanguageAtAnyPos(self):
 		"""A region returns the default language for any non-negative pos."""
+		# Stub default language so Region.__init__ doesn't depend on NVDA's configured locale.
 		with patch.object(braille.Region, "_getDefaultRegionLanguage", return_value="en"):
 			region = braille.Region()
 		self.assertEqual(region._getLanguageAtPos(0), "en")
@@ -105,6 +106,8 @@ class TestLanguageIndexes(unittest.TestCase):
 
 		# Run only the resetting portion of `update` by making `_getSelection` raise immediately,
 		# then inspect state. The reset happens before `_getSelection` is called.
+		# Using side_effect to halt execution mid-method avoids needing the full NVDA environment
+		# that the rest of update() requires.
 		with (
 			patch.object(braille.TextInfoRegion, "_getDefaultRegionLanguage", return_value="en"),
 			patch.object(
