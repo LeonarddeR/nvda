@@ -155,9 +155,9 @@ class BrailleTextWrapFlag(DisplayStringEnum):
 			self.MARK_WORD_CUTS: pgettext("braille text wrap", "Show mark when words are cut"),
 			# Translators: A choice in a combo box in the braille settings panel to configure text wrapping.
 			self.AT_WORD_BOUNDARIES: pgettext("braille text wrap", "At word boundaries"),
-			# Translators: A choice in a combo box in the braille settings panel to configure text wrapping.
 			self.AT_WORD_OR_SYLLABLE_BOUNDARIES: pgettext(
 				"braille text wrap",
+				# Translators: A choice in a combo box in the braille settings panel to configure text wrapping.
 				"At word or syllable boundaries",
 			),
 		}
