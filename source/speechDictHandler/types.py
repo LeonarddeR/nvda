@@ -15,6 +15,8 @@ from typing import (
 	Self,
 )
 
+import regex
+
 import config
 from logHandler import log
 from NVDAState import WritePaths, shouldWriteToDisk
@@ -24,6 +26,12 @@ from . import dictFormatUpgrade
 
 if _TYPE_CHECKING:
 	import synthDriverHandler
+
+
+#: Entry types whose generated patterns rely on \w / \b and therefore must
+#: use the `regex` module under VERSION1 so Unicode combining marks (Mn) are
+#: treated as word characters. See nvaccess/nvda#20013.
+_WORD_BOUNDARY_ENTRY_TYPES: "frozenset[EntryType]" = frozenset()  # populated after EntryType
 
 
 class EntryType(DisplayStringIntEnum):
@@ -64,6 +72,30 @@ class EntryType(DisplayStringIntEnum):
 		}
 
 
+_WORD_BOUNDARY_ENTRY_TYPES = frozenset(
+	{
+		EntryType.WORD,
+		EntryType.PART_OF_WORD,
+		EntryType.START_OF_WORD,
+		EntryType.END_OF_WORD,
+	}
+)
+
+
+def _selectRegexEngine(entryType: "EntryType") -> "type[re] | type[regex]":
+	"""Return the regex module to use for compiling a SpeechDictEntry of the
+	given type.
+
+	Word-boundary entry types always use the `regex` module under VERSION1
+	semantics so combining marks are included in \\w. Other types use the
+	stdlib `re` module. The REGEXP type may override this in the future via
+	a feature flag (see ``useModernRegexEngine``).
+	"""
+	if entryType in _WORD_BOUNDARY_ENTRY_TYPES:
+		return regex
+	return re
+
+
 class DictionaryType(DisplayStringStrEnum):
 	"""Types of speech dictionaries."""
 
@@ -102,25 +134,29 @@ class SpeechDictEntry:
 	"""Whether the match is case sensitive."""
 	type: EntryType = EntryType.ANYWHERE
 	"""The type of the entry."""
-	compiled: re.Pattern = field(init=False)
-	"""The compiled regular expression."""
+	compiled: "re.Pattern[str] | regex.Pattern[str]" = field(init=False)
+	"""The compiled regular expression. May be a `re.Pattern` or a
+	`regex.Pattern` depending on the entry type (see #20013)."""
 
 	def __post_init__(self):
-		flags = re.U
+		engine = _selectRegexEngine(self.type)
+		flags = engine.UNICODE
+		if engine is regex:
+			flags |= regex.VERSION1
 		if not self.caseSensitive:
-			flags |= re.IGNORECASE
+			flags |= engine.IGNORECASE
 		match self.type:
 			case EntryType.REGEXP:
 				tempPattern = self.pattern
 			case EntryType.WORD:
-				tempPattern = rf"\b{re.escape(self.pattern)}\b"
+				tempPattern = rf"\b{engine.escape(self.pattern)}\b"
 			case EntryType.PART_OF_WORD:
-				escaped = re.escape(self.pattern)
+				escaped = engine.escape(self.pattern)
 				tempPattern = rf"(?<=\w){escaped}|{escaped}(?=\w)"
 			case EntryType.START_OF_WORD:
-				tempPattern = rf"\b{re.escape(self.pattern)}(?=\w)"
+				tempPattern = rf"\b{engine.escape(self.pattern)}(?=\w)"
 			case EntryType.END_OF_WORD:
-				tempPattern = rf"(?<=\w){re.escape(self.pattern)}\b"
+				tempPattern = rf"(?<=\w){engine.escape(self.pattern)}\b"
 			case EntryType.UNIX:
 				# fnmatch.translate appends \Z to the end of the pattern; discard that anchor.
 				translated = fnmatch.translate(self.pattern)
@@ -130,9 +166,9 @@ class SpeechDictEntry:
 				else:
 					tempPattern = translated
 			case _:
-				tempPattern = re.escape(self.pattern)
+				tempPattern = engine.escape(self.pattern)
 				self.type = EntryType.ANYWHERE  # Ensure sane values.
-		self.compiled = re.compile(tempPattern, flags)
+		self.compiled = engine.compile(tempPattern, flags)
 
 	def sub(self, text: str) -> str:
 		if self.type == EntryType.REGEXP:
@@ -221,7 +257,7 @@ class SpeechDict(list[SpeechDictEntry]):
 		for index, entry in enumerate(self):
 			try:
 				text = entry.sub(text)
-			except re.error:
+			except (re.error, regex.error):
 				dictName = self.fileName or DictionaryType.TEMP.value
 				log.exception("Invalid dictionary entry %d in %r: %r", index + 1, dictName, entry.pattern)
 				invalidEntries.append(index)

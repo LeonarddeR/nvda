@@ -251,3 +251,41 @@ class TestSpeechDictEntry(unittest.TestCase):
 		expected = "replaced"
 		actual = entry.sub("test.txt")
 		self.assertEqual(expected, actual)
+
+
+class TestSpeechDictEntryCombiningMarks(unittest.TestCase):
+	"""Issue #20013: \\w/\\b in Python's `re` skip Unicode combining marks.
+	The four word-boundary entry types must use the `regex` module so
+	combining marks (Hebrew niqqud, Arabic harakat, etc.) are matched."""
+
+	def test_word_hebrewWithNiqqud_doesNotMatchInLargerWord(self):
+		"""WORD entry for אָב must NOT match inside אָבִי because, with combining
+		marks treated as word characters, there is no word boundary between
+		BET and the trailing HIRIQ. With stdlib `re` (broken), HIRIQ is
+		non-word, a spurious `\\b` exists there, and the entry would match —
+		exactly the bug #20013 fixes."""
+		entry = SpeechDictEntry("אָב", "FATHER", type=EntryType.WORD)
+		self.assertEqual("אָבִי", entry.sub("אָבִי"))
+
+	def test_word_hebrewWithNiqqud_matchesAsStandaloneWord(self):
+		"""WORD entry for אָב matches when surrounded by whitespace."""
+		entry = SpeechDictEntry("אָב", "FATHER", type=EntryType.WORD)
+		self.assertEqual(" FATHER ", entry.sub(" אָב "))
+
+	def test_startOfWord_hebrewWithNiqqud_matchesAtStart(self):
+		entry = SpeechDictEntry("אָב", "FATHER", type=EntryType.START_OF_WORD)
+		self.assertEqual("FATHERִי", entry.sub("אָבִי"))
+
+	def test_endOfWord_hebrewWithNiqqud_matchesAtEnd(self):
+		entry = SpeechDictEntry("בִי", "MY", type=EntryType.END_OF_WORD)
+		self.assertEqual("אָMY", entry.sub("אָבִי"))
+
+	def test_partOfWord_hebrewWithNiqqud_matchesInside(self):
+		entry = SpeechDictEntry("ָב", "X", type=EntryType.PART_OF_WORD)
+		# Pattern: QAMATS + BET. Should match between ALEF and HIRIQ.
+		self.assertEqual("אXִי", entry.sub("אָבִי"))
+
+	def test_word_arabicWithHarakat_matches(self):
+		"""Arabic kitāb كِتَاب (KAF KASRA TAA FATHA ALEF BAA)."""
+		entry = SpeechDictEntry("كِتَاب", "BOOK", type=EntryType.WORD)
+		self.assertEqual("BOOK", entry.sub("كِتَاب"))
