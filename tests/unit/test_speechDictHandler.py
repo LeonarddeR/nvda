@@ -7,6 +7,8 @@
 
 import unittest
 
+import config
+
 from speechDictHandler.types import SpeechDictEntry, EntryType
 
 
@@ -289,3 +291,38 @@ class TestSpeechDictEntryCombiningMarks(unittest.TestCase):
 		"""Arabic kitāb كِتَاب (KAF KASRA TAA FATHA ALEF BAA)."""
 		entry = SpeechDictEntry("كِتَاب", "BOOK", type=EntryType.WORD)
 		self.assertEqual("BOOK", entry.sub("كِتَاب"))
+
+
+class TestSpeechDictEntryRegexpFlag(unittest.TestCase):
+	"""Issue #20013: REGEXP entry type opt-in to the `regex` module via the
+	`useModernRegexEngine` feature flag."""
+
+	def setUp(self):
+		# Save and clear any saved feature-flag value so the spec default
+		# (disabled) takes effect for the first half of each test.
+		self._origValue = config.conf["featureFlag"]["useModernRegexEngine"]
+		config.conf["featureFlag"]["useModernRegexEngine"] = "default"
+
+	def tearDown(self):
+		config.conf["featureFlag"]["useModernRegexEngine"] = self._origValue
+
+	def test_regexp_flagDisabled_useReSemantics(self):
+		"""With the flag disabled (default), `\\w` should NOT match the
+		Hebrew QAMATS combining mark, matching legacy `re` behaviour."""
+		config.conf["featureFlag"]["useModernRegexEngine"] = "disabled"
+		entry = SpeechDictEntry(r"\w+", "X", type=EntryType.REGEXP)
+		# `re` splits אָב into two separate \w+ runs around the QAMATS.
+		self.assertEqual("XָX", entry.sub("אָב"))
+
+	def test_regexp_flagEnabled_useRegexSemantics(self):
+		"""With the flag enabled, `\\w` should match the entire Hebrew
+		word including the QAMATS combining mark."""
+		config.conf["featureFlag"]["useModernRegexEngine"] = "enabled"
+		entry = SpeechDictEntry(r"\w+", "X", type=EntryType.REGEXP)
+		self.assertEqual("X", entry.sub("אָב"))
+
+	def test_regexp_flagDefault_matchesDisabled(self):
+		"""behaviorOfDefault=\"disabled\" — explicit default resolves to re."""
+		config.conf["featureFlag"]["useModernRegexEngine"] = "default"
+		entry = SpeechDictEntry(r"\w+", "X", type=EntryType.REGEXP)
+		self.assertEqual("XָX", entry.sub("אָב"))
