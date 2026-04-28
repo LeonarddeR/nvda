@@ -49,7 +49,7 @@ The triple-press keyboard shortcut (`NVDA+ctrl+r`) is not affected, as it is int
 This is more noticeable for Windows releases which are enablement packages on top of an earlier release such as Windows 11 2025 Update based on Windows 11 2024 Update. (#19802, @josephsl)
 * Math navigation commands now support input help, on-demand speech mode, and can be remapped. (#19871, @RyanMcCleary)
 * The "COM Registration Fixing Tool" has been renamed to "System Accessibility Repair Tool" for clarity. (#19622, @bramd)
-* Added an Advanced setting to opt Regular expression speech dictionary entries into the modern `regex` engine, providing Unicode-aware `\w` and `\b` and additional regex features. The setting is disabled by default. (#20013, @LeonarddeR)
+* Added an Advanced setting to opt Regular expression speech dictionary entries into the modern `[regex](https://pypi.org/project/regex/)` engine, providing Unicode-aware `\w` and `\b` and additional regex features. The setting is disabled by default. (#20013, @LeonarddeR)
 
 ### Bug Fixes
 
@@ -65,8 +65,8 @@ This is more noticeable for Windows releases which are enablement packages on to
 * Decorative Unicode letters such as negative squared, negative circled, and regional indicator symbol characters are now normalized to their base Latin letters when Unicode normalization is enabled. (#19608, @bramd)
 * NVDA no longer crashes when the Add-on Store download directory cannot be cleaned up due to file permission errors. (#19202, @christopherpross)
 * Fixed NVDA freezing when navigating in JetBrains IDEs. (#16741, @christopherpross)
-* Speech dictionary entries of type Whole word, Part of word, Start of word and End of word now correctly handle words containing Unicode combining marks (e.g. Hebrew niqqud, Arabic harakat, Devanagari matras). (#20013, @LeonarddeR)
-  * In particular, Whole word entries no longer match inside larger words when those words contain combining marks.
+* Speech dictionary entries of type Whole word now correctly handle words containing Unicode combining marks (e.g. Hebrew niqqud, Arabic harakat). (#20013, @LeonarddeR)
+  * In particular, Whole word entries no longer incorrectly match inside larger words when those words contain combining marks.
 
 ### Changes for Developers
 

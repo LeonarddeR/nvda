@@ -264,8 +264,8 @@ class TestSpeechDictEntryCombiningMarks(unittest.TestCase):
 		"""WORD entry for אָב must NOT match inside אָבִי because, with combining
 		marks treated as word characters, there is no word boundary between
 		BET and the trailing HIRIQ. With stdlib `re` (broken), HIRIQ is
-		non-word, a spurious `\\b` exists there, and the entry would match —
-		exactly the bug this change fixes."""
+		non-word, a spurious `\\b` exists there, and the entry would match.
+		"""
 		entry = SpeechDictEntry("אָב", "FATHER", type=EntryType.WORD)
 		self.assertEqual("אָבִי", entry.sub("אָבִי"))
 

@@ -4205,9 +4205,8 @@ Note that in Speech settings, there is a similar [option for SAPI 5 voices](#Spe
 ##### Use modern regular expression engine for speech dictionary entries {#SpeechDictsUseModernRegex}
 
 This setting controls how Regular expression entries in [speech dictionaries](#SpeechDictionaries) are matched.
-The modern engine has better support for non-Latin scripts, such as Hebrew, Arabic and Devanagari, and offers more powerful matching options.
-Whole word, Part of word, Start of word and End of word entry types always use the modern engine.
-This setting only affects entries of type Regular expression.
+The [modern engine](https://pypi.org/project/regex/) has better support for non-Latin scripts, such as Hebrew and Arabic, and offers more powerful matching options.
+This option is disabled by default, but its default will change to enabled in NVDA 2027.1.
 
 | . {.hideHeaderRow} |.|
 |---|---|
@@ -4294,6 +4293,7 @@ For example, if you replace "bird" with "frog" using end of word matching, it wo
 * Regular expression: The pattern is treated as a regular expression, which is a pattern containing special symbols that allow you to match on more than one character at a time, or match on just numbers, or just letters, as a few examples.
 Regular expressions are not covered in this user guide.
 For an introductory tutorial, please refer to [Python's Regular Expression Guide](https://docs.python.org/3.13/howto/regex.html).
+Also consider [the advanced setting to enable a more modern engine](#SpeechDictsUseModernRegex), especially when dealing with non-Latin scripts, such as Hebrew and Arabic.
 * Unix shell-style wildcards: The pattern uses Unix shell-style wildcards for matching.
 For example:
   * `*` matches any sequence of characters.

@@ -66,16 +66,6 @@ class EntryType(DisplayStringIntEnum):
 		}
 
 
-_WORD_BOUNDARY_ENTRY_TYPES = frozenset(
-	{
-		EntryType.WORD,
-		EntryType.PART_OF_WORD,
-		EntryType.START_OF_WORD,
-		EntryType.END_OF_WORD,
-	}
-)
-
-
 def _selectRegexEngine(entryType: "EntryType") -> "type[re] | type[regex]":
 	"""Return the regex module to use for compiling a SpeechDictEntry of the
 	given type.
