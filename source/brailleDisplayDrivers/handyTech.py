@@ -1143,6 +1143,7 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 		{
 			"globalCommands.GlobalCommands": {
 				"braille_routeTo": ("br(handyTech):routing",),
+				"braille_selectToCell": ("br(handyTech):multiRouting",),
 				"braille_scrollBack": (
 					"br(handytech):leftSpace",
 					"br(handytech):leftTakTop",

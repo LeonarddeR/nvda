@@ -234,6 +234,7 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver):
 				"braille_previousLine": ("br(nlseReaderZoomax):d1",),
 				"braille_nextLine": ("br(nlseReaderZoomax):d3",),
 				"braille_routeTo": ("br(nlseReaderZoomax):routing",),
+				"braille_selectToCell": ("br(nlseReaderZoomax):multiRouting",),
 				"kb:upArrow": ("br(nlseReaderZoomax):up",),
 				"kb:downArrow": ("br(nlseReaderZoomax):down",),
 				"kb:leftArrow": ("br(nlseReaderZoomax):left",),

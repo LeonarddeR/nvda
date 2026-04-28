@@ -332,6 +332,7 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver):
 		{
 			"globalCommands.GlobalCommands": {
 				"braille_routeTo": ("br(seikantk):routing",),
+				"braille_selectToCell": ("br(seikantk):multiRouting",),
 				"braille_scrollBack": ("br(seikantk):LB",),
 				"braille_scrollForward": ("br(seikantk):RB",),
 				"braille_previousLine": ("br(seikantk):LJ_UP",),

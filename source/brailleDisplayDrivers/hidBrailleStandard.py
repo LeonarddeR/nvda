@@ -271,6 +271,7 @@ class HidBrailleDriver(braille.BrailleDisplayDriver):
 					"br(hidBrailleStandard):rockerDown",
 				),
 				"braille_routeTo": ("br(hidBrailleStandard):routerSet1_routerKey",),
+				"braille_selectToCell": ("br(hidBrailleStandard):routerSet1_multiRouterKey",),
 				"braille_toggleTether": ("br(hidBrailleStandard):up+down",),
 				"kb:upArrow": (
 					"br(hidBrailleStandard):joystickUp",
