@@ -33,7 +33,7 @@ The triple-press keyboard shortcut (`NVDA+ctrl+r`) is not affected, as it is int
   * You can now press multiple buttons simultaneously to create custom gestures (e.g., `f1+panLeft`).
 * A new voice setting "Natural pause after punctuation" was added for OneCore voices, allowing users to turn punctuation pauses on or off. (#11876, @gexgd0419)
 * On supported braille displays, pressing multiple routing keys simultaneously can now be bound to a new "multi routing" gesture. (#20001, @LeonarddeR)
-  * The "select to braille cell" command, which selects the text between the first and last pressed routing cells, is bound to this gesture by default on supporting drivers.
+  * The "select to braille routing key" command, which selects the text between the first and last pressed routing keys, is bound to this gesture by default on supporting drivers.
   * Drivers with built-in support for multi routing: ALVA, Albatross, Baum (and compatible), HumanWare Brailliant BI/B series, Handy Tech, NLS eReader Zoomax, Seika Notetaker, and Standard HID Braille displays.
 
 ### Changes

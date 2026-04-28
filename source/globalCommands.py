@@ -4244,7 +4244,7 @@ class GlobalCommands(ScriptableObject):
 	@script(
 		# Translators: Input help mode message for a braille command.
 		description=_(
-			"Selects the text between the first and last pressed braille cells. "
+			"Selects the text between the first and last pressed braille routing keys. "
 			"Requires a display that reports simultaneous routing key presses.",
 		),
 		category=SCRCAT_BRAILLE,
@@ -4258,7 +4258,7 @@ class GlobalCommands(ScriptableObject):
 		endInfo = braille.handler.getTextInfoForWindowPos(endPos)
 		if startInfo is None or endInfo is None:
 			# Translators: Reported when selection via multiple routing keys is not possible.
-			ui.message(_("Cannot select from braille cells"))
+			ui.message(_("Cannot select from braille routing keys"))
 			return
 		startInfo.setEndPoint(endInfo, "endToEnd")
 		try:
