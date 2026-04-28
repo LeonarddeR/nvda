@@ -4243,7 +4243,7 @@ class GlobalCommands(ScriptableObject):
 
 	@script(
 		# Translators: Input help mode message for a braille command.
-		description=_("Selects the text between the first and last pressed braille routing keys"),
+		description=_("Selects the text from the first up to the last pressed braille routing key"),
 		category=SCRCAT_BRAILLE,
 	)
 	def script_braille_selectRange(self, gesture):
