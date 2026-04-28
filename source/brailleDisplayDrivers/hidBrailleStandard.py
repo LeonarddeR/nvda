@@ -319,7 +319,6 @@ class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGestu
 		self.keyCodes = set(dataIndices)
 
 		self.keyNames = names = []
-		namePrefix = None
 		isBrailleInput = True
 		routingIndexes: list[int] = []
 		routingNamePrefix: str | None = None
@@ -363,8 +362,6 @@ class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGestu
 				routingNamePrefix = self._usageIDToGestureName(linkUsagePage, linkUsageID)
 				continue
 			name = self._usageIDToGestureName(usagePage, usageID)
-			if namePrefix:
-				name = "_".join([namePrefix, name])
 			names.append(name)
 		if routingIndexes:
 			routingIndexes.sort()
@@ -372,7 +369,7 @@ class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGestu
 			routingIdName = self._usageIDToGestureName(HID_USAGE_PAGE_BRAILLE, BraillePageUsageID.ROUTER_KEY)
 			routingIdName = self.idForCellCount(len(routingIndexes), routingIdName)
 			if routingNamePrefix:
-				routingIdName = "_".join([routingNamePrefix, routingIdName])
+				routingIdName = f"{routingNamePrefix}_{routingIdName}"
 			names.append(routingIdName)
 		self.id = "+".join(names)
 
