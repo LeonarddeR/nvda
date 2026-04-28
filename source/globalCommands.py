@@ -4249,7 +4249,7 @@ class GlobalCommands(ScriptableObject):
 		),
 		category=SCRCAT_BRAILLE,
 	)
-	def script_braille_selectToCell(self, gesture):
+	def script_braille_selectRange(self, gesture):
 		if not gesture.cellIndexes or len(gesture.cellIndexes) < 2:
 			return
 		startPos = min(gesture.cellIndexes)

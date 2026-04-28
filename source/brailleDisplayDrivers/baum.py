@@ -342,7 +342,7 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver):
 				"braille_previousLine": ("br(baum):d1",),
 				"braille_nextLine": ("br(baum):d3",),
 				"braille_routeTo": ("br(baum):routing",),
-				"braille_selectToCell": ("br(baum):multiRouting",),
+				"braille_selectRange": ("br(baum):multiRouting",),
 				"kb:upArrow": ("br(baum):up",),
 				"kb:downArrow": ("br(baum):down",),
 				"kb:leftArrow": ("br(baum):left",),

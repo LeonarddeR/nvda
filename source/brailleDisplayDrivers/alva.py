@@ -476,7 +476,7 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 				"braille_scrollForward": ("br(alva):t5", "br(alva):etouch3"),
 				"braille_routeTo": ("br(alva):routing",),
 				"braille_reportFormatting": ("br(alva):secondRouting",),
-				"braille_selectToCell": ("br(alva):multiRouting",),
+				"braille_selectRange": ("br(alva):multiRouting",),
 				"review_top": ("br(alva):t1+t2",),
 				"review_bottom": ("br(alva):t4+t5",),
 				"braille_toggleTether": ("br(alva):t1+t3",),

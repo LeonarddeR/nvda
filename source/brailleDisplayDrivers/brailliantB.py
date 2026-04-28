@@ -351,7 +351,7 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver):
 				"braille_previousLine": ("br(brailliantB):up",),
 				"braille_nextLine": ("br(brailliantB):down",),
 				"braille_routeTo": ("br(brailliantB):routing",),
-				"braille_selectToCell": ("br(brailliantB):multiRouting",),
+				"braille_selectRange": ("br(brailliantB):multiRouting",),
 				"braille_toggleTether": ("br(brailliantB):up+down",),
 				"kb:upArrow": ("br(brailliantB):space+dot1", "br(brailliantB):stickUp"),
 				"kb:downArrow": ("br(brailliantB):space+dot4", "br(brailliantB):stickDown"),
