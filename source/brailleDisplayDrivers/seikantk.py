@@ -372,7 +372,7 @@ class InputGestureRouting(braille.BrailleDisplayGesture):
 		if isinstance(indexes, int):
 			# Backwards compat: callers historically passed a single index.
 			indexes = [indexes]
-		self.cellIndexes = list(indexes)
+		self.cellIndexes = indexes
 		self.id = self.idForCellCount(len(self.cellIndexes))
 
 
