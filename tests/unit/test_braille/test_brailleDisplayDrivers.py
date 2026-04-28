@@ -201,7 +201,8 @@ class TestBrailleDisplayGestureCellIndexes(unittest.TestCase):
 	def test_idForCellCount_custom_baseName(self):
 		self.assertEqual("secondRouting", braille.BrailleDisplayGesture.idForCellCount(1, "secondRouting"))
 		self.assertEqual(
-			"multiSecondRouting", braille.BrailleDisplayGesture.idForCellCount(2, "secondRouting")
+			"multiSecondRouting",
+			braille.BrailleDisplayGesture.idForCellCount(2, "secondRouting"),
 		)
 		self.assertEqual("route", braille.BrailleDisplayGesture.idForCellCount(1, "route"))
 		self.assertEqual("multiRoute", braille.BrailleDisplayGesture.idForCellCount(2, "route"))
