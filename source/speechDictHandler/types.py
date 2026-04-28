@@ -28,10 +28,10 @@ if _TYPE_CHECKING:
 	import synthDriverHandler
 
 
-#: Entry types whose generated patterns rely on \w / \b and therefore must
-#: use the `regex` module under VERSION1 so Unicode combining marks (Mn) are
-#: treated as word characters. See nvaccess/nvda#20013.
 _WORD_BOUNDARY_ENTRY_TYPES: "frozenset[EntryType]" = frozenset()  # populated after EntryType
+"""Entry types whose generated patterns rely on \\w / \\b and therefore must
+use the `regex` module under VERSION1 so Unicode combining marks (Mn) are
+treated as word characters. See nvaccess/nvda#20013."""
 
 
 class EntryType(DisplayStringIntEnum):

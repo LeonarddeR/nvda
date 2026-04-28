@@ -4202,7 +4202,7 @@ Note that in Speech settings, there is a similar [option for SAPI 5 voices](#Spe
 |Options |Default (Enabled), Disabled, Enabled|
 |Default |Enabled|
 
-##### Use the modern regular expression engine for speech dictionary entries {#SpeechDictsUseModernRegex}
+##### Use modern regular expression engine for speech dictionary entries {#SpeechDictsUseModernRegex}
 
 This setting controls which regular expression engine is used when compiling Regular expression entries in [speech dictionaries](#SpeechDictionaries).
 Whole word, Part of word, Start of word and End of word entry types always use the modern engine, which correctly handles Unicode combining marks (such as Hebrew niqqud, Arabic harakat and Devanagari matras) when matching word boundaries.
