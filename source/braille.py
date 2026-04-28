@@ -3896,7 +3896,7 @@ class BrailleDisplayGesture(inputCore.InputGesture):
 	def _get_routingIndex(self) -> int | None:
 		"""Deprecated. Use :attr:`cellIndexes` instead.
 
-		Returns the first cell index, or ``None`` if no cells are addressed.
+		Returns the highest cell index, or ``None`` if no cells are addressed.
 		"""
 		import NVDAState
 
@@ -3905,7 +3905,7 @@ class BrailleDisplayGesture(inputCore.InputGesture):
 				"BrailleDisplayGesture.routingIndex is deprecated, use cellIndexes instead.",
 				stack_info=True,
 			)
-		return self.cellIndexes[0] if self.cellIndexes else None
+		return max(self.cellIndexes) if self.cellIndexes else None
 
 	def _set_routingIndex(self, value: int | None) -> None:
 		"""Deprecated. Set :attr:`cellIndexes` instead."""
