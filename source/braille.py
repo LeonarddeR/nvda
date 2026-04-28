@@ -3874,8 +3874,8 @@ class BrailleDisplayGesture(inputCore.InputGesture):
 	C{None} if this gesture is not cell-addressed.
 	"""
 
-	@staticmethod
-	def idForCellCount(count: int, baseName: str = "routing") -> str:
+	@classmethod
+	def idForCellCount(cls, count: int, baseName: str = "routing") -> str:
 		"""Return the conventional gesture id suffix for a cell-addressed gesture.
 
 		When more than one cell is addressed, the base name is prefixed with ``"multi"``
