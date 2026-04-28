@@ -88,13 +88,13 @@ def _selectRegexEngine(entryType: "EntryType") -> "type[re] | type[regex]":
 
 	Word-boundary entry types always use the `regex` module under VERSION1
 	semantics so combining marks are included in \\w. The REGEXP type uses
-	`regex` only when the ``useModernRegexEngine`` feature flag is enabled.
+	`regex` only when the ``speechDictsUseModernRegex`` feature flag is enabled.
 	Other types use the stdlib `re` module.
 	"""
 	if entryType in _WORD_BOUNDARY_ENTRY_TYPES:
 		return regex
 	if entryType is EntryType.REGEXP and bool(
-		config.conf["featureFlag"]["useModernRegexEngine"],
+		config.conf["featureFlag"]["speechDictsUseModernRegex"],
 	):
 		return regex
 	return re

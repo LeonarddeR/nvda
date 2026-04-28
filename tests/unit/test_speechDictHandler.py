@@ -295,21 +295,21 @@ class TestSpeechDictEntryCombiningMarks(unittest.TestCase):
 
 class TestSpeechDictEntryRegexpFlag(unittest.TestCase):
 	"""Issue #20013: REGEXP entry type opt-in to the `regex` module via the
-	`useModernRegexEngine` feature flag."""
+	`speechDictsUseModernRegex` feature flag."""
 
 	def setUp(self):
 		# Save and clear any saved feature-flag value so the spec default
 		# (disabled) takes effect for the first half of each test.
-		self._origValue = config.conf["featureFlag"]["useModernRegexEngine"]
-		config.conf["featureFlag"]["useModernRegexEngine"] = "default"
+		self._origValue = config.conf["featureFlag"]["speechDictsUseModernRegex"]
+		config.conf["featureFlag"]["speechDictsUseModernRegex"] = "default"
 
 	def tearDown(self):
-		config.conf["featureFlag"]["useModernRegexEngine"] = self._origValue
+		config.conf["featureFlag"]["speechDictsUseModernRegex"] = self._origValue
 
 	def test_regexp_flagDisabled_useReSemantics(self):
 		"""With the flag disabled (default), `\\w` should NOT match the
 		Hebrew QAMATS combining mark, matching legacy `re` behaviour."""
-		config.conf["featureFlag"]["useModernRegexEngine"] = "disabled"
+		config.conf["featureFlag"]["speechDictsUseModernRegex"] = "disabled"
 		entry = SpeechDictEntry(r"\w+", "X", type=EntryType.REGEXP)
 		# `re` splits אָב into two separate \w+ runs around the QAMATS.
 		self.assertEqual("XָX", entry.sub("אָב"))
@@ -317,12 +317,12 @@ class TestSpeechDictEntryRegexpFlag(unittest.TestCase):
 	def test_regexp_flagEnabled_useRegexSemantics(self):
 		"""With the flag enabled, `\\w` should match the entire Hebrew
 		word including the QAMATS combining mark."""
-		config.conf["featureFlag"]["useModernRegexEngine"] = "enabled"
+		config.conf["featureFlag"]["speechDictsUseModernRegex"] = "enabled"
 		entry = SpeechDictEntry(r"\w+", "X", type=EntryType.REGEXP)
 		self.assertEqual("X", entry.sub("אָב"))
 
 	def test_regexp_flagDefault_matchesDisabled(self):
 		"""behaviorOfDefault=\"disabled\" — explicit default resolves to re."""
-		config.conf["featureFlag"]["useModernRegexEngine"] = "default"
+		config.conf["featureFlag"]["speechDictsUseModernRegex"] = "default"
 		entry = SpeechDictEntry(r"\w+", "X", type=EntryType.REGEXP)
 		self.assertEqual("XָX", entry.sub("אָב"))

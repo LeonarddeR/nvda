@@ -363,7 +363,7 @@ schemaVersion = integer(min=0, default={latestSchemaVersion})
 	# When enabled, REGEXP-type speech dictionary entries are compiled with
 	# the third-party `regex` module under VERSION1 instead of stdlib `re`,
 	# improving Unicode handling. See nvaccess/nvda#20013.
-	useModernRegexEngine = featureFlag(optionsEnum="BoolFlag", behaviorOfDefault="disabled")
+	speechDictsUseModernRegex = featureFlag(optionsEnum="BoolFlag", behaviorOfDefault="disabled")
 
 [addonStore]
 	automaticUpdates = option("notify", "update", "disabled", default="notify")
