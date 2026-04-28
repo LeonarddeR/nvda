@@ -31,7 +31,7 @@ if _TYPE_CHECKING:
 _WORD_BOUNDARY_ENTRY_TYPES: "frozenset[EntryType]" = frozenset()  # populated after EntryType
 """Entry types whose generated patterns rely on \\w / \\b and therefore must
 use the `regex` module under VERSION1 so Unicode combining marks (Mn) are
-treated as word characters. See nvaccess/nvda#20013."""
+treated as word characters."""
 
 
 class EntryType(DisplayStringIntEnum):
@@ -93,9 +93,7 @@ def _selectRegexEngine(entryType: "EntryType") -> "type[re] | type[regex]":
 	"""
 	if entryType in _WORD_BOUNDARY_ENTRY_TYPES:
 		return regex
-	if entryType is EntryType.REGEXP and bool(
-		config.conf["featureFlag"]["speechDictsUseModernRegex"],
-	):
+	if entryType is EntryType.REGEXP and config.conf["featureFlag"]["speechDictsUseModernRegex"]:
 		return regex
 	return re
 
@@ -140,7 +138,7 @@ class SpeechDictEntry:
 	"""The type of the entry."""
 	compiled: "re.Pattern[str] | regex.Pattern[str]" = field(init=False)
 	"""The compiled regular expression. May be a `re.Pattern` or a
-	`regex.Pattern` depending on the entry type (see #20013)."""
+	`regex.Pattern` depending on the entry type."""
 
 	def __post_init__(self):
 		engine = _selectRegexEngine(self.type)

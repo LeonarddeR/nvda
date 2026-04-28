@@ -256,7 +256,7 @@ class TestSpeechDictEntry(unittest.TestCase):
 
 
 class TestSpeechDictEntryCombiningMarks(unittest.TestCase):
-	"""Issue #20013: \\w/\\b in Python's `re` skip Unicode combining marks.
+	"""\\w/\\b in Python's `re` skip Unicode combining marks.
 	The four word-boundary entry types must use the `regex` module so
 	combining marks (Hebrew niqqud, Arabic harakat, etc.) are matched."""
 
@@ -265,7 +265,7 @@ class TestSpeechDictEntryCombiningMarks(unittest.TestCase):
 		marks treated as word characters, there is no word boundary between
 		BET and the trailing HIRIQ. With stdlib `re` (broken), HIRIQ is
 		non-word, a spurious `\\b` exists there, and the entry would match —
-		exactly the bug #20013 fixes."""
+		exactly the bug this change fixes."""
 		entry = SpeechDictEntry("אָב", "FATHER", type=EntryType.WORD)
 		self.assertEqual("אָבִי", entry.sub("אָבִי"))
 
@@ -294,7 +294,7 @@ class TestSpeechDictEntryCombiningMarks(unittest.TestCase):
 
 
 class TestSpeechDictEntryRegexpFlag(unittest.TestCase):
-	"""Issue #20013: REGEXP entry type opt-in to the `regex` module via the
+	"""REGEXP entry type opt-in to the `regex` module via the
 	`speechDictsUseModernRegex` feature flag."""
 
 	def setUp(self):
