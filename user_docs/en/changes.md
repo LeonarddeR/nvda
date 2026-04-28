@@ -65,7 +65,8 @@ This is more noticeable for Windows releases which are enablement packages on to
 * Decorative Unicode letters such as negative squared, negative circled, and regional indicator symbol characters are now normalized to their base Latin letters when Unicode normalization is enabled. (#19608, @bramd)
 * NVDA no longer crashes when the Add-on Store download directory cannot be cleaned up due to file permission errors. (#19202, @christopherpross)
 * Fixed NVDA freezing when navigating in JetBrains IDEs. (#16741, @christopherpross)
-* Speech dictionary entries of type Whole word, Part of word, Start of word and End of word now correctly match words containing Unicode combining marks (e.g. Hebrew niqqud, Arabic harakat, Devanagari matras). (#20013, @LeonarddeR)
+* Speech dictionary entries of type Whole word, Part of word, Start of word and End of word now correctly handle words containing Unicode combining marks (e.g. Hebrew niqqud, Arabic harakat, Devanagari matras). (#20013, @LeonarddeR)
+  * In particular, Whole word entries no longer match inside larger words when those words contain combining marks.
 
 ### Changes for Developers
 

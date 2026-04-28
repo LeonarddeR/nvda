@@ -4204,19 +4204,15 @@ Note that in Speech settings, there is a similar [option for SAPI 5 voices](#Spe
 
 ##### Use modern regular expression engine for speech dictionary entries {#SpeechDictsUseModernRegex}
 
-This setting controls which regular expression engine is used when compiling Regular expression entries in [speech dictionaries](#SpeechDictionaries).
-Whole word, Part of word, Start of word and End of word entry types always use the modern engine, which correctly handles Unicode combining marks (such as Hebrew niqqud, Arabic harakat and Devanagari matras) when matching word boundaries.
+This setting controls how Regular expression entries in [speech dictionaries](#SpeechDictionaries) are matched.
+The modern engine has better support for non-Latin scripts, such as Hebrew, Arabic and Devanagari, and offers more powerful matching options.
+Whole word, Part of word, Start of word and End of word entry types always use the modern engine.
 This setting only affects entries of type Regular expression.
 
 | . {.hideHeaderRow} |.|
 |---|---|
 |Options |Default (Disabled), Disabled, Enabled |
 |Default |Disabled |
-
-|Option |Behaviour |
-|---|---|
-|Disabled |Regular expression entries are compiled with Python's built-in `re` module. |
-|Enabled |Regular expression entries are compiled with the modern `regex` module under VERSION1 semantics. `\w` matches all Unicode word characters including combining marks; advanced features such as named groups and Unicode property escapes (`\p{L}`) become available. |
 
 ##### Caret move timeout (in MS) {#AdvancedSettingsCaretMoveTimeout}
 

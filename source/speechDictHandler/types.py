@@ -28,12 +28,6 @@ if _TYPE_CHECKING:
 	import synthDriverHandler
 
 
-_WORD_BOUNDARY_ENTRY_TYPES: "frozenset[EntryType]" = frozenset()  # populated after EntryType
-"""Entry types whose generated patterns rely on \\w / \\b and therefore must
-use the `regex` module under VERSION1 so Unicode combining marks (Mn) are
-treated as word characters."""
-
-
 class EntryType(DisplayStringIntEnum):
 	"""Types of speech dictionary entries:"""
 
@@ -91,7 +85,12 @@ def _selectRegexEngine(entryType: "EntryType") -> "type[re] | type[regex]":
 	`regex` only when the ``speechDictsUseModernRegex`` feature flag is enabled.
 	Other types use the stdlib `re` module.
 	"""
-	if entryType in _WORD_BOUNDARY_ENTRY_TYPES:
+	if entryType in (
+		EntryType.WORD,
+		EntryType.PART_OF_WORD,
+		EntryType.START_OF_WORD,
+		EntryType.END_OF_WORD,
+	):
 		return regex
 	if entryType is EntryType.REGEXP and config.conf["featureFlag"]["speechDictsUseModernRegex"]:
 		return regex
