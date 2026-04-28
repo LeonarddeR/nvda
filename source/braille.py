@@ -3900,22 +3900,28 @@ class BrailleDisplayGesture(inputCore.InputGesture):
 		"""
 		import NVDAState
 
-		if NVDAState._allowDeprecatedAPI():
-			log.warning(
+		if not NVDAState._allowDeprecatedAPI():
+			raise AttributeError(
 				"BrailleDisplayGesture.routingIndex is deprecated, use cellIndexes instead.",
-				stack_info=True,
 			)
+		log.warning(
+			"BrailleDisplayGesture.routingIndex is deprecated, use cellIndexes instead.",
+			stack_info=True,
+		)
 		return max(self.cellIndexes) if self.cellIndexes else None
 
 	def _set_routingIndex(self, value: int | None) -> None:
 		"""Deprecated. Set :attr:`cellIndexes` instead."""
 		import NVDAState
 
-		if NVDAState._allowDeprecatedAPI():
-			log.warning(
+		if not NVDAState._allowDeprecatedAPI():
+			raise AttributeError(
 				"Setting BrailleDisplayGesture.routingIndex is deprecated, set cellIndexes instead.",
-				stack_info=True,
 			)
+		log.warning(
+			"Setting BrailleDisplayGesture.routingIndex is deprecated, set cellIndexes instead.",
+			stack_info=True,
+		)
 		self.cellIndexes = [value] if value is not None else None
 
 	def _get_identifiers(self):
