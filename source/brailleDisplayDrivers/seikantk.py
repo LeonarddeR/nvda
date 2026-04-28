@@ -367,8 +367,11 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver):
 class InputGestureRouting(braille.BrailleDisplayGesture):
 	source = BrailleDisplayDriver.name
 
-	def __init__(self, indexes: list[int]):
+	def __init__(self, indexes: list[int] | int):
 		super().__init__()
+		if isinstance(indexes, int):
+			# Backwards compat: callers historically passed a single index.
+			indexes = [indexes]
 		self.cellIndexes = list(indexes)
 		self.id = self.idForCellCount(len(self.cellIndexes))
 
