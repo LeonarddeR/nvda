@@ -4563,7 +4563,7 @@ class AdvancedPanelControls(
 
 		# Translators: This is the label for a combo-box control in the
 		#  Advanced settings panel.
-		label = _("Use the modern regular expression engine for speech dictionary entries:")
+		label = _("Use modern regular expression engine for speech dictionary entries:")
 		self.speechDictsUseModernRegexCombo: nvdaControls.FeatureFlagCombo = speechGroup.addLabeledControl(
 			labelText=label,
 			wxCtrlClass=nvdaControls.FeatureFlagCombo,
