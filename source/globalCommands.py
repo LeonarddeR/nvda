@@ -2,7 +2,7 @@
 # A part of NonVisual Desktop Access (NVDA)
 # This file is covered by the GNU General Public License.
 # See the file COPYING for more details.
-# Copyright (C) 2006-2025 NV Access Limited, Peter Vágner, Aleksey Sadovoy, Rui Batista, Joseph Lee,
+# Copyright (C) 2006-2026 NV Access Limited, Peter Vágner, Aleksey Sadovoy, Rui Batista, Joseph Lee,
 # Leonard de Ruijter, Derek Riemer, Babbage B.V., Davy Kager, Ethan Holliger, Łukasz Golonka, Accessolutions,
 # Julien Cochuyt, Jakub Lukowicz, Bill Dengler, Cyrille Bougot, Rob Meredith, Luke Davis,
 # Burman's Computer and Education Ltd, Cary-rowen.
@@ -45,6 +45,7 @@ from config.configFlags import (
 	BrailleMode,
 	OutputMode,
 	TypingEcho,
+	ReportSpellingErrors,
 )
 from config.featureFlag import FeatureFlag
 from config.featureFlagEnums import BoolFlag
@@ -66,7 +67,6 @@ import core
 from winAPI._powerTracking import reportCurrentBatteryStatus
 import winVersion
 from base64 import b16encode
-import vision
 from utils.security import objectBelowLockScreenAndWindowsIsLocked
 import audio
 import synthDriverHandler
@@ -192,7 +192,7 @@ class GlobalCommands(ScriptableObject):
 		gesture="kb:NVDA+shift+d",
 	)
 	def script_cycleAudioDuckingMode(self, gesture):
-		if not audioDucking.isAudioDuckingSupported():
+		if not audioDucking.isAudioDuckingSupported() or audioDucking._isAudioDuckingSuspended():
 			# Translators: a message when audio ducking is not supported on this machine
 			ui.message(_("Audio ducking not supported"))
 			return
@@ -788,19 +788,39 @@ class GlobalCommands(ScriptableObject):
 
 	@script(
 		# Translators: Input help mode message for toggle report spelling errors command.
-		description=_("Toggles on and off the reporting of spelling errors"),
+		description=_("Cycles through options for how to report spelling or grammar errors"),
 		category=SCRCAT_DOCUMENTFORMATTING,
 	)
-	def script_toggleReportSpellingErrors(self, gesture):
-		if config.conf["documentFormatting"]["reportSpellingErrors"]:
-			# Translators: The message announced when toggling the report spelling errors document formatting setting.
-			state = _("report spelling errors off")
-			config.conf["documentFormatting"]["reportSpellingErrors"] = False
+	def script_toggleReportSpellingErrors(self, gesture: inputCore.InputGesture):
+		currentValue = config.conf["documentFormatting"]["reportSpellingErrors2"]
+		newValue = ((currentValue + 1) % ReportSpellingErrors.BRAILLE) | (
+			currentValue & ReportSpellingErrors.BRAILLE
+		)
+		config.conf["documentFormatting"]["reportSpellingErrors2"] = newValue
+		ui.message(
+			# Translators: Reported when the user cycles through the choices to report spelling or grammar errors.
+			# {mode} will be replaced with the mode; e.g. Off, Speech, Sound, Speech and sound.
+			_("Report errors {mode}").format(
+				mode=ReportSpellingErrors(newValue & ~ReportSpellingErrors.BRAILLE).displayString,
+			),
+		)
+
+	@script(
+		# Translators: Input help mode message for command to toggle report spelling or grammar errors in braille.
+		description=_("Toggles reporting spelling or grammar errors in braille"),
+		category=SCRCAT_DOCUMENTFORMATTING,
+	)
+	def script_toggleReportSpellingErrorsInBraille(self, gesture: inputCore.InputGesture):
+		formatConfig = config.conf["documentFormatting"]["reportSpellingErrors2"]
+		config.conf["documentFormatting"]["reportSpellingErrors2"] = (
+			formatConfig ^ ReportSpellingErrors.BRAILLE
+		)
+		if config.conf["documentFormatting"]["reportSpellingErrors2"] & ReportSpellingErrors.BRAILLE:
+			# Translators: Message presented when turning on reporting spelling or grammar errors in braille.
+			ui.message(_("Report errors in braille on"))
 		else:
-			# Translators: The message announced when toggling the report spelling errors document formatting setting.
-			state = _("report spelling errors on")
-			config.conf["documentFormatting"]["reportSpellingErrors"] = True
-		ui.message(state)
+			# Translators: Message presented when turning off reporting spelling errors or grammar in braille.
+			ui.message(_("Report errors in braille off"))
 
 	@script(
 		# Translators: Input help mode message for toggle report pages command.
@@ -2536,7 +2556,7 @@ class GlobalCommands(ScriptableObject):
 			"reportColor",
 			"reportStyle",
 			"reportAlignment",
-			"reportSpellingErrors",
+			"reportSpellingErrors2",
 			"reportLineIndentation",
 			"reportParagraphIndentation",
 			"reportLineSpacing",
@@ -3019,6 +3039,23 @@ class GlobalCommands(ScriptableObject):
 		ui.message(state)
 
 	@script(
+		# Translators: Input help mode message for toggle mouse audio coordinates command.
+		description=_("Toggles beeps that report mouse coordinates as the mouse moves"),
+		category=SCRCAT_MOUSE,
+	)
+	def script_toggleMouseAudioCoordinates(self, gesture: inputCore.InputGesture):
+		# Translators: Reported when mouse audio coordinates are toggled on.
+		enabledMsg = _("Mouse audio coordinates on")
+		# Translators: Reported when mouse audio coordinates are toggled off.
+		disabledMsg = _("Mouse audio coordinates off")
+		toggleBooleanValue(
+			configSection="mouse",
+			configKey="audioCoordinatesOnMouseMove",
+			enabledMsg=enabledMsg,
+			disabledMsg=disabledMsg,
+		)
+
+	@script(
 		# Translators: Input help mode message for toggle mouse text unit resolution command.
 		description=_("Toggles how much text will be spoken when the mouse moves"),
 		category=SCRCAT_MOUSE,
@@ -3361,6 +3398,15 @@ class GlobalCommands(ScriptableObject):
 	@gui.blockAction.when(gui.blockAction.Context.MODAL_DIALOG_OPEN)
 	def script_activateAudioSettingsDialog(self, gesture):
 		wx.CallAfter(gui.mainFrame.onAudioSettingsCommand, None)
+
+	@script(
+		# Translators: Input help mode message for go to privacy and security settings command.
+		description=_("Shows NVDA's privacy and security settings"),
+		category=SCRCAT_CONFIG,
+	)
+	@gui.blockAction.when(gui.blockAction.Context.MODAL_DIALOG_OPEN)
+	def script_activatePrivacyAndSecuritySettings(self, gesture: inputCore.InputGesture) -> None:
+		wx.CallAfter(gui.mainFrame.onPrivacyAndSecuritySettingsCommand, None)
 
 	@script(
 		# Translators: Input help mode message for go to vision settings command.
@@ -4645,11 +4691,9 @@ class GlobalCommands(ScriptableObject):
 			# Translators: Reported when Windows OCR is not available.
 			ui.message(_("Windows OCR not available"))
 			return
-		from visionEnhancementProviders.screenCurtain import ScreenCurtainProvider
+		from screenCurtain import screenCurtain
 
-		screenCurtainId = ScreenCurtainProvider.getSettings().getId()
-		screenCurtainProviderInfo = vision.handler.getProviderInfo(screenCurtainId)
-		isScreenCurtainRunning = bool(vision.handler.getProviderInstance(screenCurtainProviderInfo))
+		isScreenCurtainRunning = screenCurtain is not None and screenCurtain.enabled
 		if isScreenCurtainRunning:
 			# Translators: Reported when screen curtain is enabled.
 			ui.message(_("Please disable screen curtain before using Windows OCR."))
@@ -4753,8 +4797,8 @@ class GlobalCommands(ScriptableObject):
 		ui.message(msg)
 
 	_tempEnableScreenCurtain = True
-	_waitingOnScreenCurtainWarningDialog: Optional[wx.Dialog] = None
-	_toggleScreenCurtainMessage: Optional[str] = None
+	_waitingOnScreenCurtainWarningDialog: wx.Dialog | None = None
+	_toggleScreenCurtainMessage: str | None = None
 
 	@script(
 		description=_(
@@ -4764,22 +4808,22 @@ class GlobalCommands(ScriptableObject):
 			"Pressed once, screen curtain is enabled until you restart NVDA. "
 			"Pressed twice, screen curtain is enabled until you disable it",
 		),
-		category=SCRCAT_VISION,
 		gesture="kb:NVDA+control+escape",
 	)
-	def script_toggleScreenCurtain(self, gesture):
+	def script_toggleScreenCurtain(self, gesture: inputCore.InputGesture) -> None:
+		import screenCurtain
+
+		if screenCurtain.screenCurtain is None:
+			# Screen curtain has not been initialized.
+			# Translators: Reported when the screen curtain is not available.
+			ui.message(_("Screen curtain not available"), speechPriority=speech.priorities.Spri.NOW)
+			return
+
 		scriptCount = scriptHandler.getLastScriptRepeatCount()
 		if scriptCount == 0:  # first call should reset last message
 			self._toggleScreenCurtainMessage = None
-
-		from visionEnhancementProviders.screenCurtain import ScreenCurtainProvider
-
-		screenCurtainId = ScreenCurtainProvider.getSettings().getId()
-		screenCurtainProviderInfo = vision.handler.getProviderInfo(screenCurtainId)
-		alreadyRunning = bool(vision.handler.getProviderInstance(screenCurtainProviderInfo))
-
+		alreadyRunning = screenCurtain.screenCurtain.enabled
 		GlobalCommands._tempEnableScreenCurtain = scriptCount == 0
-
 		if self._waitingOnScreenCurtainWarningDialog:
 			# Already in the process of enabling the screen curtain, exit early.
 			# Ensure that the dialog is in the foreground, and read it again.
@@ -4820,7 +4864,7 @@ class GlobalCommands(ScriptableObject):
 			# Translators: Reported when the screen curtain is disabled.
 			message = _("Screen curtain disabled")
 			try:
-				vision.handler.terminateProvider(screenCurtainProviderInfo)
+				screenCurtain.screenCurtain.disable()
 			except Exception:
 				# If the screen curtain was enabled, we do not expect exceptions.
 				log.error("Screen curtain termination error", exc_info=True)
@@ -4833,13 +4877,6 @@ class GlobalCommands(ScriptableObject):
 		elif (  # enable it
 			scriptCount in (0, 1)  # 1 press (temp enable) or 2 presses (enable)
 		):
-			# Check if screen curtain is available, exit early if not.
-			if not screenCurtainProviderInfo.providerClass.canStart():
-				# Translators: Reported when the screen curtain is not available.
-				message = _("Screen curtain not available")
-				self._toggleScreenCurtainMessage = message
-				ui.message(message, speechPriority=speech.priorities.Spri.NOW)
-				return
 
 			def _enableScreenCurtain(doEnable: bool = True):
 				self._waitingOnScreenCurtainWarningDialog = None
@@ -4855,29 +4892,22 @@ class GlobalCommands(ScriptableObject):
 
 				try:
 					if alreadyRunning:
-						screenCurtainProviderInfo.providerClass.enableInConfig(True)
+						screenCurtain.screenCurtain.settings["enabled"] = True
 					else:
-						vision.handler.initializeProvider(
-							screenCurtainProviderInfo,
-							temporary=tempEnable,
-						)
+						screenCurtain.screenCurtain.enable(persist=not tempEnable)
 				except Exception:
 					log.error("Screen curtain initialization error", exc_info=True)
-					# Translators: Reported when the screen curtain could not be enabled.
-					enableMessage = _("Could not enable screen curtain")
+					enableMessage = screenCurtain._screenCurtain.ERROR_ENABLING_MESSAGE
 				finally:
 					self._toggleScreenCurtainMessage = enableMessage
 					ui.message(enableMessage, speechPriority=speech.priorities.Spri.NOW)
 
 			#  Show warning if necessary and do enable.
-			settingsStorage = ScreenCurtainProvider.getSettings()
-			if settingsStorage.warnOnLoad:
-				from visionEnhancementProviders.screenCurtain import WarnOnLoadDialog
-
-				parent = gui.mainFrame
-				dlg = WarnOnLoadDialog(
+			settingsStorage = screenCurtain.screenCurtain.settings
+			if settingsStorage["warnOnLoad"]:
+				dlg = screenCurtain._screenCurtain.WarnOnLoadDialog(
 					screenCurtainSettingsStorage=settingsStorage,
-					parent=parent,
+					parent=gui.mainFrame,
 				)
 				self._waitingOnScreenCurtainWarningDialog = dlg
 				gui.runScriptModalDialog(
@@ -4896,9 +4926,10 @@ class GlobalCommands(ScriptableObject):
 					isinstance(focusObj, RefreshableRecogResultNVDAObject)
 					and focusObj.recognizer.allowAutoRefresh
 				):
-					# Translators: Warning message when trying to enable the screen curtain when OCR is active.
-					warningMessage = _("Could not enable screen curtain when performing content recognition")
-					ui.message(warningMessage, speechPriority=speech.priorities.Spri.NOW)
+					ui.message(
+						screenCurtain._screenCurtain.UNAVAILABLE_WHEN_RECOGNISING_CONTENT_MESSAGE,
+						speechPriority=speech.priorities.Spri.NOW,
+					)
 					return
 				_enableScreenCurtain()
 

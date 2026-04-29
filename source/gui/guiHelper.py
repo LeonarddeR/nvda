@@ -51,9 +51,9 @@ import threading
 import weakref
 from typing import (
 	Any,
+	Final,
 	Generic,
 	Optional,
-	ParamSpec,
 	Type,
 	TypeVar,
 	Union,
@@ -64,6 +64,10 @@ from typing import (
 import wx
 from wx.lib import scrolledpanel, newevent
 from abc import ABCMeta
+
+# 600 was fairly arbitrarily chosen by a visual user to look acceptable on their machine.
+COMPLEX_DIALOG_WIDTH: Final[int] = 600
+"""Width of complex (non-message) dialogs."""
 
 #: border space to be used around all controls in dialogs
 BORDER_FOR_DIALOGS = 10
@@ -484,16 +488,11 @@ class SIPABCMeta(wx.siplib.wrappertype, ABCMeta):
 	pass
 
 
-# TODO: Rewrite to use type parameter lists when upgrading to python 3.12 or later.
-_WxCallOnMain_P = ParamSpec("_WxCallOnMain_P")
-_WxCallOnMain_T = TypeVar("_WxCallOnMain_T")
-
-
-def wxCallOnMain(
-	function: Callable[_WxCallOnMain_P, _WxCallOnMain_T],
-	*args: _WxCallOnMain_P.args,
-	**kwargs: _WxCallOnMain_P.kwargs,
-) -> _WxCallOnMain_T:
+def wxCallOnMain[**P, T](
+	function: Callable[P, T],
+	*args: P.args,
+	**kwargs: P.kwargs,
+) -> T:
 	"""Call a non-thread-safe wx function in a thread-safe way.
 	Blocks current thread.
 
@@ -532,11 +531,7 @@ def wxCallOnMain(
 		return result
 
 
-# TODO: Rewrite to use type parameter lists when upgrading to python 3.12 or later.
-_AlwaysCallAfterP = ParamSpec("_AlwaysCallAfterP")
-
-
-def alwaysCallAfter(func: Callable[_AlwaysCallAfterP, Any]) -> Callable[_AlwaysCallAfterP, None]:
+def alwaysCallAfter[**P](func: Callable[P, Any]) -> Callable[P, None]:
 	"""Makes GUI updates thread-safe by running in the main thread.
 
 	Example:
@@ -549,7 +544,7 @@ def alwaysCallAfter(func: Callable[_AlwaysCallAfterP, Any]) -> Callable[_AlwaysC
 	"""
 
 	@wraps(func)
-	def wrapper(*args: _AlwaysCallAfterP.args, **kwargs: _AlwaysCallAfterP.kwargs) -> None:
+	def wrapper(*args: P.args, **kwargs: P.kwargs) -> None:
 		wx.CallAfter(func, *args, **kwargs)
 
 	return wrapper

@@ -32,11 +32,13 @@ from config.profileUpgradeSteps import (
 	_upgradeConfigFrom_8_to_9_cellBorders,
 	_upgradeConfigFrom_8_to_9_showMessages,
 	_upgradeConfigFrom_8_to_9_tetherTo,
-	upgradeConfigFrom_13_to_14,
 	upgradeConfigFrom_9_to_10,
 	upgradeConfigFrom_11_to_12,
+	upgradeConfigFrom_13_to_14,
 	upgradeConfigFrom_16_to_17,
 	upgradeConfigFrom_17_to_18,
+	upgradeConfigFrom_18_to_19,
+	upgradeConfigFrom_21_to_22,
 )
 from config.configFlags import (
 	NVDAKey,
@@ -45,6 +47,7 @@ from config.configFlags import (
 	ReportCellBorders,
 	TetherTo,
 	OutputMode,
+	ReportSpellingErrors,
 )
 from utils.displayString import (
 	DisplayStringEnum,
@@ -895,7 +898,7 @@ class Config_AggregatedSection_setitem(unittest.TestCase):
 
 
 class Config_AggregatedSection_pollution(unittest.TestCase):
-	"""Ënsure that config profiles don't get polluted with overridden values equal to the base config"""
+	"""Ensure that config profiles don't get polluted with overridden values equal to the base config"""
 
 	def setUp(self):
 		manager = ConfigManager()
@@ -1161,3 +1164,134 @@ class Config_upgradeProfileSteps_upgradeProfileFrom_17_to_18(unittest.TestCase):
 		upgradeConfigFrom_17_to_18(profile)
 		expected = ["dotPad", "hidBrailleStandard"]
 		self.assertEqual(profile["braille"]["auto"]["excludedDisplays"], expected)
+
+
+class Config_upgradeProfileSteps_upgradeProfileFrom_18_to_19(unittest.TestCase):
+	def test_DefaultProfile_Unmodified(self):
+		"""reportSpellingErrors unmodified."""
+		configString = "[documentFormatting]"
+		profile = _loadProfile(configString)
+		upgradeConfigFrom_18_to_19(profile)
+		with self.assertRaises(KeyError):
+			profile["documentFormatting"]["reportSpellingErrors"]
+		with self.assertRaises(KeyError):
+			profile["documentFormatting"]["reportSpellingErrors2"]
+
+	def test_defaultProfile_reportSpellingErrors_false(self):
+		"""reportSpellingErrors set to False."""
+		configString = """
+		[documentFormatting]
+		reportSpellingErrors = False
+		"""
+		profile = _loadProfile(configString)
+		upgradeConfigFrom_18_to_19(profile)
+		with self.assertRaises(KeyError):
+			profile["documentFormatting"]["reportSpellingErrors"]
+		self.assertEqual(
+			profile["documentFormatting"]["reportSpellingErrors2"],
+			ReportSpellingErrors.OFF.value,
+		)
+
+	def test_defaultProfile_reportSpellingErrors_true(self):
+		"""reportSpellingErrors set to True."""
+		configString = """
+		[documentFormatting]
+		reportSpellingErrors = True
+		"""
+		profile = _loadProfile(configString)
+		upgradeConfigFrom_18_to_19(profile)
+		with self.assertRaises(KeyError):
+			profile["documentFormatting"]["reportSpellingErrors"]
+		self.assertEqual(
+			profile["documentFormatting"]["reportSpellingErrors2"],
+			ReportSpellingErrors.SPEECH.value,
+		)
+
+	def test_defaultProfile_reportSpellingErrors_invalid(self):
+		"""reportSpellingErrors set to a non-boolean value."""
+		configString = """
+		[documentFormatting]
+		reportSpellingErrors = notABool
+		"""
+		profile = _loadProfile(configString)
+		upgradeConfigFrom_18_to_19(profile)
+		self.assertEqual(profile["documentFormatting"]["reportSpellingErrors"], "notABool")
+		with self.assertRaises(KeyError):
+			profile["documentFormatting"]["reportSpellingErrors2"]
+
+
+class Config_profileUpgradeSteps_upgradeConfigFrom_21_to_22(unittest.TestCase):
+	def test_noMathSection_unchanged(self):
+		"""Profile with no [math] section is not modified."""
+		profile = _loadProfile("")
+		upgradeConfigFrom_21_to_22(profile)
+		with self.assertRaises(KeyError):
+			profile["math"]
+
+	def test_noSpeechSection_unchanged(self):
+		"""Profile with [math] but no [[speech]] sub-section is not modified."""
+		configString = """
+[math]
+	impairment = Blindness
+"""
+		profile = _loadProfile(configString)
+		upgradeConfigFrom_21_to_22(profile)
+		with self.assertRaises(KeyError):
+			profile["math"]["speech"]
+
+	def test_noLanguageKey_unchanged(self):
+		"""Profile with [math] / [[speech]] but no language key is not modified."""
+		configString = """
+[math]
+	impairment = Blindness
+	[[speech]]
+		verbosity = Medium
+"""
+		profile = _loadProfile(configString)
+		upgradeConfigFrom_21_to_22(profile)
+		with self.assertRaises(KeyError):
+			profile["math"]["speech"]["language"]
+
+	def test_autoMixedCase_migratedToEn(self):
+		"""language = Auto (canonical old default) is migrated to 'en'."""
+		configString = """
+[math]
+	[[speech]]
+		language = Auto
+"""
+		profile = _loadProfile(configString)
+		upgradeConfigFrom_21_to_22(profile)
+		self.assertEqual(profile["math"]["speech"]["language"], "en")
+
+	def test_autoLowerCase_migratedToEn(self):
+		"""language = auto (all lowercase) is migrated to 'en'."""
+		configString = """
+[math]
+	[[speech]]
+		language = auto
+"""
+		profile = _loadProfile(configString)
+		upgradeConfigFrom_21_to_22(profile)
+		self.assertEqual(profile["math"]["speech"]["language"], "en")
+
+	def test_autoUpperCase_migratedToEn(self):
+		"""language = AUTO (all uppercase) is migrated to 'en'."""
+		configString = """
+[math]
+	[[speech]]
+		language = AUTO
+"""
+		profile = _loadProfile(configString)
+		upgradeConfigFrom_21_to_22(profile)
+		self.assertEqual(profile["math"]["speech"]["language"], "en")
+
+	def test_nonAutoLanguage_unchanged(self):
+		"""language set to a valid non-Auto value is not modified."""
+		configString = """
+[math]
+	[[speech]]
+		language = fr
+"""
+		profile = _loadProfile(configString)
+		upgradeConfigFrom_21_to_22(profile)
+		self.assertEqual(profile["math"]["speech"]["language"], "fr")

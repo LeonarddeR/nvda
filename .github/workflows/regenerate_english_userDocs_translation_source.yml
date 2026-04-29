@@ -7,20 +7,36 @@ on:
     paths:
       - 'user_docs/en/*.md'
 
+permissions:
+  actions: write
+
 jobs:
   rebuild-translation-source:
     runs-on: windows-2025
 
     steps:
+    - name: Early exit
+      shell: bash
+      run: |
+        if [ -z "${{ vars.CROWDIN_PROJECT_ID }}" ]; then
+          echo "CROWDIN_PROJECT_ID is not set. Exiting workflow."
+          gh run cancel ${{ github.run_id }}
+          gh run watch ${{ github.run_id }}
+        fi
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_REPO: ${{ github.repository }}
+
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
+        token: ${{ secrets.NVACCESSAUTO_PUSH_PAT }}
 
     - name: Set up python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11.9'
+        python-version: '3.13'
         architecture: 'x86'
 
     - name: Install dependencies
@@ -34,6 +50,7 @@ jobs:
         # for any English markdown files changed within the commits of this push,
         # update the corresponding xliff file (if one exists) to reflect the current markdown file,
         # keeping existing translation IDs in tact.
+        $PSNativeCommandUseErrorActionPreference = $true
         $ErrorActionPreference = 'Stop'
         $changedFiles = git diff --name-only ${{github.event.before}}.. -- user_docs/en/*.md
         foreach ($file in $changedFiles) {
@@ -66,16 +83,6 @@ jobs:
             Write-Host "Committing $file"
             git commit -m "Update $file"
           }
-          Write-Host "Setting up ssh for push"
-          # Ensure .ssh directory exists
-          New-Item -ItemType Directory -Force -Path ~/.ssh
-          # Add github.com to the list of known hosts for ssh
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-          # set the private key of the Github deploy key as the ssh key
-          $privateKey = "${{ secrets.XLIFF_DEPLOY_PRIVATE_KEY }}"
-          $privateKey | Out-File -FilePath ~/.ssh/id_rsa -Encoding ascii
-          # Tell git to use ssh for pushing
-          git remote set-url origin git@github.com:${{ github.repository }}
           Write-Host "Pushing changes"
           git push origin HEAD
         } else {

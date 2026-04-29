@@ -24,6 +24,7 @@ from config.configFlags import (
 	OutputMode,
 	ReportCellBorders,
 	ReportLineIndentation,
+	ReportSpellingErrors,
 	ReportTableHeaders,
 	ShowMessages,
 	TetherTo,
@@ -597,3 +598,92 @@ def upgradeConfigFrom_17_to_18(profile: ConfigObj) -> None:
 			"dotPad added to braille display auto detection excluded displays due to generic USB PID/VID. "
 			f"List is now: {excludedDisplays}",
 		)
+
+
+def upgradeConfigFrom_18_to_19(profile: ConfigObj):
+	"""Convert report spelling errors configurations from boolean to integer values."""
+
+	section = "documentFormatting"
+	key = "reportSpellingErrors"
+	newKey = "reportSpellingErrors2"
+	try:
+		oldValue: bool = profile[section].as_bool(key)
+	except KeyError:
+		log.debug(f"'{key}' not present in config, no action taken.")
+		return
+	except ValueError:
+		log.error(f"'{key}' is not a boolean, got {profile[section][key]!r}. No action taken.")
+		return
+
+	newValue = ReportSpellingErrors.SPEECH.value if oldValue else ReportSpellingErrors.OFF.value
+	profile[section][newKey] = newValue
+	del profile[section][key]
+	log.debug(
+		f"Converted '{key}' with value {oldValue} to '{newKey}' with value {newValue}"
+		f" ({ReportSpellingErrors(newValue).name}). The old key '{key}' has been deleted.",
+	)
+
+
+def upgradeConfigFrom_19_to_20(profile: ConfigObj):
+	"""Move Screen Curtain settings from vision to root."""
+	try:
+		# We must copy the old settings,
+		# otherwise configobj will write the new settings as a subsection of the last root section in the config
+		profile["screenCurtain"] = profile["vision"]["screenCurtain"].copy()
+	except KeyError:
+		log.debug("No vision enhancement provider-based Screen Curtain settings exist. No action taken.")
+		return
+	del profile["vision"]["screenCurtain"]
+	log.debug("Moved Screen Curtain settings from ['vision']['screenCurtain'] to ['screenCurtain'].")
+
+
+def upgradeConfigFrom_20_to_21(profile: ConfigObj):
+	"""Redirect old sapi4 and sapi5 config to 32 bit versions."""
+	speechConf = profile.get("speech")
+	if not speechConf:
+		log.debug("Profile's speech section is empty or does not exist. No action taken.")
+		return
+	synth = speechConf.get("synth")
+	if synth == "sapi4":
+		synth = "sapi4_32"
+		log.debug("Switching configured synthesizer from sapi4 to sapi4_32")
+		speechConf["synth"] = synth
+	elif synth == "sapi5":
+		synth = "sapi5_32"
+		log.debug("Switching configured synthesizer from sapi5 to sapi5_32")
+		speechConf["synth"] = synth
+	sapi4Conf = speechConf.get("sapi4")
+	if sapi4Conf:
+		speechConf["sapi4_32"] = sapi4Conf
+		del speechConf["sapi4"]
+		log.debug("Moved old sapi4 configuration values to sapi4_32")
+	sapi5Conf = speechConf.get("sapi5")
+	if sapi5Conf:
+		speechConf["sapi5_32"] = sapi5Conf
+		del speechConf["sapi5"]
+		log.debug("Moved old sapi5 configuration values to sapi5_32")
+
+
+def upgradeConfigFrom_21_to_22(profile: ConfigObj):
+	"""Change math speech language from 'Auto' to 'en'."""
+	mathConf = profile.get("math")
+	if not mathConf:
+		log.debug("No math section in profile. No action taken.")
+		return
+	speechConf = mathConf.get("speech")
+	if not speechConf:
+		log.debug("No math.speech section in profile. No action taken.")
+		return
+	language = speechConf.get("language")
+	if language is None:
+		log.debug("math.speech.language not set in profile. No action taken.")
+		return
+	if not isinstance(language, str):
+		log.error(
+			f"Invalid math.speech.language value during profile upgrade: "
+			f"expected str, got {type(language).__name__}. Skipping upgrade step.",
+		)
+		return
+	if language.casefold() == "auto":
+		speechConf["language"] = "en"
+		log.debug("Changed math.speech.language from 'Auto' to 'en'.")

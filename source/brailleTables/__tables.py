@@ -157,6 +157,9 @@ addTable("en-gb-g1.utb", _("English (U.K.) grade 1"))
 addTable("en-GB-g2.ctb", _("English (U.K.) grade 2"), contracted=True)
 # Translators: The name of a braille table displayed in the
 # braille settings dialog.
+addTable("en-g3.ctb", _("English grade 3"), contracted=True, input=False)
+# Translators: The name of a braille table displayed in the
+# braille settings dialog.
 addTable("en-nabcc.utb", _("English North American Braille Computer Code"))
 # Translators: The name of a braille table displayed in the
 # braille settings dialog.
@@ -320,6 +323,12 @@ addTable(
 	input=False,
 	outputForLangs={"ja"},
 )
+addTable(
+	"ja-rokutenkanji.utb",
+	# Translators: The name of a braille table displayed in the
+	# braille settings dialog.
+	_("Japanese (Rokuten Kanji) Braille"),
+)
 # Translators: The name of a braille table displayed in the
 # braille settings dialog.
 addTable("ka-in-g1.utb", _("Kannada grade 1"), inputForLangs={"kn"}, outputForLangs={"kn"})
@@ -365,6 +374,9 @@ addTable("lt-6dot.utb", _("Lithuanian 6 dot"), inputForLangs={"lt"}, outputForLa
 # Translators: The name of a braille table displayed in the
 # braille settings dialog.
 addTable("Lv-Lv-g1.utb", _("Latvian grade 1"))
+# Translators: The name of a braille table displayed in the
+# braille settings dialog.
+addTable("mk-g1.utb", _("Macedonian grade 1"))
 # Translators: The name of a braille table displayed in the
 # braille settings dialog.
 addTable("ml-in-g1.utb", _("Malayalam grade 1"))
