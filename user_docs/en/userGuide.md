@@ -4210,8 +4210,8 @@ This option is disabled by default, but its default will change to enabled in NV
 
 | . {.hideHeaderRow} |.|
 |---|---|
-|Options |Default (Disabled), Disabled, Enabled |
-|Default |Disabled |
+|Options |Default (Disabled), Disabled, Enabled|
+|Default |Disabled|
 
 ##### Caret move timeout (in MS) {#AdvancedSettingsCaretMoveTimeout}
 
