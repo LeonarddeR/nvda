@@ -23,7 +23,7 @@ def _pyphenFactory(lang: str) -> Pyphen:
 	return Pyphen(lang=pyphenLang)
 
 
-_hypenationMap: LocaleDataMap[Pyphen] = LocaleDataMap(_pyphenFactory)
+_hyphenationMap: LocaleDataMap[Pyphen] = LocaleDataMap(_pyphenFactory)
 
 #: Set of locales for which we have already logged an unknown-language fallback.
 #: Used to avoid spamming the log on every call for the same unsupported locale.
@@ -41,7 +41,7 @@ def getHyphenPositions(text: str, locale: str) -> tuple[int, ...]:
 	:return: A tuple of positions in the text where hyphenation points occur.
 	"""
 	try:
-		pyphen = _hypenationMap.fetchLocaleData(locale=locale)
+		pyphen = _hyphenationMap.fetchLocaleData(locale=locale)
 	except LookupError:
 		if locale not in _loggedUnknownLocales:
 			_loggedUnknownLocales.add(locale)
