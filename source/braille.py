@@ -2083,6 +2083,8 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 				except (ValueError, IndexError):
 					# No space on line - fall back to display-edge cut.
 					if all(self.brailleCells[end - 1 : end + 1]):
+						if end - start == self.handler.displayDimensions.numCols and end < bufferEnd:
+							end -= 1
 						showContinuationMark = True
 			if showContinuationMark:
 				self._continuationRows.append(len(self._windowRowBufferOffsets))
