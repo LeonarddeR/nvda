@@ -2126,10 +2126,7 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 		if startPos <= restrictPos:
 			self.windowStartPos = restrictPos
 			return
-		if config.conf["braille"]["textWrap"].calculated() in (
-			BrailleTextWrapFlag.NONE,
-			BrailleTextWrapFlag.MARK_WORD_CUTS,
-		):
+		if config.conf["braille"]["textWrap"].calculated() == BrailleTextWrapFlag.NONE:
 			self.windowStartPos = startPos
 			return
 		try:
