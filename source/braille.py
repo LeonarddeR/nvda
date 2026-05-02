@@ -2084,10 +2084,7 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 					# No space on line - fall back to display-edge cut.
 					# Under rule A, mark this as a word cut since a word was split mid-way.
 					if all(self.brailleCells[end - 1 : end + 1]):
-						if (
-							end - start == self.handler.displayDimensions.numCols
-							and end < bufferEnd
-						):
+						if end - start == self.handler.displayDimensions.numCols and end < bufferEnd:
 							end -= 1
 						showContinuationMark = True
 			if showContinuationMark:
