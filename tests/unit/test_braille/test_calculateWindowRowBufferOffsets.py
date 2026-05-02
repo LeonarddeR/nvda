@@ -75,7 +75,7 @@ class TestCalculate(unittest.TestCase):
 		expectedOffsets = [(0, 20), (20, 40)]
 		self.assertEqual(braille.handler.buffer._windowRowBufferOffsets, expectedOffsets)
 
-	def test_wordWrapFirstRowWithSpace(self):
+	def test_textWrapFirstRowWithSpace(self):
 		"""Check that the first row will be truncated if it contains a space, only if text wrap is set to word boundaries."""
 		_setTextWrap(BrailleTextWrapFlag.AT_WORD_BOUNDARIES)
 		cells = [1] * (braille.handler.displayDimensions.numCols - 5)
@@ -90,8 +90,8 @@ class TestCalculate(unittest.TestCase):
 		expectedOffsets = [(0, 20), (20, 40)]
 		self.assertEqual(braille.handler.buffer._windowRowBufferOffsets, expectedOffsets)
 
-	def test_wordWrapSecondRowStartsWithSpace(self):
-		"""Check that the first row won't be truncated if the next row starts with a space, even if word wrap is True."""
+	def test_textWrapSecondRowStartsWithSpace(self):
+		"""Check that the first row won't be truncated if the next row starts with a space, even if text wrap is not NONE."""
 		_setTextWrap(BrailleTextWrapFlag.AT_WORD_BOUNDARIES)
 		cells = [1] * braille.handler.displayDimensions.numCols
 		cells.append(0)

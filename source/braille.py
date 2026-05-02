@@ -2031,7 +2031,7 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 	def _calculateWindowRowBufferOffsets(self, pos: int) -> None:
 		"""
 		Calculates the start and end positions of each row in the braille window.
-		Ensures that words are not split across rows when word wrap is enabled.
+		Ensures that words are not split across rows when text wrap is enabled.
 		Ensures that the window does not extend past the end of the braille buffer.
 		:param pos: The start position of the braille window.
 		"""
@@ -2105,7 +2105,7 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 		2. Whether one of the regions should be shown hard left on the braille display;
 			i.e. because of The configuration setting for focus context representation
 			or whether the braille region that corresponds with the focus represents a multi line edit box.
-		3. Whether word wrap is enabled."""
+		3. Whether text wrap is enabled."""
 		startPos = endPos - self.handler.displaySize
 		# Loop through the currently displayed regions in reverse order
 		# If focusToHardLeft is set for one of the regions, the display shouldn't scroll further back than the start of that region
@@ -2141,7 +2141,7 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 					break
 		except ValueError:
 			pass
-		# When word wrap is enabled, the first block of spaces may be removed from the current window.
+		# When text wrap is enabled, the first block of spaces may be removed from the current window.
 		# This may prevent displaying the start of paragraphs.
 		paragraphStartMarker = getParagraphStartMarker()
 		if paragraphStartMarker and self.regions[-1].rawText.startswith(
