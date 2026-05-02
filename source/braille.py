@@ -570,7 +570,7 @@ class Region(object):
 		self.selectionEnd = None
 		#: Language indexes in L{rawText}.
 		#: The last language is assumed to be the final language in the region.
-		self._languageIndexes: dict[int:str] = {0: self._getDefaultRegionLanguage()}
+		self._languageIndexes: dict[int, str] = {0: self._getDefaultRegionLanguage()}
 		#: The translated braille representation of this region.
 		#: @type: [int, ...]
 		self.brailleCells = []
@@ -1560,7 +1560,7 @@ class TextInfoRegion(Region):
 		self.rawText = ""
 		self.rawTextTypeforms = []
 		self.cursorPos = None
-		self._languageIndexes: dict[int:str] = {0: self._getDefaultRegionLanguage()}
+		self._languageIndexes: dict[int, str] = {0: self._getDefaultRegionLanguage()}
 		# The output includes text representing fields which isn't part of the real content in the control.
 		# Therefore, maintain a map of positions in the output to positions in the content.
 		self._rawToContentPos = []
@@ -2082,7 +2082,6 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 										break
 				except (ValueError, IndexError):
 					# No space on line - fall back to display-edge cut.
-					# Under rule A, mark this as a word cut since a word was split mid-way.
 					if all(self.brailleCells[end - 1 : end + 1]):
 						showContinuationMark = True
 			if showContinuationMark:
