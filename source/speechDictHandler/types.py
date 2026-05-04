@@ -10,6 +10,7 @@ import os
 import re
 from dataclasses import dataclass, field
 from functools import cached_property
+from types import ModuleType
 from typing import (
 	TYPE_CHECKING as _TYPE_CHECKING,
 	Self,
@@ -66,7 +67,7 @@ class EntryType(DisplayStringIntEnum):
 		}
 
 
-def _selectRegexEngine(entryType: "EntryType") -> "type[re] | type[regex]":
+def _selectRegexEngine(entryType: "EntryType") -> ModuleType:
 	"""Return the regex module to use for compiling a SpeechDictEntry of the
 	given type.
 
