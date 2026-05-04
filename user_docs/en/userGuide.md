@@ -4206,7 +4206,6 @@ Note that in Speech settings, there is a similar [option for SAPI 5 voices](#Spe
 
 This setting controls how Regular expression entries in [speech dictionaries](#SpeechDictionaries) are matched.
 The [modern engine](https://pypi.org/project/regex/) has better support for non-Latin scripts, such as Hebrew and Arabic, and offers more powerful matching options.
-This option is disabled by default, but its default will change to enabled in NVDA 2027.1.
 
 | . {.hideHeaderRow} |.|
 |---|---|
