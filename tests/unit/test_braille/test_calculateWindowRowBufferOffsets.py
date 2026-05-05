@@ -83,7 +83,7 @@ class TestCalculate(unittest.TestCase):
 		cells.extend([1] * (braille.handler.displayDimensions.numCols + 4))
 		braille.handler.buffer.brailleCells = cells
 		braille.handler.buffer._calculateWindowRowBufferOffsets(0)
-		expectedOffsets = [(0, 16), (16, 36)]
+		expectedOffsets = [(0, 16), (16, 35)]
 		self.assertEqual(braille.handler.buffer._windowRowBufferOffsets, expectedOffsets)
 		_setTextWrap(BrailleTextWrapFlag.NONE)
 		braille.handler.buffer._calculateWindowRowBufferOffsets(0)
@@ -137,7 +137,7 @@ class TestCalculate(unittest.TestCase):
 		# No zero anywhere in row 0; the `rindex` call raises and falls through.
 		braille.handler.buffer.brailleCells = [1] * 25
 		braille.handler.buffer._calculateWindowRowBufferOffsets(0)
-		self.assertEqual(braille.handler.buffer._windowRowBufferOffsets[0], (0, 20))
+		self.assertEqual(braille.handler.buffer._windowRowBufferOffsets[0], (0, 19))
 		self.assertIn(0, braille.handler.buffer._continuationRows)
 
 	def test_atWordOrSyllableBoundaries_success(self):

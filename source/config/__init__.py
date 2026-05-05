@@ -1420,10 +1420,17 @@ class AggregatedSection:
 							"braille.wordWrap is deprecated. Use braille.textWrap instead.",
 							stack_info=True,
 						)
-						key = "textWrap"
-						val = (
-							BrailleTextWrapFlag.AT_WORD_BOUNDARIES if val else BrailleTextWrapFlag.NONE
-						).name
+						textWrapKey = "textWrap"
+						flagEnum = BrailleTextWrapFlag.AT_WORD_BOUNDARIES if val else BrailleTextWrapFlag.NONE
+						# Write the enum name (string) to the profile — configobj stores everything as strings.
+						self._getUpdateSection()[textWrapKey] = flagEnum.name
+						# Validate through the spec so the cache holds a proper FeatureFlag object,
+						# matching what __setitem__ would normally store.
+						self._cache[textWrapKey] = self.manager.validator.check(
+							self._spec[textWrapKey],
+							flagEnum.name,
+						)
+						return
 					case "textWrap":
 						# The "textWrap" setting was added in place of "wordWrap" and became a feature flag.
 						key = "wordWrap"

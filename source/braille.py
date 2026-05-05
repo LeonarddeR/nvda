@@ -2051,7 +2051,11 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 			if end > bufferEnd:
 				end = bufferEnd
 				clippedEnd = True
-			elif textWrap == BrailleTextWrapFlag.MARK_WORD_CUTS and all(self.brailleCells[end - 1 : end + 1]):
+			elif (
+				textWrap == BrailleTextWrapFlag.MARK_WORD_CUTS
+				and end < bufferEnd
+				and all(self.brailleCells[end - 1 : end + 1])
+			):
 				end -= 1
 				showContinuationMark = True
 			elif textWrap in (

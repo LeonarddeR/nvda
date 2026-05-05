@@ -2583,8 +2583,8 @@ This combo box allows you to configure how NVDA handles text that is too long to
 When a word is cut across rows, the continuation mark (dots 7 and 8) is shown in the last cell of the row, unless otherwise noted below.
 The following options are available:
 
-* Off: Text is not wrapped and no continuation mark is shown.
-As much of the text as possible will be displayed, but the rest will be cut off.
+* Off: Text wraps at the display edge, cutting words mid-way if necessary, without showing any continuation mark.
+As much of the text as possible will be displayed on each row.
 When you scroll the display, you will be able to read the rest of the text.
 * Show mark when words are cut: Text is not wrapped, but whenever a word is cut at the end of the display, a continuation mark is shown.
 When you scroll the display, you will be able to read the rest of the word.
