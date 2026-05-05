@@ -1411,6 +1411,8 @@ class AggregatedSection:
 		>>> 		return
 		>>> ...
 		"""
+		# cacheVal defaults to val; overridden when profile and cache need different types.
+		cacheVal = val
 		match self.path:
 			case "braille":
 				match key:
@@ -1420,17 +1422,13 @@ class AggregatedSection:
 							"braille.wordWrap is deprecated. Use braille.textWrap instead.",
 							stack_info=True,
 						)
-						textWrapKey = "textWrap"
+						key = "textWrap"
 						flagEnum = BrailleTextWrapFlag.AT_WORD_BOUNDARIES if val else BrailleTextWrapFlag.NONE
-						# Write the enum name (string) to the profile — configobj stores everything as strings.
-						self._getUpdateSection()[textWrapKey] = flagEnum.name
-						# Validate through the spec so the cache holds a proper FeatureFlag object,
-						# matching what __setitem__ would normally store.
-						self._cache[textWrapKey] = self.manager.validator.check(
-							self._spec[textWrapKey],
-							flagEnum.name,
-						)
-						return
+						# Profile stores strings; cache must hold a validated FeatureFlag object
+						# (matching what __setitem__ normally stores) so .calculated() works on next read.
+						# Validate through the spec to avoid hardcoding behaviorOfDefault here.
+						val = flagEnum.name
+						cacheVal = self.manager.validator.check(self._spec[key], val)
 					case "textWrap":
 						# The "textWrap" setting was added in place of "wordWrap" and became a feature flag.
 						key = "wordWrap"
@@ -1439,6 +1437,7 @@ class AggregatedSection:
 							BrailleTextWrapFlag.AT_WORD_BOUNDARIES,
 							BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES,
 						)
+						cacheVal = val
 
 					case _:
 						# We don't care about other keys in this section.
@@ -1451,7 +1450,7 @@ class AggregatedSection:
 		# Update the value in the most recently activated profile.
 		# If we have reached this point, we must have a new key and value to set.
 		self._getUpdateSection()[key] = val
-		self._cache[key] = val
+		self._cache[key] = cacheVal
 
 	def _getUpdateSection(self):
 		profile = self.profiles[-1]
