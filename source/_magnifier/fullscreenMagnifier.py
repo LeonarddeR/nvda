@@ -18,7 +18,7 @@ from .utils.filterHandler import FilterMatrix
 from .utils.spotlightManager import SpotlightManager
 from .utils.types import (
 	Filter,
-	MagnifierType,
+	MagnifiedView,
 	FullScreenMode,
 	Size,
 	MagnifierParameters,
@@ -29,22 +29,20 @@ from .utils.errorHandling import trackNativeMagnifierErrors
 
 
 class FullScreenMagnifier(Magnifier):
+	"""Magnifier that uses the Windows Magnification API to magnify the entire screen."""
+
 	_MAX_RECOVERY_ATTEMPTS: int = 3
+	_MAGNIFIED_VIEW = MagnifiedView.FULLSCREEN
 
 	def __init__(self):
 		super().__init__()
-		self._magnifierType = MagnifierType.FULLSCREEN
 		self._fullscreenMode = getFullscreenMode()
 		self._currentCoordinates = Coordinates(0, 0)
 		self._spotlightManager = SpotlightManager(self)
 		self._displaySize = Size(self._displayOrientation.width, self._displayOrientation.height)
 		self._startMagnifier()
 
-	@property
-	def filterType(self) -> Filter:
-		return self._filterType
-
-	@filterType.setter
+	@Magnifier.filterType.setter
 	def filterType(self, value: Filter) -> None:
 		self._filterType = value
 		if self._isActive:

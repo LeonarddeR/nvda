@@ -4,7 +4,7 @@
 # For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
 from unittest.mock import MagicMock, patch
-from _magnifier.utils.types import Filter, FullScreenMode, MagnifierType, Direction, Coordinates
+from _magnifier.utils.types import Filter, FullScreenMode, MagnifiedView, Direction, Coordinates
 from _magnifier.fullscreenMagnifier import FullScreenMagnifier
 from tests.unit.test_magnifier.test_magnifier import _TestMagnifier
 from _magnifier.magnifier import Magnifier
@@ -22,7 +22,7 @@ class TestFullscreenMagnifierEndToEnd(_TestMagnifier):
 		self.assertEqual(magnifier.zoomLevel, 2.0)
 		self.assertEqual(magnifier.filterType, Filter.NORMAL)
 		self.assertEqual(magnifier._fullscreenMode, FullScreenMode.CENTER)
-		self.assertEqual(magnifier._magnifierType, MagnifierType.FULLSCREEN)
+		self.assertEqual(magnifier._MAGNIFIED_VIEW, MagnifiedView.FULLSCREEN)
 		self.assertTrue(magnifier._isActive)
 
 		magnifier._stopMagnifier()
@@ -107,6 +107,7 @@ class TestFullscreenMagnifierEndToEnd(_TestMagnifier):
 	def testMagnifierPositionCalculation(self):
 		"""Test position calculation."""
 		magnifier = FullScreenMagnifier()
+		magnifier._startMagnifier()
 
 		# Test position calculation
 		params = magnifier._getMagnifierParameters((500, 400))
@@ -130,6 +131,7 @@ class TestFullscreenMagnifierEndToEnd(_TestMagnifier):
 	def testMagnifierZoomBoundaries(self):
 		"""Test zoom boundaries."""
 		magnifier = FullScreenMagnifier()
+		magnifier._startMagnifier()
 		magnifier.zoomLevel = 1.0
 
 		# Test minimum boundary
@@ -144,15 +146,16 @@ class TestFullscreenMagnifierEndToEnd(_TestMagnifier):
 		# Cleanup
 		magnifier._stopMagnifier()
 
-	def testMagnifierTypeProperty(self):
-		"""Test magnifierType property for FullScreenMagnifier."""
+	def testMagnifiedViewProperty(self):
+		"""Test magnifiedView property for FullScreenMagnifier."""
 		magnifier = FullScreenMagnifier()
+		magnifier._startMagnifier()
 
 		# Should default to FULLSCREEN
-		self.assertEqual(magnifier._magnifierType, MagnifierType.FULLSCREEN)
+		self.assertEqual(magnifier._MAGNIFIED_VIEW, MagnifiedView.FULLSCREEN)
 
 		# Test that we can read it (inherited property from Magnifier)
-		self.assertIsNotNone(magnifier._magnifierType)
+		self.assertIsNotNone(magnifier._MAGNIFIED_VIEW)
 
 		# Cleanup
 		magnifier._stopMagnifier()
@@ -160,13 +163,14 @@ class TestFullscreenMagnifierEndToEnd(_TestMagnifier):
 	def testMagnifierInheritance(self):
 		"""Test inheritance structure."""
 		magnifier = FullScreenMagnifier()
+		magnifier._startMagnifier()
 
 		self.assertIsInstance(magnifier, Magnifier)
 
 		# Test basic properties exist
 		self.assertTrue(hasattr(magnifier, "zoomLevel"))
 		self.assertTrue(hasattr(magnifier, "filterType"))
-		self.assertTrue(hasattr(magnifier, "_magnifierType"))
+		self.assertTrue(hasattr(magnifier, "_MAGNIFIED_VIEW"))
 		self.assertTrue(hasattr(magnifier, "_fullscreenMode"))
 		self.assertTrue(hasattr(magnifier, "_isActive"))
 		self.assertTrue(hasattr(magnifier, "_currentCoordinates"))
@@ -177,6 +181,7 @@ class TestFullscreenMagnifierEndToEnd(_TestMagnifier):
 	def testMagnifierApiHandling(self):
 		"""Test API error handling."""
 		magnifier = FullScreenMagnifier()
+		magnifier._startMagnifier()
 
 		# Mock magnification API to fail
 		magnifier._stopTimer = MagicMock()
@@ -258,6 +263,7 @@ class TestFullscreenMagnifierEndToEnd(_TestMagnifier):
 	def testUpdateLoopSurvivesSingleDoUpdateError(self):
 		"""A single _doUpdate error does not kill the update loop."""
 		magnifier = FullScreenMagnifier()
+		magnifier._startMagnifier()
 		magnifier._startTimer = MagicMock()
 		magnifier._focusManager.getCurrentFocusCoordinates = MagicMock(
 			return_value=(100, 200),
@@ -346,6 +352,7 @@ class TestFullScreenMagnifierKeepMouseCentered(_TestMagnifier):
 	def setUp(self):
 		super().setUp()
 		self.magnifier = FullScreenMagnifier()
+		self.magnifier._startMagnifier()
 		self.screen = getPrimaryDisplayOrientation()
 
 	def tearDown(self):

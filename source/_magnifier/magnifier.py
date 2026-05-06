@@ -21,7 +21,7 @@ from winAPI._displayTracking import OrientationState, getPrimaryDisplayOrientati
 from .utils.types import (
 	MagnifierParameters,
 	MagnifierAction,
-	MagnifierType,
+	MagnifiedView,
 	Direction,
 	Filter,
 	Coordinates,
@@ -41,10 +41,10 @@ class Magnifier:
 	_TIMER_INTERVAL_MS: int = 12
 	_MARGIN_BORDER: int = 50
 	_MAX_CONSECUTIVE_ERRORS: int = 3
+	_MAGNIFIED_VIEW: MagnifiedView
 
 	def __init__(self):
 		self._displayOrientation = getPrimaryDisplayOrientation()
-		self._magnifierType: MagnifierType
 		self._isActive: bool = False
 		self._zoomLevel: float = getZoomLevel()
 		self._panStep: int = getPanStep()
@@ -60,6 +60,14 @@ class Magnifier:
 		# Register for display changes
 		_displayTracking.displayChanged.register(self._onDisplayChanged)
 		self._screenCurtainIsActive: bool = False
+
+	@property
+	def filterType(self) -> Filter:
+		return self._filterType
+
+	@filterType.setter
+	def filterType(self, value: Filter) -> None:
+		self._filterType = value
 
 	@property
 	def zoomLevel(self) -> float:
