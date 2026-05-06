@@ -221,7 +221,11 @@ class TestFullscreenMagnifierEndToEnd(_TestMagnifier):
 
 	def testAttemptRecoverySuccess(self):
 		"""FullScreenMagnifier._attemptRecovery reinitialises API and restarts timer on success."""
-		magnifier = FullScreenMagnifier()
+		with patch(
+			"_magnifier.magnifier.FocusManager.getCurrentFocusCoordinates",
+			return_value=Coordinates(0, 0),
+		):
+			magnifier = FullScreenMagnifier()
 		magnifier._consecutiveErrors = 3
 		magnifier._startTimer = MagicMock()
 
@@ -362,7 +366,7 @@ class TestFullScreenMagnifierKeepMouseCentered(_TestMagnifier):
 		self.magnifier._currentCoordinates = Coordinates(500, 400)
 		with (
 			patch(
-				"_magnifier.fullscreenMagnifier.winUser.getKeyState",
+				"_magnifier.fullscreenMagnifier.winUser.getAsyncKeyState",
 				side_effect=lambda key: -1 if key == 1 else 0,
 			),
 			patch("_magnifier.fullscreenMagnifier.winUser.setCursorPos") as mockSet,
@@ -375,7 +379,7 @@ class TestFullScreenMagnifierKeepMouseCentered(_TestMagnifier):
 		self.magnifier._currentCoordinates = Coordinates(500, 400)
 		with (
 			patch(
-				"_magnifier.fullscreenMagnifier.winUser.getKeyState",
+				"_magnifier.fullscreenMagnifier.winUser.getAsyncKeyState",
 				side_effect=lambda key: -1 if key == 2 else 0,
 			),
 			patch("_magnifier.fullscreenMagnifier.winUser.setCursorPos") as mockSet,
@@ -388,7 +392,7 @@ class TestFullScreenMagnifierKeepMouseCentered(_TestMagnifier):
 		self.magnifier._currentCoordinates = Coordinates(500, 400)
 		with (
 			patch(
-				"_magnifier.fullscreenMagnifier.winUser.getKeyState",
+				"_magnifier.fullscreenMagnifier.winUser.getAsyncKeyState",
 				side_effect=lambda key: -1 if key == 4 else 0,
 			),
 			patch("_magnifier.fullscreenMagnifier.winUser.setCursorPos") as mockSet,
@@ -403,7 +407,7 @@ class TestFullScreenMagnifierKeepMouseCentered(_TestMagnifier):
 		self.magnifier._currentCoordinates = raw
 		expectedX, expectedY = self._expectedCenter(raw)
 		with (
-			patch("_magnifier.fullscreenMagnifier.winUser.getKeyState", return_value=0),
+			patch("_magnifier.fullscreenMagnifier.winUser.getAsyncKeyState", return_value=0),
 			patch("_magnifier.fullscreenMagnifier.winUser.setCursorPos") as mockSet,
 		):
 			self.magnifier._keepMouseCentered()
@@ -418,7 +422,7 @@ class TestFullScreenMagnifierKeepMouseCentered(_TestMagnifier):
 		# Clamping should shift the center away from (10, 10)
 		self.assertNotEqual((expectedX, expectedY), (raw.x, raw.y))
 		with (
-			patch("_magnifier.fullscreenMagnifier.winUser.getKeyState", return_value=0),
+			patch("_magnifier.fullscreenMagnifier.winUser.getAsyncKeyState", return_value=0),
 			patch("_magnifier.fullscreenMagnifier.winUser.setCursorPos") as mockSet,
 		):
 			self.magnifier._keepMouseCentered()
@@ -431,7 +435,7 @@ class TestFullScreenMagnifierKeepMouseCentered(_TestMagnifier):
 		self.magnifier._currentCoordinates = raw
 		expectedX, expectedY = self._expectedCenter(raw)
 		with (
-			patch("_magnifier.fullscreenMagnifier.winUser.getKeyState", return_value=0),
+			patch("_magnifier.fullscreenMagnifier.winUser.getAsyncKeyState", return_value=0),
 			patch("_magnifier.fullscreenMagnifier.winUser.setCursorPos") as mockSet,
 		):
 			self.magnifier._keepMouseCentered()
@@ -446,7 +450,7 @@ class TestFullScreenMagnifierKeepMouseCentered(_TestMagnifier):
 		self.magnifier._currentCoordinates = screenCenter
 		expectedX, expectedY = self._expectedCenter(screenCenter)
 		with (
-			patch("_magnifier.fullscreenMagnifier.winUser.getKeyState", return_value=0),
+			patch("_magnifier.fullscreenMagnifier.winUser.getAsyncKeyState", return_value=0),
 			patch("_magnifier.fullscreenMagnifier.winUser.setCursorPos") as mockSet,
 		):
 			self.magnifier._keepMouseCentered()
