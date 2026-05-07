@@ -45,7 +45,6 @@ _gestureMap = inputCore.GlobalGestureMap(
 			),
 			"braille_routeTo": ("br(albatross):routing",),
 			"braille_reportFormatting": ("br(albatross):secondRouting",),
-			"braille_selectRange": ("br(albatross):multiRouting",),
 			"braille_toggleFocusContextPresentation": ("br(albatross):attribute1+attribute3",),
 			"speechMode": ("br(albatross):attribute2+attribute4",),
 			"reviewMode_previous": ("br(albatross):f1",),
@@ -96,24 +95,16 @@ class InputGestureKeys(braille.BrailleDisplayGesture):
 		self.source = name
 		self.keyCodes = set(keys)
 		names = []
-		cellIndexesByRange: dict[str, list[int]] = {}
 		for key in self.keyCodes:
 			routingTuple = self._getRoutingIndex(key)
 			if routingTuple:
-				rangeName, index = routingTuple
-				cellIndexesByRange.setdefault(rangeName, []).append(index)
+				names.append(routingTuple[0])
+				self.cellIndexes = [routingTuple[1]]
 			else:
 				try:
 					names.append(Keys(key).name)
 				except (KeyError, ValueError):
 					log.debug(f"Unknown key with id {key}")
-		if cellIndexesByRange:
-			allIndexes: list[int] = []
-			for rangeName, indexes in sorted(cellIndexesByRange.items()):
-				indexes.sort()
-				allIndexes.extend(indexes)
-				names.append(self.idForCellCount(len(indexes), rangeName))
-			self.cellIndexes = allIndexes
 		self.id = "+".join(names)
 		# Try to fix the first valid key press was not recognized as a gesture
 		if self.id and not self.script:
