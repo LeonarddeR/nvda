@@ -82,7 +82,7 @@ def toggleMagnifier() -> None:
 	"""Toggle the NVDA magnifier on/off"""
 	import screenCurtain
 
-	magnifier: Magnifier = getMagnifier()
+	magnifier: Magnifier | None = getMagnifier()
 	if magnifier and magnifier._isActive:
 		# Stop magnifier
 		terminate()
@@ -102,10 +102,9 @@ def toggleMagnifier() -> None:
 				"Cannot start magnifier: Screen Curtain is active. Please disable Screen Curtain first.",
 			),
 		)
-		return
 	else:
 		initialize()
-		filter = getFilter()
+		currentFilter = getFilter()
 		magnifiedView = getMagnifiedView()
 		zoomLevel = getZoomLevelString()
 		if magnifiedView == MagnifiedView.FULLSCREEN:
@@ -117,7 +116,7 @@ def toggleMagnifier() -> None:
 			).format(
 				magnifiedView=magnifiedView.displayString,
 				zoomLevel=zoomLevel,
-				filter=filter.displayString,
+				filter=currentFilter.displayString,
 				fullscreenMode=fullscreenMode.displayString,
 			)
 		else:
@@ -128,7 +127,7 @@ def toggleMagnifier() -> None:
 			).format(
 				magnifiedView=magnifiedView.displayString,
 				zoomLevel=zoomLevel,
-				filter=filter.displayString,
+				filter=currentFilter.displayString,
 			)
 		ui.message(msg)
 
