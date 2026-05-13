@@ -6,6 +6,10 @@
 
 ### New Features
 
+* The braille "word wrap" option has been replaced with a four-valued "Text wrap" option: Off, Show mark when words are cut, At word boundaries, and At word or syllable boundaries. (#17010, @LeonarddeR)
+  * When a word is cut across rows, the last cell of the row now shows a continuation mark (braille dots 7-8) so it is clear that the word continues on the next row.
+  * The "At word or syllable boundaries" option uses hyphenation dictionaries to split long words at syllable boundaries when they do not fit on the display.
+
 ### Changes
 
 ### Bug Fixes
@@ -15,6 +19,9 @@
 Please refer to [the developer guide](https://download.nvaccess.org/documentation/developerGuide.html#API) for information on NVDA's API deprecation and removal process.
 
 #### Deprecations
+
+* The `config.configFlags.BrailleTextWrap` IntEnum has been replaced with `config.featureFlagEnums.BrailleTextWrapFlag`, stored via the `featureFlag` config spec. (#17010, @LeonarddeR)
+* The `braille.wordWrap` configuration key is deprecated and bridged to `braille.textWrap`. (#17010, @LeonarddeR)
 
 <!-- Beyond this point, Markdown should not be automatically linted, as we don't modify old change log sections and lint rules may change over time. -->
 <!-- markdownlint-disable -->
@@ -52,9 +59,6 @@ The triple-press keyboard shortcut (`NVDA+ctrl+r`) is not affected, as it is int
 * DotPad braille displays now support multi-button combination gestures. (#19565, @bramd)
   * You can now press multiple buttons simultaneously to create custom gestures (e.g., `f1+panLeft`).
 * A new voice setting "Natural pause after punctuation" was added for OneCore voices, allowing users to turn punctuation pauses on or off. (#11876, @gexgd0419)
-* The braille "word wrap" option has been replaced with a four-valued "Text wrap" option: Off, Show mark when words are cut, At word boundaries, and At word or syllable boundaries. (#17010, @LeonarddeR)
-  * When a word is cut across rows, the last cell of the row now shows a continuation mark (braille dots 7-8) so it is clear that the word continues on the next row.
-  * The "At word or syllable boundaries" option uses hyphenation dictionaries to split long words at syllable boundaries when they do not fit on the display.
 
 ### Changes
 
@@ -135,8 +139,6 @@ Use the individual test commands instead: `runcheckpot.bat`, `rununittests.bat`,
 
 #### Deprecations
 
-* The `config.configFlags.BrailleTextWrap` IntEnum has been replaced with `config.featureFlagEnums.BrailleTextWrapFlag`, stored via the `featureFlag` config spec. (#17010, @LeonarddeR)
-* The `braille.wordWrap` configuration key is deprecated and bridged to `braille.textWrap`. (#17010, @LeonarddeR)
 * The `speechDictHandler.ENTRY_TYPE_*` constants are deprecated.
 Use the `speechDictHandler.types.EntryType` enumeration instead. (#19430, @LeonarddeR)
 * `speechDictHandler.SpeechDictEntry` and `speechDictHandler.SpeechDict` have been moved to `speechDictHandler.types`. (#19430, @LeonarddeR)
