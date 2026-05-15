@@ -1,5 +1,18 @@
 # What's New in NVDA
 
+## 2026.1.1
+
+This is a patch release to fix a security issue.
+
+### Security fixes
+
+Please responsibly disclose security issues following NVDA's [security policy](https://github.com/nvaccess/nvda/blob/master/security.md).
+
+* Prevents a situation which could cause unselected add-ons to be copied to the system-wide configuration. ([GHSA-669f-7gpr-5vqm](https://github.com/nvaccess/nvda/security/advisories/GHSA-669f-7gpr-5vqm))
+
+<!-- Beyond this point, Markdown should not be linted, as we don't modify old change log sections. -->
+<!-- markdownlint-disable -->
+
 ## 2026.1
 
 This release includes support for reading math content with MathCAT, which is now built-in to NVDA.
@@ -348,9 +361,6 @@ Use the `OffsetsTextInfo.allowMoveToUnitOffsetPastEnd` method instead. (#19152, 
   Use `STATE_FILENAME` instead.
   * `AddonsState.fromPickledDict` is deprecated.
   Use `AddonsState.fromDict` instead.
-
-<!-- Beyond this point, Markdown should not be linted, as we don't modify old change log sections. -->
-<!-- markdownlint-disable -->
 
 ## 2025.3.3
 
