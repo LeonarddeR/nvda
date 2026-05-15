@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="en">
-<file id="changes.md" original="https://raw.githubusercontent.com/nvaccess/nvda/685c97eb96fe7ce2b58159b8cbed64a33b08d0ac/user_docs/en/changes.md">
+<file id="changes.md" original="https://raw.githubusercontent.com/nvaccess/nvda/862eeab1c8de83ac729b07eb41904af277f946a6/user_docs/en/changes.md">
 <skeleton>
 # $(ID:4bf3ec03-2d43-474a-aef0-92b334e594ed)
 
@@ -40,6 +40,7 @@ $(ID:98761cb0-2b3d-479a-8332-4facd1307f17)
 
 ### $(ID:925fc6a6-5914-487e-92bf-9171dd9e0554)
 
+* $(ID:24ec2e16-7c5a-446d-ac92-5014e6fa7ce9)
 * $(ID:60e2fb6f-aae0-4692-aec2-07680ec05661)
   * $(ID:2671c513-c555-4c84-95b0-667eab9e0725)
 * $(ID:1189f042-6dbc-4b25-848e-5aea35e9e63d)
@@ -60,7 +61,7 @@ $(ID:90d9f201-8218-4885-afdf-e08b3a9cbcda)
 
 ### $(ID:6e83ec90-ee84-4be0-819c-f475fa970a66)
 
-* $(ID:9c95f0f4-d5ef-405e-8fe6-23f0b2c6b302)
+* $(ID:3f1a6c91-6128-45cf-aa29-400ca3d1ace5)
 * $(ID:9146d041-7a88-4ddd-86a4-75901098f944)
 * $(ID:3f080fd6-4c5f-4e13-abf4-66e2ad24386f)
 * $(ID:c507f011-b58b-444a-a3d0-93b922b63bd2)
@@ -78,7 +79,6 @@ $(ID:90d9f201-8218-4885-afdf-e08b3a9cbcda)
 * $(ID:3b3c32e3-e1eb-442e-85a0-db79cd82aa8e)
 * $(ID:b1cc6fad-19e7-4315-8619-2ecf732787a2)
   * $(ID:e4f21899-9b3b-4c5d-94bd-f1d2422d9127)
-* $(ID:f8772843-7ff6-4fc0-96d7-298b23d51660)
 
 ### $(ID:65db2ddc-f0be-4fd8-97a0-b2ff4dc641a9)
 
@@ -6373,9 +6373,18 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 <source>Changes</source>
 </segment>
 </unit>
-<unit id="60e2fb6f-aae0-4692-aec2-07680ec05661">
+<unit id="24ec2e16-7c5a-446d-ac92-5014e6fa7ce9">
 <notes>
 <note appliesTo="source">line: 40</note>
+<note appliesTo="source">prefix: * </note>
+</notes>
+<segment>
+<source>When NVDA is started, if the screen curtain is enabled and a sound is played to inform about this, the state of the screen curtain will be also displayed in braille. (19441, @nvdaes)</source>
+</segment>
+</unit>
+<unit id="60e2fb6f-aae0-4692-aec2-07680ec05661">
+<notes>
+<note appliesTo="source">line: 41</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6384,7 +6393,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="2671c513-c555-4c84-95b0-667eab9e0725">
 <notes>
-<note appliesTo="source">line: 41</note>
+<note appliesTo="source">line: 42</note>
 <note appliesTo="source">prefix:   * </note>
 </notes>
 <segment>
@@ -6393,7 +6402,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="1189f042-6dbc-4b25-848e-5aea35e9e63d">
 <notes>
-<note appliesTo="source">line: 42</note>
+<note appliesTo="source">line: 43</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6402,7 +6411,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="c50ef6bd-7db9-44c6-b597-c285e49a9468">
 <notes>
-<note appliesTo="source">line: 43</note>
+<note appliesTo="source">line: 44</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6411,7 +6420,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="d735ec3c-106c-4fe3-b887-596a343dd75b">
 <notes>
-<note appliesTo="source">line: 44</note>
+<note appliesTo="source">line: 45</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6420,7 +6429,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="5e1f333d-6a95-4593-9fea-1c691d5947f1">
 <notes>
-<note appliesTo="source">line: 45</note>
+<note appliesTo="source">line: 46</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6429,7 +6438,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="d1374a64-998f-462c-a249-a09bbe533a22">
 <notes>
-<note appliesTo="source">line: 46</note>
+<note appliesTo="source">line: 47</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6438,7 +6447,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="3f9a8fff-1ed6-495a-8d7e-a35021829cad">
 <notes>
-<note appliesTo="source">line: 47</note>
+<note appliesTo="source">line: 48</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6447,7 +6456,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="8a9dca45-39b9-48ba-b115-2064c793e5cd">
 <notes>
-<note appliesTo="source">line: 48</note>
+<note appliesTo="source">line: 49</note>
 <note appliesTo="source">prefix:   * </note>
 </notes>
 <segment>
@@ -6456,7 +6465,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="c6e9db59-62ff-462d-b8ce-7fbaee3117d4">
 <notes>
-<note appliesTo="source">line: 49</note>
+<note appliesTo="source">line: 50</note>
 <note appliesTo="source">prefix:   * </note>
 </notes>
 <segment>
@@ -6465,7 +6474,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="dc474811-5534-4c68-b430-57fde932f99a">
 <notes>
-<note appliesTo="source">line: 50</note>
+<note appliesTo="source">line: 51</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6474,7 +6483,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="4d885930-d362-4c6f-95dd-46da2fe9e79a">
 <notes>
-<note appliesTo="source">line: 51</note>
+<note appliesTo="source">line: 52</note>
 </notes>
 <segment>
 <source>This is more noticeable for Windows releases which are enablement packages on top of an earlier release such as Windows 11 2025 Update based on Windows 11 2024 Update. (#19802, @josephsl)</source>
@@ -6482,7 +6491,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="d245edd3-10aa-42c6-bfc0-f07359de10e8">
 <notes>
-<note appliesTo="source">line: 52</note>
+<note appliesTo="source">line: 53</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6491,7 +6500,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="74af677f-13ad-435e-a49a-d4dc3525635b">
 <notes>
-<note appliesTo="source">line: 53</note>
+<note appliesTo="source">line: 54</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6500,7 +6509,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="27b78d65-c845-43d3-872f-afe464ff4003">
 <notes>
-<note appliesTo="source">line: 54</note>
+<note appliesTo="source">line: 55</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6509,7 +6518,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="222fa698-e35a-42c9-94ec-cbccd32b3ca3">
 <notes>
-<note appliesTo="source">line: 55</note>
+<note appliesTo="source">line: 56</note>
 </notes>
 <segment>
 <source>This provides Unicode-aware `\w` and `\b` and additional regex features.</source>
@@ -6517,7 +6526,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="90d9f201-8218-4885-afdf-e08b3a9cbcda">
 <notes>
-<note appliesTo="source">line: 56</note>
+<note appliesTo="source">line: 57</note>
 </notes>
 <segment>
 <source>The setting is disabled by default. (#20013, @LeonarddeR)</source>
@@ -6525,25 +6534,25 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="6e83ec90-ee84-4be0-819c-f475fa970a66">
 <notes>
-<note appliesTo="source">line: 58</note>
+<note appliesTo="source">line: 59</note>
 <note appliesTo="source">prefix: ### </note>
 </notes>
 <segment>
 <source>Bug Fixes</source>
 </segment>
 </unit>
-<unit id="9c95f0f4-d5ef-405e-8fe6-23f0b2c6b302">
+<unit id="3f1a6c91-6128-45cf-aa29-400ca3d1ace5">
 <notes>
-<note appliesTo="source">line: 60</note>
+<note appliesTo="source">line: 61</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
-<source>Fixed an error when a synthesizer doesn't have available languages, and NVDA tries to report if a language is supported. (#20080, @nvdaes)</source>
+<source>Fixed an error that could occur when NVDA checked whether a language is supported for a synthesizer with invalid languages. (#20080, @nvdaes)</source>
 </segment>
 </unit>
 <unit id="9146d041-7a88-4ddd-86a4-75901098f944">
 <notes>
-<note appliesTo="source">line: 61</note>
+<note appliesTo="source">line: 62</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6552,7 +6561,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="3f080fd6-4c5f-4e13-abf4-66e2ad24386f">
 <notes>
-<note appliesTo="source">line: 62</note>
+<note appliesTo="source">line: 63</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6561,7 +6570,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="c507f011-b58b-444a-a3d0-93b922b63bd2">
 <notes>
-<note appliesTo="source">line: 63</note>
+<note appliesTo="source">line: 64</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6570,7 +6579,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="46e2d6dc-1335-4678-ad59-f44cd323de0f">
 <notes>
-<note appliesTo="source">line: 64</note>
+<note appliesTo="source">line: 65</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6579,7 +6588,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="9ec14e36-02f1-44f0-ad8c-366cfcf7f7de">
 <notes>
-<note appliesTo="source">line: 65</note>
+<note appliesTo="source">line: 66</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6588,7 +6597,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="46f5b2cc-76cb-460a-a744-969f63d29832">
 <notes>
-<note appliesTo="source">line: 66</note>
+<note appliesTo="source">line: 67</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6597,7 +6606,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="6bbd3536-a844-4718-81bf-693a96b63a62">
 <notes>
-<note appliesTo="source">line: 67</note>
+<note appliesTo="source">line: 68</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6606,7 +6615,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="e0054285-9543-47b4-b53e-60ee91375652">
 <notes>
-<note appliesTo="source">line: 68</note>
+<note appliesTo="source">line: 69</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6615,7 +6624,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="c61ef67b-4659-4689-a817-0b89240e323f">
 <notes>
-<note appliesTo="source">line: 69</note>
+<note appliesTo="source">line: 70</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6624,7 +6633,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="95df24eb-b847-4d8d-9d59-add40744ef13">
 <notes>
-<note appliesTo="source">line: 70</note>
+<note appliesTo="source">line: 71</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6633,7 +6642,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="c3e24f5b-cf3e-4597-9354-2a689bd8f765">
 <notes>
-<note appliesTo="source">line: 71</note>
+<note appliesTo="source">line: 72</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6642,7 +6651,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="1719e512-d967-4efb-ba62-c05e2a66c319">
 <notes>
-<note appliesTo="source">line: 72</note>
+<note appliesTo="source">line: 73</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6651,7 +6660,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="bc08aaac-f6ee-4d5f-88cf-aa9969288650">
 <notes>
-<note appliesTo="source">line: 73</note>
+<note appliesTo="source">line: 74</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6660,7 +6669,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="3324e059-3749-4866-ba4f-ac9e3f720cf8">
 <notes>
-<note appliesTo="source">line: 74</note>
+<note appliesTo="source">line: 75</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6669,7 +6678,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="3b3c32e3-e1eb-442e-85a0-db79cd82aa8e">
 <notes>
-<note appliesTo="source">line: 75</note>
+<note appliesTo="source">line: 76</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6678,7 +6687,7 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="b1cc6fad-19e7-4315-8619-2ecf732787a2">
 <notes>
-<note appliesTo="source">line: 76</note>
+<note appliesTo="source">line: 77</note>
 <note appliesTo="source">prefix: * </note>
 </notes>
 <segment>
@@ -6687,20 +6696,11 @@ $(ID:efa13148-65e5-4484-85b1-9e57c61df3e3)
 </unit>
 <unit id="e4f21899-9b3b-4c5d-94bd-f1d2422d9127">
 <notes>
-<note appliesTo="source">line: 77</note>
+<note appliesTo="source">line: 78</note>
 <note appliesTo="source">prefix:   * </note>
 </notes>
 <segment>
 <source>In particular, Whole word entries no longer incorrectly match inside larger words when those words contain combining marks.</source>
-</segment>
-</unit>
-<unit id="f8772843-7ff6-4fc0-96d7-298b23d51660">
-<notes>
-<note appliesTo="source">line: 78</note>
-<note appliesTo="source">prefix: * </note>
-</notes>
-<segment>
-<source>In focus mode in web browsers, it is now possible to review and spell the labels of controls when those labels are specifically provided for accessibility; e.g. via aria-label or aria-labelledby. (#15159, @jcsteh)</source>
 </segment>
 </unit>
 <unit id="65db2ddc-f0be-4fd8-97a0-b2ff4dc641a9">
