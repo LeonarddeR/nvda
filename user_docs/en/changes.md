@@ -3,6 +3,7 @@
 ## 2026.1.1
 
 This is a patch release to fix a security issue.
+A bug fix is also included for an issue introduced in 2026.1 with how `ctrl+f` is handled in File Explorer.
 A change introduced in 2026.1 with how NVDA handles connection issues with Remote Access was removed.
 
 ### Security fixes
@@ -11,6 +12,10 @@ Please responsibly disclose security issues following NVDA's [security policy](h
 
 * Fixed an issue which could cause NVDA to connect to an untrusted Remote Access server. ([GHSA-m268-mc77-j2cr](https://github.com/nvaccess/nvda/security/advisories/GHSA-m268-mc77-j2cr))
 * Prevents a situation which could cause unselected add-ons to be copied to the system-wide configuration. ([GHSA-669f-7gpr-5vqm](https://github.com/nvaccess/nvda/security/advisories/GHSA-669f-7gpr-5vqm))
+
+### Bug Fixes
+
+* In File Explorer, pressing `ctrl+f` once again focuses the search box without subsequently reporting a pane. (#20021, @Cary-rowen)
 
 ### Changes
 
