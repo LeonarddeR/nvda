@@ -12,7 +12,7 @@ from textUtils import hyphenation
 
 class TestGetHyphenPositions(unittest.TestCase):
 	def test_knownLanguage(self):
-		"""#15: Known language returns a non-empty tuple of ints within range(len(text))."""
+		"""Known language returns a non-empty tuple of ints within range(len(text))."""
 		text = "hyphenation"
 		positions = hyphenation.getHyphenPositions(text, "en_US")
 		self.assertIsInstance(positions, tuple)
@@ -23,7 +23,7 @@ class TestGetHyphenPositions(unittest.TestCase):
 			self.assertLess(pos, len(text))
 
 	def test_unknownLanguage_returnsEmptyTuple(self):
-		"""#16: Unknown language returns an empty tuple and does not raise."""
+		"""Unknown language returns an empty tuple and does not raise."""
 		positions = hyphenation.getHyphenPositions("anything", "zz_ZZ")
 		self.assertEqual(positions, ())
 		# Calling again should still return () and not raise.
