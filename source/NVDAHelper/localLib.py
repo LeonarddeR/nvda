@@ -8,6 +8,7 @@ from ctypes import (
 	c_ushort,
 	c_void_p,
 	c_size_t,
+	c_ssize_t,
 	cdll,
 	CFUNCTYPE,
 	Structure,
@@ -42,6 +43,7 @@ from winBindings.mmeapi import WAVEFORMATEX
 
 
 DWORD_PTR = c_size_t
+LRESULT = c_ssize_t
 
 
 dll = cdll.LoadLibrary(NVDAState.ReadPaths.nvdaHelperLocalDll)
@@ -63,7 +65,7 @@ createRemoteBindingHandle.argtypes = (
 )
 
 cancellableSendMessageTimeout = dll.cancellableSendMessageTimeout
-cancellableSendMessageTimeout.restype = c_int
+cancellableSendMessageTimeout.restype = LRESULT
 # we use c_void_p for WPARAM and LPARAM as this gives us the greatest flexibility
 # of passing in Python native ints, ctypes arrays, pointers etc.
 cancellableSendMessageTimeout.argtypes = (
@@ -666,9 +668,22 @@ calculateWordOffsets.argtypes = (
 )
 
 isScreenFullyBlack = dll.isScreenFullyBlack
-isScreenFullyBlack.argtypes = tuple()
+isScreenFullyBlack.argtypes = ()
 isScreenFullyBlack.restype = c_bool
 
 localListeningSocketExists = dll.localListeningSocketExists
 localListeningSocketExists.argtypes = (c_ushort, c_wchar_p)
 localListeningSocketExists.restype = c_bool
+
+writeCrashDump = dll.writeCrashDump
+"""
+Writes a crash dump to the specified path.
+:param dumpPath: Path to write the dump to.
+:param exceptionPointers: Pointer to an EXCEPTION_POINTERS structure from an UnhandledExceptionFilter callback.
+:return: True on success, False on failure.
+"""
+writeCrashDump.argtypes = (
+	c_wchar_p,  # dumpPath
+	c_void_p,  # exceptionPointers
+)
+writeCrashDump.restype = bool

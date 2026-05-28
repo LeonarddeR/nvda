@@ -1,11 +1,12 @@
 # A part of NonVisual Desktop Access (NVDA)
-# Copyright (C) 2025 NV Access Limited
+# Copyright (C) 2025-2026 NV Access Limited
 # This file may be used under the terms of the GNU General Public License, version 2 or later, as modified by the NVDA license.
 # For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
 """Functions exported by advapi32.dll, and supporting data structures and enumerations."""
 
 from ctypes import (
+	WINFUNCTYPE,
 	sizeof,
 	Structure,
 	POINTER,
@@ -24,10 +25,12 @@ from ctypes.wintypes import (
 	LPWSTR,
 	LPVOID,
 )
+from enum import IntEnum
 
 __all__ = (
 	"OpenProcessToken",
 	"RegCloseKey",
+	"RegDeleteTree",
 	"RegOpenKeyEx",
 	"RegQueryValueEx",
 	"CreateProcessAsUser",
@@ -38,7 +41,19 @@ __all__ = (
 dll = windll.advapi32
 
 
-OpenProcessToken = dll.OpenProcessToken
+class TokenAccessRight(IntEnum):
+	"""
+	The specific access rights for access tokens.
+
+	.. seealso::
+		https://learn.microsoft.com/en-us/windows/win32/secauthz/access-rights-for-access-token-objects
+	"""
+
+	QUERY = 8
+	"""TOKEN_QUERY: Required to query an access token."""
+
+
+OpenProcessToken = WINFUNCTYPE(None)(("OpenProcessToken", dll))
 """
 Opens the access token associated with a process.
 .. seealso::
@@ -51,7 +66,7 @@ OpenProcessToken.argtypes = (
 )
 OpenProcessToken.restype = BOOL
 
-RegCloseKey = dll.RegCloseKey
+RegCloseKey = WINFUNCTYPE(None)(("RegCloseKey", dll))
 """
 Closes a handle to the specified registry key.
 
@@ -63,7 +78,23 @@ RegCloseKey.argtypes = (
 )
 RegCloseKey.restype = LONG
 
-RegOpenKeyEx = dll.RegOpenKeyExW
+RegDeleteTree = WINFUNCTYPE(None)(("RegDeleteTreeW", dll))
+"""
+Deletes a subkey and all its descendants.
+.. seealso::
+	https://learn.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-RegDeleteTree
+
+.. note::
+	This function can be replaced with ``winreg.DeleteTree`` in python 3.14.
+	https://github.com/python/cpython/pull/138388
+"""
+RegDeleteTree.argtypes = (
+	HKEY,  # hKey
+	LPCWSTR,  # lpSubKey
+)
+RegDeleteTree.restype = LONG
+
+RegOpenKeyEx = WINFUNCTYPE(None)(("RegOpenKeyExW", dll))
 """
 Opens the specified registry key.
 .. seealso::
@@ -78,7 +109,7 @@ RegOpenKeyEx.argtypes = (
 )
 RegOpenKeyEx.restype = LONG
 
-RegQueryValueEx = dll.RegQueryValueExW
+RegQueryValueEx = WINFUNCTYPE(None)(("RegQueryValueExW", dll))
 """
 Retrieves the type and data for a specified value name associated with an open registry key.
 .. seealso::
@@ -162,7 +193,7 @@ class SECURITY_ATTRIBUTES(Structure):
 	)
 
 
-CreateProcessAsUser = dll.CreateProcessAsUserW
+CreateProcessAsUser = WINFUNCTYPE(None)(("CreateProcessAsUserW", dll))
 """
 Creates a new process and its primary thread. The new process runs in the security context of the user represented by the specified token.
 .. seealso::
@@ -183,7 +214,38 @@ CreateProcessAsUser.argtypes = (
 )
 CreateProcessAsUser.restype = BOOL
 
-GetTokenInformation = dll.GetTokenInformation
+
+class TOKEN_INFORMATION_CLASS(IntEnum):
+	"""
+	Specifies the type of information being assigned to or retrieved from an access token.
+
+	.. seealso::
+		https://learn.microsoft.com/en-us/windows/win32/api/winnt/ne-winnt-token_information_class
+	"""
+
+	ELEVATION_TYPE = 18
+	"""The buffer receives a TOKEN_ELEVATION_TYPE value that specifies the elevation level of the token."""
+
+
+class TOKEN_ELEVATION_TYPE(IntEnum):
+	"""
+	Indicates the elevation type of an access token.
+
+	.. seealso::
+		https://learn.microsoft.com/en-us/windows/win32/api/winnt/ne-winnt-token_elevation_type
+	"""
+
+	DEFAULT = 1
+	"""The token does not have a linked token."""
+
+	FULL = 2
+	"""The token is an elevated token."""
+
+	LIMITED = 3
+	"""The token is a limited token."""
+
+
+GetTokenInformation = WINFUNCTYPE(None)(("GetTokenInformation", dll))
 """
 Retrieves a specified type of information about an access token.
 .. seealso::

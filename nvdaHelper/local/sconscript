@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 ###
 # This file is a part of the NVDA project.
 # URL: http://www.nvda-project.org/
@@ -17,7 +18,7 @@ Import(
 		"env",
 		"detoursLib",
 		"apiHookObj",
-	]
+	],
 )
 
 winIPCUtilsObj = env.Object("./winIPCUtils", "../common/winIPCUtils.cpp")
@@ -85,7 +86,7 @@ localLib = env.SharedLibrary(
 		"nvdaController.cpp",
 		winIPCUtilsObj,
 		controllerRPCServerSource,
-		"nvdaControllerInternal.c",
+		"nvdaControllerInternal.cpp",
 		controllerInternalRPCServerSource,
 		"dllImportTableHooks.cpp",
 		"nvdaHelperLocal.def",
@@ -99,6 +100,7 @@ localLib = env.SharedLibrary(
 		"wasapi.cpp",
 		"screenCurtain.cpp",
 		"remoteAccess.cpp",
+		"crashDump.cpp",
 	],
 	LIBS=[
 		"advapi32.lib",
@@ -114,6 +116,7 @@ localLib = env.SharedLibrary(
 		"Iphlpapi",
 		"Ws2_32",
 		"runtimeobject",
+		"dbghelp",
 	],
 )
 

@@ -1,12 +1,16 @@
 # A part of NonVisual Desktop Access (NVDA)
-# Copyright (C) 2006-2025 NV Access Limited, Peter Vágner, Joseph Lee
+# Copyright (C) 2006-2026 NV Access Limited, Peter Vágner, Joseph Lee, Leonard de Ruijter
 # This file is covered by the GNU General Public License.
 # See the file COPYING for more details.
 
+from __future__ import annotations
+
 import argparse
+from ast import AST, Assign, NodeTransformer, Try, fix_missing_locations, parse
 import os
 import sys
 import gettext
+from typing import TYPE_CHECKING, Final
 from buildVersion import (
 	formatBuildVersionString,
 	name,
@@ -26,8 +30,14 @@ from versionInfo import (  # noqa: E402
 )
 from py2exe import freeze  # noqa: E402
 from py2exe.dllfinder import DllFinder  # noqa: E402
+import py2exe.hooks  # noqa: E402
 import wx  # noqa: E402
 import importlib.machinery  # noqa: E402
+
+if TYPE_CHECKING:
+	from ast import AnnAssign
+	from py2exe.dllfinder import Scanner
+	from py2exe.mf310 import Module
 
 RT_MANIFEST = 24
 manifestTemplateFilePath = "manifest.template.xml"
@@ -46,6 +56,134 @@ def determine_dll_type(self, imagename):
 
 
 DllFinder.determine_dll_type = determine_dll_type
+
+
+class _Latex2mathmlSymbolsParserTransformer(NodeTransformer):
+	"""Rewrite the ``SYMBOLS_FILE`` path to resolve relative to the frozen executable."""
+
+	def __init__(self, relpath: str):
+		super().__init__()
+		self.rewritten: bool = False
+		self.relpath = relpath
+
+	def visit_AnnAssign(self, node: AnnAssign) -> AnnAssign:
+		# 1 indicates a "simple" target.
+		# That is, a target that consists solely of a Name node that does not appear between parentheses.
+		if node.simple == 1 and node.target.id == "SYMBOLS_FILE":
+			# Replace the original path expression with one based on sys.executable,
+			# so the frozen build finds the bundled unimathsymbols.txt.
+			node.value = (
+				# the result of parse is a ``ast.Module`` whose body contains one ``ast.Expr`` node.
+				# We only want the value of that expression.
+				parse(f"os.path.join(os.path.dirname(sys.executable), {self.relpath!r})").body[0].value
+			)
+			self.rewritten = True
+		return node
+
+
+def _hook_latex2mathml_symbols_parser(finder: Scanner, module: Module) -> None:
+	"""py2exe hook for the latex2mathml.symbols_parser module.
+
+	latex2mathml locates its ``unimathsymbols.txt`` data file at runtime
+	relative to its own package directory (via ``__file__``).
+	After the application is frozen, that path no longer exists, so this hook:
+
+	1. Copies the data file into the frozen distribution
+		so it ships alongside the executable.
+	2. Rewrites the module's ``SYMBOLS_FILE`` assignment via an AST transformation
+		so it resolves relative to ``sys.executable`` (the frozen exe)
+		instead of the original package location.
+	"""
+	import latex2mathml.symbols_parser
+
+	FILENAME: Final[str] = "unimathsymbols.txt"
+	RELPATH: Final[str] = os.path.join("latex2mathml", FILENAME)
+	# Include the data file in the frozen build output.
+	finder.add_datafile(
+		RELPATH,
+		os.path.join(os.path.dirname(latex2mathml.symbols_parser.__file__), FILENAME),
+	)
+	tree = parse(module.__source__)
+	# Inject ``import sys`` so the rewritten path expression can reference it.
+	tree.body.insert(0, parse("import sys").body[0])
+	transformer = _Latex2mathmlSymbolsParserTransformer(RELPATH)
+	newTree = fix_missing_locations(transformer.visit(tree))
+	if not transformer.rewritten:
+		raise RuntimeError(
+			"py2exe hook failed to rewrite SYMBOLS_FILE in latex2mathml.symbols_parser. The upstream module may have changed its variable declaration.",
+		)
+	module.__code_object__ = compile(newTree, module.__file__, "exec", optimize=module.__optimize__)
+
+
+# Register the hook with py2exe.
+# py2exe discovers hooks by name:
+# ``hook_<dotted_module_name_with_underscores>`` on the ``py2exe.hooks`` module.
+py2exe.hooks.hook_latex2mathml_symbols_parser = _hook_latex2mathml_symbols_parser
+
+
+class _PyphenTransformer(NodeTransformer):
+	"""Rewrite pyphen's ``dictionaries`` assignment to resolve relative to the frozen executable."""
+
+	def __init__(self, relpath: str):
+		super().__init__()
+		self.rewritten: bool = False
+		self.relpath = relpath
+
+	def visit_Try(self, node: Try) -> AST:
+		# Match the upstream try/except TypeError block whose first body statement
+		# is ``dictionaries = resources.files('pyphen.dictionaries')``.
+		firstStmt = node.body[0] if node.body else None
+		if (
+			isinstance(firstStmt, Assign)
+			and len(firstStmt.targets) == 1
+			and getattr(firstStmt.targets[0], "id", None) == "dictionaries"
+		):
+			replacement = parse(
+				f"dictionaries = Path(os.path.dirname(sys.executable)) / {self.relpath!r}",
+			).body[0]
+			self.rewritten = True
+			return replacement
+		return self.generic_visit(node)
+
+
+def _hook_pyphen(finder: Scanner, module: Module) -> None:
+	"""py2exe hook for the pyphen package.
+
+	pyphen locates its ``dictionaries/*.dic`` data files at runtime relative to
+	its own package directory (via ``importlib.resources`` or ``__file__``).
+	After freezing, pyphen lives inside ``library.zip`` and those paths no
+	longer resolve, leaving ``pyphen.LANGUAGES`` empty. This hook:
+
+	1. Copies every ``hyph_*.dic`` file into ``pyphenDictionaries/`` next to
+		the frozen executable.
+	2. Rewrites the module's ``dictionaries`` assignment via an AST
+		transformation so it resolves to
+		``Path(os.path.dirname(sys.executable)) / 'pyphenDictionaries'``.
+	"""
+	import pyphen
+
+	DEST_DIR: Final[str] = "pyphenDictionaries"
+	sourceDir = os.path.join(os.path.dirname(pyphen.__file__), "dictionaries")
+	for sourceFile in glob(os.path.join(sourceDir, "hyph_*.dic")):
+		finder.add_datafile(
+			os.path.join(DEST_DIR, os.path.basename(sourceFile)),
+			sourceFile,
+		)
+	tree = parse(module.__source__)
+	# Inject imports needed by the rewritten expression.
+	tree.body.insert(0, parse("import os").body[0])
+	tree.body.insert(0, parse("import sys").body[0])
+	tree.body.insert(0, parse("from pathlib import Path").body[0])
+	transformer = _PyphenTransformer(DEST_DIR)
+	newTree = fix_missing_locations(transformer.visit(tree))
+	if not transformer.rewritten:
+		raise RuntimeError(
+			"py2exe hook failed to rewrite the dictionaries assignment in pyphen. The upstream module may have changed its layout.",
+		)
+	module.__code_object__ = compile(newTree, module.__file__, "exec", optimize=module.__optimize__)
+
+
+py2exe.hooks.hook_pyphen = _hook_pyphen
 
 
 def _parsePartialArguments() -> argparse.Namespace:
@@ -215,8 +353,6 @@ freeze(
 			"winxptheme",
 			# numpy is an optional dependency of comtypes but we don't require it.
 			"numpy",
-			# multiprocessing isn't going to work in a frozen environment
-			"multiprocessing",
 			"concurrent.futures.process",
 			# Tomli is part of Python 3.11+ as Tomlib, but is imported as tomli by cryptography, which causes an infinite loop in py2exe
 			"tomli",
@@ -229,6 +365,16 @@ freeze(
 			"NVDAObjects.JAB",
 			"NVDAObjects.UIA",
 			"NVDAObjects.window",
+			# detect-secrets loads plugins and filters dynamically using pkgutil/importlib,
+			# so the relevant packages must be bundled explicitly for frozen builds.
+			"detect_secrets",
+			"detect_secrets.core",
+			"detect_secrets.core.plugins",
+			"detect_secrets.filters",
+			"detect_secrets.filters.gibberish",
+			"detect_secrets.plugins",
+			"detect_secrets.transformers",
+			"detect_secrets.util",
 			"virtualBuffers",
 			"appModules",
 			"comInterfaces",
@@ -245,6 +391,7 @@ freeze(
 			"markdown_link_attr_modifier",
 			"mdx_truly_sane_lists",
 			"mdx_gh_links",
+			"pymdownx",
 		],
 		"includes": [
 			"nvdaBuiltin",
@@ -252,6 +399,12 @@ freeze(
 			"bisect",
 			# robotremoteserver (for system tests) depends on xmlrpc.server
 			"xmlrpc.server",
+			# Required for RPYC over std pipes
+			"win32file",
+			"win32event",
+			"win32pipe",
+			# Referenced dynamically by hwPortUtils deprecation aliases.
+			"winBindings.cfgmgr32",
 		],
 	},
 	data_files=[
@@ -273,6 +426,29 @@ freeze(
 	]
 	+ (
 		getLocaleDataFiles()
+		+ (
+			getRecursiveDataFiles(
+				f"lib/{version}/x86/synthDriverHost-runtime",
+				"lib/x86/synthDriverHost-runtime",
+			)
+			if os.path.isdir("lib/x86/synthDriverHost-runtime")
+			else []
+		)
+		+ (
+			[
+				(
+					"_synthDrivers32",
+					glob("_synthDrivers32/**/*.py", recursive=True)
+					+ glob("_synthDrivers32/**/*.dll", recursive=True),
+				),
+			]
+			if os.path.isdir("lib/x86/synthDriverHost-runtime")
+			else []
+		)
+		+ getRecursiveDataFiles(
+			"include/nvda-mathcat/assets/Rules",
+			"../include/nvda-mathcat/assets/Rules",
+		)
 		+ getRecursiveDataFiles(
 			"synthDrivers",
 			"synthDrivers",

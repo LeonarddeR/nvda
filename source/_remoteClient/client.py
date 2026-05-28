@@ -1,5 +1,5 @@
 # A part of NonVisual Desktop Access (NVDA)
-# Copyright (C) 2015-2025 NV Access Limited, Christopher Toth, Tyler Spivey, Babbage B.V., David Sexton and others.
+# Copyright (C) 2015-2026 NV Access Limited, Christopher Toth, Tyler Spivey, Babbage B.V., David Sexton and others.
 # This file is covered by the GNU General Public License.
 # See the file COPYING for more details.
 
@@ -19,7 +19,7 @@ from config import isInstalledCopy
 from keyboardHandler import KeyboardInputGesture, canModifiersPerformAction
 from logHandler import log
 from gui.guiHelper import alwaysCallAfter
-from utils.security import isRunningOnSecureDesktop
+from utils.security import isRunningOnSecureDesktop, post_sessionLockStateChanged
 from gui.message import MessageDialog, DefaultButton, ReturnCode, DialogType
 import scriptHandler
 import winUser
@@ -46,11 +46,13 @@ class RemoteClient:
 	followerSession: Optional[FollowerSession]
 	keyModifiers: Set[KeyModifier]
 	hostPendingModifiers: Set[KeyModifier]
+	hostPendingNonmodifier: KeyModifier | None
 	_connecting: bool
 	leaderTransport: Optional[RelayTransport]
 	followerTransport: Optional[RelayTransport]
 	localControlServer: Optional[server.LocalRelayServer]
 	sendingKeys: bool
+	sdHandler: SecureDesktopHandler | None
 
 	def __init__(
 		self,
@@ -58,6 +60,7 @@ class RemoteClient:
 		log.info("Initializing NVDA Remote client")
 		self.keyModifiers = set()
 		self.hostPendingModifiers = set()
+		self.hostPendingNonmodifiers = None
 		self.localScripts = set()
 		self.localMachine = LocalMachine()
 		self.followerSession = None
@@ -71,14 +74,21 @@ class RemoteClient:
 		self.followerTransport = None
 		self.localControlServer = None
 		self.sendingKeys = False
-		self.sdHandler = SecureDesktopHandler()
-		if isRunningOnSecureDesktop():
-			connection = self.sdHandler.initializeSecureDesktop()
-			if connection:
-				self.connectAsFollower(connection)
-				self.followerSession.transport.connectedEvent.wait(
-					self.sdHandler.SD_CONNECT_BLOCK_TIMEOUT,
-				)
+		self._wasSendingKeysBeforeLock: bool = False
+		self._disconnectConfirmationDialog: MessageDialog | None = None
+		try:
+			self.sdHandler = SecureDesktopHandler()
+		except RuntimeError:
+			log.error("Failed to initialise the secure desktop handler.", exc_info=True)
+			self.sdHandler = None
+		else:
+			if isRunningOnSecureDesktop():
+				connection = self.sdHandler.initializeSecureDesktop()
+				if connection:
+					self.connectAsFollower(connection)
+					self.followerSession.transport.connectedEvent.wait(
+						self.sdHandler.SD_CONNECT_BLOCK_TIMEOUT,
+					)
 		core.postNvdaStartup.register(self.performAutoconnect)
 		inputCore.decide_handleRawKey.register(self.processKeyInput)
 
@@ -102,7 +112,8 @@ class RemoteClient:
 		self.connect(conInfo)
 
 	def terminate(self):
-		self.sdHandler.terminate()
+		if self.sdHandler is not None:
+			self.sdHandler.terminate()
 		self.disconnect()
 		self.localMachine.terminate()
 		self.localMachine = None
@@ -212,6 +223,10 @@ class RemoteClient:
 	@alwaysCallAfter
 	def doDisconnect(self) -> None:
 		"""Seek confirmation from the user before disconnecting."""
+		if self._disconnectConfirmationDialog:
+			self._disconnectConfirmationDialog.Raise()
+			self._disconnectConfirmationDialog.SetFocus()
+			return
 		if (
 			self.followerSession is not None
 			and configuration.getRemoteConfig()["ui"]["confirmDisconnectAsFollower"]
@@ -237,9 +252,16 @@ class RemoteClient:
 					buttons=confirmation_buttons,
 				)
 
-				if dialog.ShowModal() != ReturnCode.YES:
-					log.info("Remote disconnection cancelled by user.")
+				self._disconnectConfirmationDialog = dialog
+				try:
+					if dialog.ShowModal() != ReturnCode.YES:
+						log.info("Remote disconnection cancelled by user.")
+						return
+				except Exception:
+					log.error("Error showing disconnect confirmation dialog", exc_info=True)
 					return
+				finally:
+					self._disconnectConfirmationDialog = None
 		self.disconnect()
 
 	def disconnect(self, *, _silent: bool = False):
@@ -276,14 +298,15 @@ class RemoteClient:
 		self.followerSession.close()
 		self.followerSession = None
 		self.followerTransport = None
-		self.sdHandler.followerSession = None
+		if self.sdHandler is not None:
+			self.sdHandler.followerSession = None
 		if self.menu:
 			self.menu.handleConnected(ConnectionMode.FOLLOWER, False)
 		self._connecting = False
 
 	@alwaysCallAfter
 	def onConnectAsLeaderFailed(self):
-		if self.leaderTransport.successfulConnects == 0:
+		if self.leaderTransport is not None and self.leaderTransport.successfulConnects == 0:
 			log.error(f"Failed to connect to {self.leaderTransport.address}")
 			self.disconnectAsLeader()
 			# Translators: Title of the connection error dialog.
@@ -373,6 +396,7 @@ class RemoteClient:
 		configuration.writeConnectionToConfig(self.leaderSession.getConnectionInfo())
 		if self.menu:
 			self.menu.handleConnected(ConnectionMode.LEADER, True)
+		post_sessionLockStateChanged.register(self._sessionLockStateChangeHandler)
 		ui.message(
 			# Translators: Presented when connected to the remote computer.
 			_("Connected"),
@@ -388,6 +412,7 @@ class RemoteClient:
 			self.localMachine.isMuted = False
 		self.sendingKeys = False
 		self.keyModifiers = set()
+		post_sessionLockStateChanged.unregister(self._sessionLockStateChangeHandler)
 
 	@alwaysCallAfter
 	def onDisconnectedAsLeader(self):
@@ -402,7 +427,8 @@ class RemoteClient:
 			transport=transport,
 			localMachine=self.localMachine,
 		)
-		self.sdHandler.followerSession = self.followerSession
+		if self.sdHandler is not None:
+			self.sdHandler.followerSession = self.followerSession
 		self.followerTransport = transport
 		transport.transportCertificateAuthenticationFailed.register(
 			self.onFollowerCertificateFailed,
@@ -434,15 +460,16 @@ class RemoteClient:
 		log.warning(f"Certificate validation failed for {transport.address}")
 		self.lastFailAddress = transport.address
 		self.lastFailKey = transport.channel
+		self._lastFailFingerprint = transport.lastFailFingerprint
 		self.disconnect(_silent=True)
 		try:
-			certHash = transport.lastFailFingerprint
-
-			wnd = dialogs.CertificateUnauthorizedDialog(None, fingerprint=certHash)
+			wnd = dialogs.CertificateUnauthorizedDialog(None, fingerprint=self._lastFailFingerprint)
 			a = wnd.ShowModal()
 			if a == wx.ID_YES:
 				config = configuration.getRemoteConfig()
-				config["trustedCertificates"][hostPortToAddress(self.lastFailAddress)] = certHash
+				config["trustedCertificates"][hostPortToAddress(self.lastFailAddress)] = (
+					self._lastFailFingerprint
+				)
 			if a == wx.ID_YES or a == wx.ID_NO:
 				return True
 		except Exception as ex:
@@ -458,6 +485,7 @@ class RemoteClient:
 				port=self.lastFailAddress[1],
 				key=self.lastFailKey,
 				insecure=True,
+				trustedFingerprint=self._lastFailFingerprint,
 			)
 			self.connectAsLeader(connectionInfo=connectionInfo)
 
@@ -470,6 +498,7 @@ class RemoteClient:
 				port=self.lastFailAddress[1],
 				key=self.lastFailKey,
 				insecure=True,
+				trustedFingerprint=self._lastFailFingerprint,
 			)
 			self.connectAsFollower(connectionInfo=connectionInfo)
 
@@ -512,6 +541,9 @@ class RemoteClient:
 		if not pressed and keyCode in self.hostPendingModifiers:
 			self.hostPendingModifiers.discard(keyCode)
 			return True
+		if not pressed and keyCode == self.hostPendingNonmodifier:
+			self.hostPendingNonmodifier = None
+			return True
 		gesture = KeyboardInputGesture(
 			self.keyModifiers,
 			keyCode[0],
@@ -528,6 +560,7 @@ class RemoteClient:
 			if script in self.localScripts:
 				wx.CallAfter(script, gesture)
 				return False
+		self.localMachine._dismissLocalBrailleMessage()
 		self.leaderTransport.send(
 			RemoteMessageType.KEY,
 			vk_code=vkCode,
@@ -571,16 +604,28 @@ class RemoteClient:
 		if configuration.getRemoteConfig()["ui"]["muteOnLocalControl"] and not self.localMachine.isMuted:
 			self.toggleMute()
 
-	def _switchToRemoteControl(self, gesture: KeyboardInputGesture) -> None:
+	def _switchToRemoteControl(self, gesture: KeyboardInputGesture | None) -> None:
 		"""Switch to controlling the remote computer."""
 		self.sendingKeys = True
 		log.info("Remote key control enabled")
 		self.setReceivingBraille(self.sendingKeys)
-		self.hostPendingModifiers = gesture.modifiers
+		if gesture is not None:
+			self.hostPendingModifiers = gesture.modifiers
+			self.hostPendingNonmodifier = (gesture.vkCode, gesture.isExtended)
+		else:
+			self.hostPendingModifiers = set()
 		# Translators: Presented when sending keyboard keys from the controlling computer to the controlled computer.
 		ui.message(pgettext("remote", "Controlling remote computer"))
 		if self.localMachine.isMuted:
 			self.toggleMute()
+
+	def _sessionLockStateChangeHandler(self, isNowLocked: bool):
+		if isNowLocked and self.sendingKeys:
+			self._wasSendingKeysBeforeLock = True
+			self._switchToLocalControl()
+		elif not isNowLocked and self._wasSendingKeysBeforeLock:
+			self._wasSendingKeysBeforeLock = False
+			self._switchToRemoteControl(None)
 
 	def releaseKeys(self):
 		"""Release all pressed keys on the remote machine.

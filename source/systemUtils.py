@@ -1,21 +1,24 @@
 # A part of NonVisual Desktop Access (NVDA)
-# Copyright (C) 2020-2025 NV Access Limited, Łukasz Golonka, Luke Davis, Leonard de Ruijter
+# Copyright (C) 2020-2026 NV Access Limited, Łukasz Golonka, Luke Davis, Leonard de Ruijter
 # This file may be used under the terms of the GNU General Public License, version 2 or later.
 # For more details see: https://www.gnu.org/licenses/gpl-2.0.html
 
 """System related functions."""
 
+from contextlib import contextmanager
 import ctypes
 import time
 import threading
 from collections.abc import (
 	Callable,
+	Generator,
 )
 from ctypes import (
+	FormatError,
+	GetLastError,
 	byref,
 	create_unicode_buffer,
 	sizeof,
-	windll,
 )
 import ctypes.wintypes
 from typing import (
@@ -35,7 +38,7 @@ import functools
 import shlobj
 from logHandler import log
 from NVDAState import WritePaths
-from winBindings import advapi32
+from winBindings import advapi32, user32
 
 
 @functools.lru_cache(maxsize=1)
@@ -151,7 +154,7 @@ def execElevated(path, params=None, wait=False, handleAlreadyElevated=False):
 
 	if params is not None:
 		params = subprocess.list2cmdline(params)
-	sei = shellapi.SHELLEXECUTEINFO(lpFile=path, lpParameters=params, nShow=winUser.SW_HIDE)
+	sei = winBindings.shell32.SHELLEXECUTEINFO(lpFile=path, lpParameters=params, nShow=winUser.SW_HIDE)
 	# IsUserAnAdmin is apparently deprecated so may not work above Windows 8
 	if not handleAlreadyElevated or not winBindings.shell32.IsUserAnAdmin():
 		sei.lpVerb = "runas"
@@ -162,10 +165,10 @@ def execElevated(path, params=None, wait=False, handleAlreadyElevated=False):
 		try:
 			h = ctypes.wintypes.HANDLE(sei.hProcess)
 			msg = ctypes.wintypes.MSG()
-			while ctypes.windll.user32.MsgWaitForMultipleObjects(1, ctypes.byref(h), False, -1, 255) == 1:
-				while ctypes.windll.user32.PeekMessageW(ctypes.byref(msg), None, 0, 0, 1):
-					ctypes.windll.user32.TranslateMessage(ctypes.byref(msg))
-					ctypes.windll.user32.DispatchMessageW(ctypes.byref(msg))
+			while user32.MsgWaitForMultipleObjects(1, ctypes.byref(h), False, -1, 255) == 1:
+				while user32.PeekMessage(ctypes.byref(msg), None, 0, 0, 1):
+					user32.TranslateMessage(ctypes.byref(msg))
+					user32.DispatchMessage(ctypes.byref(msg))
 			return winKernel.GetExitCodeProcess(sei.hProcess)
 		finally:
 			winKernel.closeHandle(sei.hProcess)
@@ -174,9 +177,11 @@ def execElevated(path, params=None, wait=False, handleAlreadyElevated=False):
 @functools.lru_cache(maxsize=1)
 def _getDesktopName() -> str:
 	UOI_NAME = 2  # The name of the object, as a string
-	desktop = windll.user32.GetThreadDesktop(windll.kernel32.GetCurrentThreadId())
+	desktop = user32.GetThreadDesktop(
+		winBindings.kernel32.GetCurrentThreadId(),
+	)
 	name = create_unicode_buffer(256)
-	windll.user32.GetUserObjectInformationW(
+	user32.GetUserObjectInformation(
 		desktop,
 		UOI_NAME,
 		byref(name),
@@ -231,13 +236,13 @@ class ExecAndPump(threading.Thread, Generic[_execAndPumpResT]):
 		self.threadExc: Exception | None = None
 		self.start()
 		time.sleep(0.1)
-		threadHandle = ctypes.c_int()
-		threadHandle.value = winKernel.kernel32.OpenThread(0x100000, False, self.ident)
+		threadHandle = ctypes.wintypes.HANDLE()
+		threadHandle.value = winBindings.kernel32.OpenThread(0x100000, False, self.ident)
 		msg = ctypes.wintypes.MSG()
-		while winUser.user32.MsgWaitForMultipleObjects(1, ctypes.byref(threadHandle), False, -1, 255) == 1:
-			while winUser.user32.PeekMessageW(ctypes.byref(msg), None, 0, 0, 1):
-				winUser.user32.TranslateMessage(ctypes.byref(msg))
-				winUser.user32.DispatchMessageW(ctypes.byref(msg))
+		while user32.MsgWaitForMultipleObjects(1, ctypes.byref(threadHandle), False, -1, 255) == 1:
+			while user32.PeekMessage(ctypes.byref(msg), None, 0, 0, 1):
+				user32.TranslateMessage(ctypes.byref(msg))
+				user32.DispatchMessage(ctypes.byref(msg))
 		if self.threadExc:
 			raise self.threadExc
 
@@ -261,7 +266,7 @@ def preventSystemIdle(preventDisplayTurningOff: bool | None = None, persistent: 
 		import config
 
 		preventDisplayTurningOff = config.conf["general"]["preventDisplayTurningOff"]
-	windll.kernel32.SetThreadExecutionState(
+	winBindings.kernel32.SetThreadExecutionState(
 		winKernel.ES_SYSTEM_REQUIRED
 		| (winKernel.ES_DISPLAY_REQUIRED if preventDisplayTurningOff else 0)
 		| (winKernel.ES_CONTINUOUS if persistent else 0),
@@ -270,4 +275,27 @@ def preventSystemIdle(preventDisplayTurningOff: bool | None = None, persistent: 
 
 def resetThreadExecutionState() -> None:
 	"""Reset the thread execution state to the default."""
-	windll.kernel32.SetThreadExecutionState(winKernel.ES_CONTINUOUS)
+	winBindings.kernel32.SetThreadExecutionState(winKernel.ES_CONTINUOUS)
+
+
+@contextmanager
+def getCurrentProcessToken(desiredAccess: int) -> Generator[ctypes.wintypes.HANDLE, None, None]:
+	"""Context manager which provides access to the access token associated with the current process.
+
+	Handles closing the handle to the access token when the context manager is exited.
+
+	:param desiredAccess: Access mask specifying the requested types of access to the access token.
+	:raises OSError: If calling OpenProcessToken fails.
+	:yield: A handle that identifies the newly opened access token.
+	"""
+	currentProcessToken = ctypes.wintypes.HANDLE()
+	if not winBindings.advapi32.OpenProcessToken(
+		winBindings.kernel32.GetCurrentProcess(),
+		desiredAccess,
+		byref(currentProcessToken),
+	):
+		raise OSError(None, FormatError(), None, GetLastError())
+	try:
+		yield currentProcessToken
+	finally:
+		winBindings.kernel32.CloseHandle(currentProcessToken)

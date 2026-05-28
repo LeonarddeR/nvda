@@ -32,6 +32,7 @@ from ctypes import (
 	wstring_at,
 )
 
+from winBindings import user32
 import winBindings.oleaut32
 import winBindings.kernel32
 import winBindings.advapi32
@@ -54,39 +55,6 @@ from winAPI.constants import SystemErrorCodes
 
 from utils import _deprecate
 
-
-__getattr__ = _deprecate.handleDeprecations(
-	_deprecate.MovedSymbol(
-		"LOCAL_WIN10_DLL_PATH",
-		"NVDAState",
-		"ReadPaths",
-		"nvdaHelperLocalWin10Dll",
-	),
-	_deprecate.MovedSymbol(
-		"versionedLibPath",
-		"NVDAState",
-		"ReadPaths",
-		"versionedLibX86Path",
-	),
-	_deprecate.MovedSymbol(
-		"coreArchLibPath",
-		"NVDAState",
-		"ReadPaths",
-		"coreArchLibPath",
-	),
-	_deprecate.MovedSymbol(
-		"generateBeep",
-		"NVDAHelper.localLib",
-	),
-	_deprecate.MovedSymbol(
-		"VBuf_getTextInRange",
-		"NVDAHelper.localLib",
-	),
-	_deprecate.MovedSymbol(
-		"nvdaController_onSsmlMarkReached",
-		"NVDAHelper.localLib",
-	),
-)
 
 if typing.TYPE_CHECKING:
 	from speech.priorities import SpeechPriority
@@ -167,7 +135,6 @@ def nvdaController_speakSsml(  # noqa: C901
 
 		def prefixCallback():
 			synthDriverHandler.synthDoneSpeaking.register(onDoneSpeaking)
-			speech.speechCanceled.register(onSpeechCanceled)
 
 		def markCallable(name: str):
 			markQueue.put_nowait(name)
@@ -179,6 +146,15 @@ def nvdaController_speakSsml(  # noqa: C901
 	except Exception:
 		log.error("Error parsing SSML", exc_info=True)
 		return SystemErrorCodes.INVALID_PARAMETER
+
+	if not asynchronous:
+		# onSpeechCanceled must be registered before speech.speak is queued.
+		# If registered inside prefixCallback (a CallbackCommand), it runs on the synth
+		# thread after the sequence starts — leaving a window where speechCanceled fires
+		# between queueFunction returning and the synth reaching the CallbackCommand.
+		# onDoneSpeaking stays in prefixCallback because synthDoneSpeaking fires per
+		# sequence: registering it here would also catch a previous sequence that is still finishing.
+		speech.speechCanceled.register(onSpeechCanceled)
 
 	queueHandler.queueFunction(
 		queueHandler.eventQueue,
@@ -638,7 +614,7 @@ def nvdaControllerInternal_inputLangChangeNotify(threadID, hkl, layoutString):
 	import ui
 
 	buf = create_unicode_buffer(1024)
-	res = windll.kernel32.GetLocaleInfoW(languageID, 2, buf, 1024)
+	res = winBindings.kernel32.GetLocaleInfo(languageID, 2, buf, 1024)
 	# Translators: the label for an unknown language when switching input methods.
 	inputLanguageName = buf.value if res else _("unknown language")
 	layoutStringCodes = []
@@ -807,11 +783,11 @@ class _RemoteLoader:
 def initialize() -> None:
 	global _remoteLib, _remoteLoaderX86, _remoteLoaderAMD64, _remoteLoaderARM64
 	global lastLanguageID, lastLayoutString
-	hkl = c_ulong(windll.User32.GetKeyboardLayout(0)).value
+	hkl = user32.GetKeyboardLayout(0)
 	lastLanguageID = winUser.LOWORD(hkl)
 	KL_NAMELENGTH = 9
 	buf = create_unicode_buffer(KL_NAMELENGTH)
-	res = windll.User32.GetKeyboardLayoutNameW(buf)
+	res = user32.GetKeyboardLayoutName(buf)
 	if res:
 		lastLayoutString = buf.value
 	for name, func in [
@@ -878,16 +854,21 @@ def initialize() -> None:
 	# Manually start the in-process manager thread for this NVDA main thread now, as a slow system can cause this action to confuse WX
 	_remoteLib.initInprocManagerThreadIfNeeded()
 	arch = winVersion.getWinVer().processorArchitecture
-	if arch != "x86" and ReadPaths.coreArchLibPath != ReadPaths.versionedLibX86Path:
-		_remoteLoaderX86 = _RemoteLoader(ReadPaths.versionedLibX86Path)
-	elif arch in ("AMD64", "ARM64") and ReadPaths.coreArchLibPath != ReadPaths.versionedLibAMD64Path:
-		_remoteLoaderAMD64 = _RemoteLoader(ReadPaths.versionedLibAMD64Path)
-	elif arch == "ARM64" and ReadPaths.coreArchLibPath != ReadPaths.versionedLibARM64Path:
-		_remoteLoaderARM64 = _RemoteLoader(ReadPaths.versionedLibARM64Path)
-		# Windows on ARM from Windows 11 supports running AMD64 apps.
-		# Thus we also need to be able to inject into these.
-		if winVersion.getWinVer() >= winVersion.WIN11:
+	if arch == "AMD64":
+		if ReadPaths.coreArchLibPath != ReadPaths.versionedLibX86Path:
+			_remoteLoaderX86 = _RemoteLoader(ReadPaths.versionedLibX86Path)
+		if ReadPaths.coreArchLibPath != ReadPaths.versionedLibAMD64Path:
 			_remoteLoaderAMD64 = _RemoteLoader(ReadPaths.versionedLibAMD64Path)
+	elif arch == "ARM64":
+		if ReadPaths.coreArchLibPath != ReadPaths.versionedLibX86Path:
+			_remoteLoaderX86 = _RemoteLoader(ReadPaths.versionedLibX86Path)
+		if ReadPaths.coreArchLibPath != ReadPaths.versionedLibAMD64Path:
+			# Windows 10 on ARM does not support AMD64 emulation.
+			# Thus only start the AMD64 remote loader if on Windows 11 or above.
+			if winVersion.getWinVer() >= winVersion.WIN11:
+				_remoteLoaderAMD64 = _RemoteLoader(ReadPaths.versionedLibAMD64Path)
+		if ReadPaths.coreArchLibPath != ReadPaths.versionedLibARM64Path:
+			_remoteLoaderARM64 = _RemoteLoader(ReadPaths.versionedLibARM64Path)
 
 
 def terminate():
@@ -914,7 +895,7 @@ def getHelperLocalWin10Dll():
 	return windll[ReadPaths.nvdaHelperLocalWin10Dll]
 
 
-def bstrReturn(address):
+def _bstrReturn(address: int) -> str:
 	"""Handle a BSTR returned from a ctypes function call.
 	This includes freeing the memory.
 	This is needed for nvdaHelperLocalWin10 functions which return a BSTR.
@@ -926,3 +907,38 @@ def bstrReturn(address):
 	val = wstring_at(address)
 	winBindings.oleaut32.SysFreeString(address)
 	return val
+
+
+__getattr__ = _deprecate.handleDeprecations(
+	_deprecate.MovedSymbol(
+		"LOCAL_WIN10_DLL_PATH",
+		"NVDAState",
+		"ReadPaths",
+		"nvdaHelperLocalWin10Dll",
+	),
+	_deprecate.MovedSymbol(
+		"versionedLibPath",
+		"NVDAState",
+		"ReadPaths",
+		"versionedLibX86Path",
+	),
+	_deprecate.MovedSymbol(
+		"coreArchLibPath",
+		"NVDAState",
+		"ReadPaths",
+		"coreArchLibPath",
+	),
+	_deprecate.MovedSymbol(
+		"generateBeep",
+		"NVDAHelper.localLib",
+	),
+	_deprecate.MovedSymbol(
+		"VBuf_getTextInRange",
+		"NVDAHelper.localLib",
+	),
+	_deprecate.MovedSymbol(
+		"nvdaController_onSsmlMarkReached",
+		"NVDAHelper.localLib",
+	),
+	_deprecate.RemovedSymbol("bstrReturn", _bstrReturn),
+)

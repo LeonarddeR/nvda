@@ -79,16 +79,25 @@ def registerProvider(
 		interactionProvider = provider
 
 
+def terminate() -> None:
+	"""Terminate the mathPres module."""
+	global speechProvider, brailleProvider, interactionProvider
+	speechProvider = None
+	brailleProvider = None
+	interactionProvider = None
+
+
 def initialize() -> None:
 	# Register builtin providers if a plugin hasn't registered others.
 	if not speechProvider or not brailleProvider or not interactionProvider:
-		from . import mathPlayer
+		from .MathCAT import MathCAT
 
 		try:
-			provider = mathPlayer.MathPlayer()
+			provider = MathCAT.MathCAT()
 		except:  # noqa: E722
-			log.warning("MathPlayer 4 not available")
+			log.warning("MathCAT not available.")
 		else:
+			MathCAT.MathCATInteraction._createNavScripts()
 			registerProvider(
 				provider,
 				speech=not speechProvider,

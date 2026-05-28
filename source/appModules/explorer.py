@@ -1,10 +1,9 @@
-# -*- coding: UTF-8 -*-
 # A part of NonVisual Desktop Access (NVDA)
-# Copyright (C) 2006-2025 NV Access Limited, Joseph Lee, Łukasz Golonka, Julien Cochuyt
-# This file is covered by the GNU General Public License.
-# See the file COPYING for more details.
+# Copyright (C) 2006-2026 NV Access Limited, Joseph Lee, Łukasz Golonka, Julien Cochuyt
+# This file may be used under the terms of the GNU General Public License, version 2 or later, as modified by the NVDA license.
+# For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
-"""App module for Windows Explorer (aka Windows shell and renamed to File Explorer in Windows 8).
+"""App module for File Explorer (aka Windows shell, formerly Windows Explorer).
 Provides workarounds for controls such as identifying Start button, notification area and others.
 """
 
@@ -45,18 +44,9 @@ class MultitaskingViewFrameListItem(UIA):
 			return super(MultitaskingViewFrameListItem, self).container
 
 
-# Support for Win8 start screen search suggestions.
-class SuggestionListItem(UIA):
-	def event_UIA_elementSelected(self):
-		speech.cancelSpeech()
-		if api.setNavigatorObject(self, isFocus=True):
-			self.reportFocus()
-			super().event_UIA_elementSelected()
-
-
-# Windows 8 hack: Class to disable incorrect focus on windows 8 search box
-# (containing the already correctly focused edit field)
 class SearchBoxClient(IAccessible):
+	# #20021: File Explorer can fire a redundant MSAA focus event on the search band pane
+	# immediately after the UIA SearchEditBox gains focus.
 	shouldAllowIAccessibleFocusEvent = False
 
 
@@ -164,47 +154,6 @@ class ExplorerToolTip(ToolTip):
 			super().event_show()
 
 
-class GridTileElement(UIA):
-	role = controlTypes.Role.TABLECELL
-
-	def _get_description(self):
-		name = self.name
-		descriptionStrings = []
-		for child in self.children:
-			description = child.basicText
-			if not description or description == name:
-				continue
-			descriptionStrings.append(description)
-		return " ".join(descriptionStrings)
-		return description
-
-
-class GridListTileElement(UIA):
-	role = controlTypes.Role.TABLECELL
-	description = None
-
-
-class GridGroup(UIA):
-	"""A group in the Windows 8 Start Menu."""
-
-	presentationType = UIA.presType_content
-
-	# Normally the name is the first tile which is rather redundant
-	# However some groups have custom header text which should be read instead
-	def _get_name(self):
-		child = self.firstChild
-		if isinstance(child, UIA):
-			if child.UIAAutomationId == "GridListGroupHeader":
-				return child.name
-
-
-class ImmersiveLauncher(UIA):
-	# When the Windows 8 start screen opens, focus correctly goes to the first tile,
-	# but then incorrectly back to the root of the window.
-	# Ignore focus events on this object.
-	shouldAllowUIAFocusEvent = False
-
-
 class StartButton(IAccessible):
 	"""For Windows 8.1 and 10 Start buttons to be recognized as proper buttons
 	and to suppress selection announcement."""
@@ -262,6 +211,19 @@ class WorkerW(IAccessible):
 
 
 class AppModule(appModuleHandler.AppModule):
+	def _setProductInfo(self) -> None:
+		# #19802: customized for File Explorer as product version is wrong (looks at explorer.exe.mui).
+		if not self.processHandle:
+			raise RuntimeError("processHandle is 0")
+		# Even though product version is wrong, use product name supplied by File Explorer.
+		productInfo = self._getExecutableFileInfo()
+		self.productName = productInfo[0]
+		# NVDA claims executable name is "explorer.exe" when in fact it is "explorer.exe.mui".
+		# This means file information would not be accurate, returning the base Windows build.revision.
+		# Therefore, set product version to Windows major.minor.build.revision.
+		winVer = winVersion.getWinVer()
+		self.productVersion = f"{winVer.major}.{winVer.minor}.{winVer.build}.{winVer.revision}"
+
 	# C901 'chooseNVDAObjectOverlayClasses' is too complex
 	# Note: when working on chooseNVDAObjectOverlayClasses, look for opportunities to simplify
 	# and move logic out into smaller helper functions.
@@ -326,18 +288,8 @@ class AppModule(appModuleHandler.AppModule):
 
 		if isinstance(obj, UIA):
 			uiaClassName = obj.UIAElement.cachedClassName
-			if uiaClassName == "GridTileElement":
-				clsList.insert(0, GridTileElement)
-			elif uiaClassName == "GridListTileElement":
-				clsList.insert(0, GridListTileElement)
-			elif uiaClassName == "GridGroup":
-				clsList.insert(0, GridGroup)
-			elif uiaClassName == "ImmersiveLauncher" and role == controlTypes.Role.PANE:
-				clsList.insert(0, ImmersiveLauncher)
-			elif uiaClassName == "ListViewItem" and obj.UIAAutomationId.startswith("Suggestion_"):
-				clsList.insert(0, SuggestionListItem)
 			# Multitasking view frame window
-			elif (
+			if (
 				# Windows 10 and earlier
 				(uiaClassName == "MultitaskingViewFrame" and role == controlTypes.Role.WINDOW)
 				# Windows 11 where a pane window receives focus when switching tasks

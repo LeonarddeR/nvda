@@ -1,5 +1,5 @@
 # A part of NonVisual Desktop Access (NVDA)
-# Copyright (C) 2006-2025 NV Access Limited, Aleksey Sadovoy, Christopher Toth, Joseph Lee, Peter Vágner,
+# Copyright (C) 2006-2026 NV Access Limited, Aleksey Sadovoy, Christopher Toth, Joseph Lee, Peter Vágner,
 # Derek Riemer, Babbage B.V., Zahari Yurukov, Łukasz Golonka, Cyrille Bougot, Julien Cochuyt
 # This file is covered by the GNU General Public License.
 # See the file COPYING for more details.
@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from typing import (
 	TYPE_CHECKING,
 	Any,
-	List,
 	Optional,
 )
 import comtypes
@@ -19,8 +18,8 @@ import winVersion
 import threading
 import os
 import time
-import ctypes
 from enum import Enum
+import winBindings.kernel32
 import logHandler
 import languageHandler
 import globalVars
@@ -135,7 +134,7 @@ def doStartupDialogs():
 		return cliArgument in ("-r", "--replace")
 
 	addonHandler.isCLIParamKnown.register(handleReplaceCLIArg)
-	unknownCLIParams: List[str] = list()
+	unknownCLIParams: list[str] = list()
 	for param in globalVars.unknownAppArgs:
 		isParamKnown = addonHandler.isCLIParamKnown.decide(cliArgument=param)
 		if not isParamKnown:
@@ -322,9 +321,17 @@ def resetConfiguration(factoryDefaults=False):
 	import hwIo
 	import tones
 	import audio
+	import screenCurtain
+	import mathPres
+	import _magnifier as magnifier
 
+	magnifier.terminate()
 	log.debug("Terminating vision")
 	vision.terminate()
+	log.debug("Terminating Screen Curtain")
+	screenCurtain.terminate()
+	log.debug("Terminating math presentation")
+	mathPres.terminate()
 	log.debug("Terminating braille")
 	braille.terminate()
 	log.debug("Terminating brailleInput")
@@ -385,9 +392,15 @@ def resetConfiguration(factoryDefaults=False):
 	brailleInput.initialize()
 	log.debug("Initializing braille")
 	braille.initialize()
+	# Math
+	log.debug("Initializing math presentation")
+	mathPres.initialize()
 	# Vision
 	log.debug("initializing vision")
 	vision.initialize()
+	log.debug("initializing Screen Curtain")
+	screenCurtain.initialize()
+	magnifier.initialize()
 	log.debug("Reloading user and locale input gesture maps")
 	inputCore.manager.loadUserGestureMap()
 	inputCore.manager.loadLocaleGestureMap()
@@ -606,14 +619,13 @@ def _doLoseFocus():
 
 
 def _setUpWxApp() -> "wx.App":
-	import six
 	import wx
 
 	import config
 	import nvwave
 	import speech
 
-	log.info(f"Using wx version {wx.version()} with six version {six.__version__}")
+	log.info(f"Using wx version {wx.version()}")
 
 	# Disables wx logging in secure mode due to a security issue: GHSA-h7pp-6jqw-g3pj
 	# This is due to the wx.LogSysError dialog allowing a file explorer dialog to be opened.
@@ -642,7 +654,7 @@ def _setUpWxApp() -> "wx.App":
 	def onQueryEndSession(evt):
 		if config.isAppX:
 			# Automatically restart NVDA on Windows Store update
-			ctypes.windll.kernel32.RegisterApplicationRestart(None, 0)
+			winBindings.kernel32.RegisterApplicationRestart(None, 0)
 
 	app.Bind(wx.EVT_QUERY_END_SESSION, onQueryEndSession)
 
@@ -754,6 +766,10 @@ def main():
 
 	log.debug("Initializing appModule Handler")
 	appModuleHandler.initialize()
+	log.debug("Initializing asyncio event loop")
+	import _asyncioEventLoop
+
+	_asyncioEventLoop.initialize()
 	log.debug("initializing background i/o")
 	import hwIo
 
@@ -784,7 +800,7 @@ def main():
 	speech.initialize()
 	import mathPres
 
-	log.debug("Initializing MathPlayer")
+	log.debug("Initializing math presentation")
 	mathPres.initialize()
 	timeSinceStart = time.time() - NVDAState.getStartTime()
 	if not globalVars.appArgs.minimal and timeSinceStart > 5:
@@ -808,6 +824,12 @@ def main():
 
 	log.debug("Initializing braille")
 	braille.initialize()
+
+	import screenCurtain
+
+	log.debug("Initializing Screen Curtain")
+	screenCurtain.initialize()
+
 	import vision
 
 	log.debug("Initializing vision")
@@ -930,9 +952,14 @@ def main():
 			warnForNonEmptyDirectory=warnForNonEmptyDirectory,
 		)
 	elif not globalVars.appArgs.minimal:
-		try:
+		if screenCurtain.screenCurtain.enabled:
+			# Translators: This is shown on a braille display (if one is connected) when NVDA starts with the screen curtain enabled.
+			initialMessage = _("NVDA started with screen curtain enabled")
+		else:
 			# Translators: This is shown on a braille display (if one is connected) when NVDA starts.
-			braille.handler.message(_("NVDA started"))
+			initialMessage = _("NVDA started")
+		try:
+			braille.handler.message(initialMessage)
 		except:  # noqa: E722
 			log.error("", exc_info=True)
 		if globalVars.appArgs.launcher:
@@ -1033,6 +1060,10 @@ def main():
 
 	sessionTracking.initialize()
 
+	import _magnifier as magnifier
+
+	magnifier.initialize()
+
 	NVDAState._TrackNVDAInitialization.markInitializationComplete()
 
 	log.info("NVDA initialized")
@@ -1059,6 +1090,7 @@ def main():
 		)
 		queueHandler.pumpAll()
 	_terminate(gui)
+	_terminate(magnifier)
 	config.saveOnExit()
 
 	_doLoseFocus()
@@ -1081,6 +1113,7 @@ def main():
 	_terminate(keyboardHandler, name="keyboard handler")
 	_terminate(mouseHandler)
 	_terminate(inputCore)
+	_terminate(screenCurtain)
 	_terminate(vision)
 	_terminate(brailleInput)
 	_terminate(braille)
@@ -1089,6 +1122,7 @@ def main():
 	_terminate(characterProcessing)
 	_terminate(bdDetect)
 	_terminate(hwIo)
+	_terminate(_asyncioEventLoop, name="asyncio event loop")
 	_terminate(addonHandler)
 	_terminate(dataManager, name="addon dataManager")
 	_terminate(garbageHandler)

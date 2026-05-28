@@ -1,10 +1,12 @@
 # A part of NonVisual Desktop Access (NVDA)
 # This file is covered by the GNU General Public License.
 # See the file COPYING for more details.
-# Copyright (C) 2008-2025 NV Access Limited, Joseph Lee, Babbage B.V., Davy Kager, Bram Duvigneau,
+# Copyright (C) 2008-2026 NV Access Limited, Joseph Lee, Babbage B.V., Davy Kager, Bram Duvigneau,
 # Leonard de Ruijter, Burman's Computer and Education Ltd., Julien Cochuyt
 
+import bisect
 from enum import StrEnum
+import dataclasses
 import itertools
 import typing
 from typing import (
@@ -34,10 +36,14 @@ import ctypes.wintypes
 import threading
 import time
 import wx
+import languageHandler
 import louisHelper
 import louis
 import gui
 from controlTypes.state import State
+import textUtils
+import textUtils.hyphenation
+import winBindings.kernel32
 import winKernel
 import keyboardHandler
 import baseObject
@@ -49,8 +55,13 @@ from config.configFlags import (
 	BrailleMode,
 	ReportTableHeaders,
 	OutputMode,
+	ReportSpellingErrors,
 )
-from config.featureFlagEnums import ReviewRoutingMovesSystemCaretFlag, FontFormattingBrailleModeFlag
+from config.featureFlagEnums import (
+	BrailleTextWrapFlag,
+	FontFormattingBrailleModeFlag,
+	ReviewRoutingMovesSystemCaretFlag,
+)
 from logHandler import log
 import controlTypes
 import api
@@ -72,6 +83,7 @@ from winAPI.secureDesktop import post_secureDesktopStateChange
 from textUtils import isUnicodeNormalized, UnicodeNormalizationOffsetConverter
 import hwIo
 from editableText import EditableText
+from gui.guiHelper import wxCallOnMain
 
 if TYPE_CHECKING:
 	from NVDAObjects import NVDAObject
@@ -323,6 +335,7 @@ CURSOR_SHAPES = (
 	(0xFF, _("All dots")),
 )
 SELECTION_SHAPE = 0xC0  #: Dots 7 and 8
+CONTINUATION_SHAPE = 0xC0  #: Dots 7 and 8
 
 END_OF_BRAILLE_OUTPUT_SHAPE = 0xFF  # All dots
 """
@@ -409,6 +422,16 @@ class FormattingMarker(NamedTuple):
 	start: str
 	end: str
 
+	def shouldBeUsed(self, key) -> bool:
+		"""Determines if the formatting marker should be reported in braille.
+		:param key: A key which represents an element that may be reported in braille.
+		:return: `True` if the element should be reported, `False` otherwise.
+		"""
+		formatConfig = config.conf["documentFormatting"]
+		if key in ("invalid-spelling", "invalid-grammar"):
+			return bool(formatConfig["reportSpellingErrors2"] & ReportSpellingErrors.BRAILLE)
+		return formatConfig["fontAttributeReporting"] & OutputMode.BRAILLE
+
 
 fontAttributeFormattingMarkers: dict[str, FormattingMarker] = {
 	"bold": FormattingMarker(
@@ -442,6 +465,22 @@ fontAttributeFormattingMarkers: dict[str, FormattingMarker] = {
 		# Translators: Brailled at the end of strikethrough text.
 		# This is the English letter "s" plus dot 7 in braille.
 		end=pgettext("braille formatting symbol", "⡎"),
+	),
+	"invalid-spelling": FormattingMarker(
+		# Translators: Brailled at the start of invalid spelling text.
+		# This is the English letter "e" in braille.
+		start=pgettext("braille formatting symbol", "⠑"),
+		# Translators: Brailled at the end of invalid spelling text.
+		# This is the English letter "e" plus dot 7 in braille.
+		end=pgettext("braille formatting symbol", "⡑"),
+	),
+	"invalid-grammar": FormattingMarker(
+		# Translators: Brailled at the start of invalid grammar text.
+		# This is the English letter "g" in braille.
+		start=pgettext("braille formatting symbol", "⠛"),
+		# Translators: Brailled at the end of invalid grammar text.
+		# This is the English letter "g" plus dot 7 in braille.
+		end=pgettext("braille formatting symbol", "⡛"),
 	),
 }
 
@@ -514,49 +553,50 @@ class Region(object):
 	"""A region of braille to be displayed.
 	Each portion of braille to be displayed is represented by a region.
 	The region is responsible for retrieving its text and the cursor and selection positions, translating it into braille cells and handling cursor routing requests relative to its braille cells.
-	The L{BrailleBuffer} containing this region will call L{update} and expect that L{brailleCells}, L{brailleCursorPos}, L{brailleSelectionStart} and L{brailleSelectionEnd} will be set appropriately.
-	L{routeTo} will be called to handle a cursor routing request.
+	The :class:`BrailleBuffer` containing this region will call :meth:`update` and expect that :attr:`brailleCells`, :attr:`brailleCursorPos`, :attr:`brailleSelectionStart` and :attr:`brailleSelectionEnd` will be set appropriately.
+	:meth:`routeTo` will be called to handle a cursor routing request.
 	"""
 
+	rawText: str = ""
+	"""The original, raw text of this region."""
+	cursorPos: int | None = None
+	"""The position of the cursor in :attr:`rawText`, ``None`` if the cursor is not in this region."""
+	selectionStart: int | None = None
+	"""The start of the selection in :attr:`rawText` (inclusive), ``None`` if there is no selection in this region."""
+	selectionEnd: int | None = None
+	"""The end of the selection in :attr:`rawText` (exclusive), ``None`` if there is no selection in this region."""
+	rawTextTypeforms: list[int] | None = None
+	"""liblouis typeform flags for each character in :attr:`rawText`, ``None`` if no typeform info."""
+	brailleCursorPos: int | None = None
+	"""The position of the cursor in :attr:`brailleCells`, ``None`` if the cursor is not in this region."""
+	brailleSelectionStart: int | None = None
+	"""The position of the selection start in :attr:`brailleCells`, ``None`` if there is no selection in this region."""
+	brailleSelectionEnd: int | None = None
+	"""The position of the selection end in :attr:`brailleCells`, ``None`` if there is no selection in this region."""
+	hidePreviousRegions: bool = False
+	"""Whether to hide all previous regions."""
+	focusToHardLeft: bool = False
+	"""Whether this region should be positioned at the absolute left of the display when focused."""
+
 	def __init__(self):
-		#: The original, raw text of this region.
-		self.rawText = ""
-		#: The position of the cursor in L{rawText}, C{None} if the cursor is not in this region.
-		#: @type: int
-		self.cursorPos = None
-		#: The start of the selection in L{rawText} (inclusive), C{None} if there is no selection in this region.
-		#: @type: int
-		self.selectionStart = None
-		#: The end of the selection in L{rawText} (exclusive), C{None} if there is no selection in this region.
-		#: @type: int
-		self.selectionEnd = None
-		#: The translated braille representation of this region.
-		#: @type: [int, ...]
-		self.brailleCells = []
-		#: liblouis typeform flags for each character in L{rawText},
-		#: C{None} if no typeform info.
-		#: @type: [int, ...]
-		self.rawTextTypeforms = None
-		#: A list mapping positions in L{rawText} to positions in L{brailleCells}.
-		#: @type: [int, ...]
-		self.rawToBraillePos = []
-		#: A list mapping positions in L{brailleCells} to positions in L{rawText}.
-		#: @type: [int, ...]
-		self.brailleToRawPos = []
-		#: The position of the cursor in L{brailleCells}, C{None} if the cursor is not in this region.
-		self.brailleCursorPos: Optional[int] = None
-		#: The position of the selection start in L{brailleCells}, C{None} if there is no selection in this region.
-		#: @type: int
-		self.brailleSelectionStart = None
-		#: The position of the selection end in L{brailleCells}, C{None} if there is no selection in this region.
-		#: @type: int
-		self.brailleSelectionEnd = None
-		#: Whether to hide all previous regions.
-		#: @type: bool
-		self.hidePreviousRegions = False
-		#: Whether this region should be positioned at the absolute left of the display when focused.
-		#: @type: bool
-		self.focusToHardLeft = False
+		self._languageIndexes: dict[int, str] = {0: self._getDefaultRegionLanguage()}
+		"""Language indexes in :attr:`rawText`. The last language is assumed to be the final language in the region."""
+		self.brailleCells: list[int] = []
+		"""The translated braille representation of this region."""
+		self.rawToBraillePos: list[int] = []
+		"""A list mapping positions in :attr:`rawText` to positions in :attr:`brailleCells`."""
+		self.brailleToRawPos: list[int] = []
+		"""A list mapping positions in :attr:`brailleCells` to positions in :attr:`rawText`."""
+
+	def _getDefaultRegionLanguage(self) -> str:
+		"""Get the default language for a region."""
+		return louisHelper.getTableLanguage(handler.table.fileName) or languageHandler.getLanguage()
+
+	def _getLanguageAtPos(self, pos: int) -> str:
+		"""Get the language at a given position in :attr:`rawText` based on :attr:`_languageIndexes`."""
+		keys = sorted(self._languageIndexes)
+		i = bisect.bisect_right(keys, pos) - 1
+		return self._languageIndexes[keys[i]]
 
 	def update(self):
 		"""Update this region.
@@ -690,6 +730,7 @@ def getPropertiesBraille(**propertyValues) -> str:  # noqa: C901
 	states = propertyValues.get("states")
 	positionInfo = propertyValues.get("positionInfo")
 	level = positionInfo.get("level") if positionInfo else None
+	childControlCount = positionInfo.get("childControlCount") if positionInfo else None
 	cellCoordsText = propertyValues.get("cellCoordsText")
 	rowNumber = propertyValues.get("rowNumber")
 	columnNumber = propertyValues.get("columnNumber")
@@ -711,11 +752,25 @@ def getPropertiesBraille(**propertyValues) -> str:  # noqa: C901
 			states.discard(controlTypes.State.VISITED)
 			# Translators: Displayed in braille for a link which has been visited.
 			roleText = _("vlnk")
-		elif role == controlTypes.Role.LIST and states and controlTypes.State.MULTISELECTABLE in states:
-			states = states.copy()
-			states.discard(controlTypes.State.MULTISELECTABLE)
-			# Translators: Displayed in braille for a multi select list.
-			roleText = _("mslst")
+		elif role == controlTypes.Role.LIST:
+			if (
+				states
+				and controlTypes.State.MULTISELECTABLE in states
+				and config.conf["presentation"]["reportMultiSelect"]
+			):
+				# Collapse the list role and multiselectable state into a single role text.
+				# Note that for other cases where this state is found, regular processing with
+				# controlTypes.processAndLabelStates will discard the state if necessary.
+				states = states.copy()
+				states.discard(controlTypes.State.MULTISELECTABLE)
+				# Translators: Displayed in braille for a multi select list.
+				roleText = _("mslst")
+			else:
+				roleText = roleLabels.get(role, role.displayString)
+			if childControlCount:
+				roleText += childControlCount
+				childControlCount = None
+
 		elif (
 			name or cellCoordsText or rowNumber or columnNumber
 		) and role in controlTypes.silentRolesOnFocus:
@@ -763,10 +818,12 @@ def getPropertiesBraille(**propertyValues) -> str:  # noqa: C901
 			# {number} is replaced with the number of the item in the group.
 			# {total} is replaced with the total number of items in the group.
 			textList.append(_("{number} of {total}").format(number=indexInGroup, total=similarItemsInGroup))
+
 		if level is not None:
 			# Translators: Displayed in braille when an object (e.g. a tree view item) has a hierarchical level.
 			# %s is replaced with the level.
 			textList.append(_("lv %s") % positionInfo["level"])
+
 	if rowNumber:
 		if includeTableCellCoords and not cellCoordsText:
 			if rowSpan > 1:
@@ -1118,6 +1175,8 @@ def _getControlFieldForReportStart(
 	level = field.get("level")
 	if level:
 		props["positionInfo"] = {"level": level}
+	if role == controlTypes.Role.LIST and (int(childControlCount := field.get("_childcontrolcount", 0))) > 0:
+		props["positionInfo"] = {"childControlCount": childControlCount}
 
 	text = getPropertiesBraille(**props)
 	if content:
@@ -1204,7 +1263,7 @@ def getFormatFieldBraille(field, fieldCache, isAtStart, formatConfig):
 
 	if (
 		config.conf["braille"]["fontFormattingDisplay"].calculated() == FontFormattingBrailleModeFlag.TAGS
-		and (formattingTags := _getFormattingTags(field, fieldCache, formatConfig)) is not None
+		and (formattingTags := _getFormattingTags(field, fieldCache)) is not None
 	):
 		textList.append(formattingTags)
 
@@ -1235,7 +1294,6 @@ def getParagraphStartMarker() -> str | None:
 def _getFormattingTags(
 	field: dict[str, str],
 	fieldCache: dict[str, str],
-	formatConfig: dict[str, bool],
 ) -> str | None:
 	"""Get the formatting tags for the given field and cache.
 
@@ -1247,9 +1305,8 @@ def _getFormattingTags(
 	:return: The braille formatting tag as a string, or None if no pertinant formatting is applied.
 	"""
 	textList: list[str] = []
-	if formatConfig["fontAttributeReporting"] & OutputMode.BRAILLE:
-		# Only calculate font attribute tags if the user has enabled font attribute reporting in braille.
-		for fontAttribute, formattingMarker in fontAttributeFormattingMarkers.items():
+	for fontAttribute, formattingMarker in fontAttributeFormattingMarkers.items():
+		if formattingMarker.shouldBeUsed(fontAttribute):
 			_appendFormattingMarker(fontAttribute, formattingMarker, textList, field, fieldCache)
 	if len(textList) > 0:
 		return f"{FormatTagDelimiter.START}{''.join(textList)}{FormatTagDelimiter.END}"
@@ -1339,12 +1396,24 @@ class TextInfoRegion(Region):
 			typeform |= louis.underline
 		return typeform
 
-	def _addFieldText(self, text, contentPos, separate=True):
+	def _addFieldText(
+		self,
+		text: str,
+		contentPos: int,
+		separate: bool = True,
+	):
 		if separate and self.rawText:
 			# Separate this field text from the rest of the text.
 			text = TEXT_SEPARATOR + text
-		self.rawText += text
 		textLen = len(text)
+		# Fields are reported in NVDA's language
+		fieldLanguage = languageHandler.getLanguage()
+		rawTextLen = len(self.rawText)
+		lastLanguage = self._getLanguageAtPos(rawTextLen)
+		if fieldLanguage != lastLanguage:
+			self._languageIndexes[rawTextLen] = fieldLanguage
+			self._languageIndexes[rawTextLen + textLen] = lastLanguage
+		self.rawText += text
 		self.rawTextTypeforms.extend((louis.plain_text,) * textLen)
 		self._rawToContentPos.extend((contentPos,) * textLen)
 
@@ -1397,16 +1466,21 @@ class TextInfoRegion(Region):
 				field = command.field
 				if cmd == "formatChange":
 					typeform = self._getTypeformFromFormatField(field, formatConfig)
+					language = field.get("language")
 					text = getFormatFieldBraille(
 						field,
 						formatFieldAttributesCache,
 						self._isFormatFieldAtStart,
 						formatConfig,
 					)
+					if text:
+						# Map this field text to the start of the field's content.
+						self._addFieldText(text, self._currentContentPos)
+					rawTextLen = len(self.rawText)
+					if language and self._getLanguageAtPos(rawTextLen) != language:
+						self._languageIndexes[rawTextLen] = language
 					if not text:
 						continue
-					# Map this field text to the start of the field's content.
-					self._addFieldText(text, self._currentContentPos)
 				elif cmd == "controlStart":
 					if self._skipFieldsNotAtStartOfNode and not field.get("_startOfNode"):
 						text = None
@@ -1474,6 +1548,7 @@ class TextInfoRegion(Region):
 		self.rawText = ""
 		self.rawTextTypeforms = []
 		self.cursorPos = None
+		self._languageIndexes: dict[int, str] = {0: self._getDefaultRegionLanguage()}
 		# The output includes text representing fields which isn't part of the real content in the control.
 		# Therefore, maintain a map of positions in the output to positions in the content.
 		self._rawToContentPos = []
@@ -1666,10 +1741,11 @@ class TextInfoRegion(Region):
 				try:
 					dest.obj.turnPage()
 				except RuntimeError:
-					pass
+					handler.autoScroll(enable=False)
 				else:
 					dest = dest.obj.makeTextInfo(textInfos.POSITION_FIRST)
 			else:  # no page turn support
+				handler.autoScroll(enable=False)
 				shouldCollapseToEnd = True
 		dest.collapse(shouldCollapseToEnd)
 		self._setCursor(dest)
@@ -1765,11 +1841,25 @@ def rindex(seq, item, start, end):
 	raise ValueError("%r is not in sequence" % item)
 
 
+@dataclasses.dataclass(frozen=True)
+class _WindowRowPositions:
+	"""Braille buffer positions for a single row of the braille window."""
+
+	start: int
+	"""Start position (inclusive) in the braille buffer."""
+	end: int
+	"""End position (exclusive) in the braille buffer."""
+	showContinuationMark: bool = False
+	"""Whether to append a continuation mark (`CONTINUATION_SHAPE`) after the row cells."""
+
+
 class BrailleBuffer(baseObject.AutoPropertyObject):
+	handler: "BrailleHandler"
+	regions: list[Region]
+	"""The regions in this buffer."""
+
 	def __init__(self, handler):
 		self.handler = handler
-		#: The regions in this buffer.
-		#: @type: [L{Region}, ...]
 		self.regions = []
 		#: The raw text of the entire buffer.
 		self.rawText = ""
@@ -1779,10 +1869,10 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 		#: The translated braille representation of the entire buffer.
 		#: @type: [int, ...]
 		self.brailleCells = []
-		self._windowRowBufferOffsets: list[tuple[int, int]] = [(0, 0)]
+		self._windowRowBufferOffsets: list[_WindowRowPositions] = [_WindowRowPositions(0, 0)]
 		"""
 		A list representing the rows in the braille window,
-		each item being a tuple of start and end braille buffer offsets.
+		each item containing start and end braille buffer offsets and whether a continuation mark should appear.
 		Splitting the window into independent rows allows for optional avoidance of splitting words across rows.
 		"""
 
@@ -1813,21 +1903,21 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 			yield RegionWithPositions(region, start, end)
 			start = end
 
-	def _get_rawToBraillePos(self):
-		"""@return: a list mapping positions in L{rawText} to positions in L{brailleCells} for the entire buffer.
-		@rtype: [int, ...]
-		"""
+	rawToBraillePos: list[int]
+	"""Type definition for auto prop '_get_rawToBraillePos'"""
+
+	def _get_rawToBraillePos(self) -> list[int]:
+		""":return: a list mapping positions in L{rawText} to positions in L{brailleCells} for the entire buffer."""
 		rawToBraillePos = []
 		for region, regionStart, regionEnd in self.regionsWithPositions:
 			rawToBraillePos.extend(p + regionStart for p in region.rawToBraillePos)
 		return rawToBraillePos
 
-	brailleToRawPos: List[int]
+	brailleToRawPos: list[int]
+	"""Type definition for auto prop '_get_brailleToRawPos'"""
 
-	def _get_brailleToRawPos(self):
-		"""@return: a list mapping positions in L{brailleCells} to positions in L{rawText} for the entire buffer.
-		@rtype: [int, ...]
-		"""
+	def _get_brailleToRawPos(self) -> list[int]:
+		""":return: a list mapping positions in L{brailleCells} to positions in L{rawText} for the entire buffer."""
 		brailleToRawPos = []
 		start = 0
 		for region in self.visibleRegions:
@@ -1835,13 +1925,28 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 			start += len(region.rawText)
 		return brailleToRawPos
 
-	def bufferPosToRegionPos(self, bufferPos):
+	def bufferPosToRegionPos(self, bufferPos: int) -> tuple[Region, int]:
+		"""Converts a position relative to the braille buffer to a position relative to the region it is in.
+		:param bufferPos: The position relative to the braille buffer.
+		:return: A tuple of the region and the position relative to that region.
+		"""
 		for region, start, end in self.regionsWithPositions:
 			if end > bufferPos:
 				return region, bufferPos - start
 		raise LookupError("No such position")
 
-	def regionPosToBufferPos(self, region, pos, allowNearest=False):
+	def _getLanguageAtBufferPos(self, pos: int) -> str:
+		"""Gets the language at the given braille buffer position."""
+		region, regionPos = self.bufferPosToRegionPos(pos)
+		return region._getLanguageAtPos(regionPos)
+
+	def regionPosToBufferPos(self, region: Region, pos: int, allowNearest: bool = False) -> int:
+		"""Converts a position relative to a region to a position relative to the braille buffer.
+		:param region: The region the position is relative to.
+		:param pos: The position relative to the region.
+		:param allowNearest: If True, if the position is outside the region, return the nearest position within the region. If False, raise LookupError if the position is outside the region.
+		:return: The position relative to the braille buffer.
+		"""
 		start: int = 0
 		for testRegion, start, end in self.regionsWithPositions:
 			if region == testRegion:
@@ -1858,7 +1963,13 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 			return start
 		raise LookupError("No such position")
 
-	def bufferPositionsToRawText(self, startPos, endPos):
+	def bufferPositionsToRawText(self, startPos: int, endPos: int) -> str:
+		"""
+		Converts a range of positions in the braille buffer to the corresponding raw text.
+		:param startPos: The start position in the braille buffer.
+		:param endPos: The end position in the braille buffer.
+		:return: The corresponding raw text.
+		"""
 		brailleToRawPos = self.brailleToRawPos
 		if not brailleToRawPos or not self.rawText:
 			# if either are empty, just return an empty string.
@@ -1880,9 +1991,14 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 			return ""
 
 	def bufferPosToWindowPos(self, bufferPos: int) -> int:
-		for row, (start, end) in enumerate(self._windowRowBufferOffsets):
-			if start <= bufferPos < end:
-				return row * self.handler.displayDimensions.numCols + (bufferPos - start)
+		"""
+		Converts a position relative to the braille buffer to a position relative to the braille window.
+		:param bufferPos: The position relative to the braille buffer.
+		:return: The position relative to the braille window.
+		"""
+		for row, rowPositions in enumerate(self._windowRowBufferOffsets):
+			if rowPositions.start <= bufferPos < rowPositions.end:
+				return row * self.handler.displayDimensions.numCols + (bufferPos - rowPositions.start)
 		raise LookupError("buffer pos not in window")
 
 	def windowPosToBufferPos(self, windowPos: int) -> int:
@@ -1894,8 +2010,8 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 		windowPos = max(min(windowPos, self.handler.displaySize), 0)
 		row, col = divmod(windowPos, self.handler.displayDimensions.numCols)
 		if row < len(self._windowRowBufferOffsets):
-			start, end = self._windowRowBufferOffsets[row]
-			return max(min(start + col, end - 1), 0)
+			rowPositions = self._windowRowBufferOffsets[row]
+			return max(min(rowPositions.start + col, rowPositions.end - 1), 0)
 		raise ValueError("Position outside window")
 
 	windowStartPos: int
@@ -1907,36 +2023,67 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 	def _set_windowStartPos(self, pos: int) -> None:
 		self._calculateWindowRowBufferOffsets(pos)
 
+	def _isMidWordCut(self, end: int, bufferEnd: int) -> bool:
+		"""Return True when the cut at `end` falls in the middle of a word (both adjacent cells are non-space)."""
+		return end < bufferEnd and all(self.brailleCells[end - 1 : end + 1])
+
 	def _calculateWindowRowBufferOffsets(self, pos: int) -> None:
 		"""
 		Calculates the start and end positions of each row in the braille window.
-		Ensures that words are not split across rows when word wrap is enabled.
+		Ensures that words are not split across rows when text wrap is enabled.
 		Ensures that the window does not extend past the end of the braille buffer.
 		:param pos: The start position of the braille window.
 		"""
 		self._windowRowBufferOffsets.clear()
 		if len(self.brailleCells) == 0:
 			# Initialising with no actual braille content.
-			self._windowRowBufferOffsets = [(0, 0)]
+			self._windowRowBufferOffsets = [_WindowRowPositions(0, 0)]
 			return
-		doWordWrap = config.conf["braille"]["wordWrap"]
+		textWrap: BrailleTextWrapFlag = config.conf["braille"]["textWrap"].calculated()
 		bufferEnd = len(self.brailleCells)
 		start = pos
 		clippedEnd = False
 		for row in range(self.handler.displayDimensions.numRows):
+			showContinuationMark = False
 			end = start + self.handler.displayDimensions.numCols
 			if end > bufferEnd:
 				end = bufferEnd
 				clippedEnd = True
-			elif doWordWrap:
+			elif textWrap == BrailleTextWrapFlag.MARK_WORD_CUTS and self._isMidWordCut(end, bufferEnd):
+				end -= 1
+				showContinuationMark = True
+			elif textWrap in (
+				BrailleTextWrapFlag.AT_WORD_BOUNDARIES,
+				BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES,
+			):
 				try:
 					lastSpaceIndex = rindex(self.brailleCells, 0, start, end + 1)
 					if lastSpaceIndex < end:
-						# The next braille window doesn't start with space.
-						end = rindex(self.brailleCells, 0, start, end) + 1
+						# lastSpaceIndex < end proves brailleCells[end] is non-zero,
+						# so searching [start, end) yields the same lastSpaceIndex.
+						oldEnd = end
+						end = lastSpaceIndex + 1
+						if end < oldEnd and textWrap == BrailleTextWrapFlag.AT_WORD_OR_SYLLABLE_BOUNDARIES:
+							# Prefer splitting the word at a syllable boundary closer to the display edge.
+							# Note that, when the below index call fails, it is appropriately handled by the except block,
+							# which means that we won't split at a syllable boundary in this case.
+							nextSpace = self.brailleCells.index(0, oldEnd, bufferEnd)
+							word = self.bufferPositionsToRawText(end, nextSpace - 1)
+							if word:
+								language = self._getLanguageAtBufferPos(end)
+								rawPos = self.brailleToRawPos[end]
+								positions = textUtils.hyphenation.getHyphenPositions(word, language)
+								for posInWord in reversed(positions):
+									if (newEnd := self.rawToBraillePos[posInWord + rawPos]) < oldEnd:
+										end = newEnd
+										showContinuationMark = True
+										break
 				except (ValueError, IndexError):
-					pass  # No space on line
-			self._windowRowBufferOffsets.append((start, end))
+					# No space on line - fall back to display-edge cut.
+					if self._isMidWordCut(end, bufferEnd):
+						end -= 1
+						showContinuationMark = True
+			self._windowRowBufferOffsets.append(_WindowRowPositions(start, end, showContinuationMark))
 			if clippedEnd:
 				break
 			start = end
@@ -1945,8 +2092,7 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 	"""The end position of the braille window in the braille buffer."""
 
 	def _get_windowEndPos(self) -> int:
-		start, end = self._windowRowBufferOffsets[-1]
-		return end
+		return self._windowRowBufferOffsets[-1].end
 
 	def _set_windowEndPos(self, endPos: int) -> None:
 		"""Sets the end position for the braille window and recalculates the window start position based on several variables.
@@ -1954,7 +2100,7 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 		2. Whether one of the regions should be shown hard left on the braille display;
 			i.e. because of The configuration setting for focus context representation
 			or whether the braille region that corresponds with the focus represents a multi line edit box.
-		3. Whether word wrap is enabled."""
+		3. Whether text wrap is enabled."""
 		startPos = endPos - self.handler.displaySize
 		# Loop through the currently displayed regions in reverse order
 		# If focusToHardLeft is set for one of the regions, the display shouldn't scroll further back than the start of that region
@@ -1975,7 +2121,10 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 		if startPos <= restrictPos:
 			self.windowStartPos = restrictPos
 			return
-		if not config.conf["braille"]["wordWrap"]:
+		if config.conf["braille"]["textWrap"].calculated() in (
+			BrailleTextWrapFlag.NONE,
+			BrailleTextWrapFlag.MARK_WORD_CUTS,
+		):
 			self.windowStartPos = startPos
 			return
 		try:
@@ -1990,7 +2139,7 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 					break
 		except ValueError:
 			pass
-		# When word wrap is enabled, the first block of spaces may be removed from the current window.
+		# When text wrap is enabled, the first block of spaces may be removed from the current window.
 		# This may prevent displaying the start of paragraphs.
 		paragraphStartMarker = getParagraphStartMarker()
 		if paragraphStartMarker and self.regions[-1].rawText.startswith(
@@ -2097,9 +2246,12 @@ class BrailleBuffer(baseObject.AutoPropertyObject):
 
 	def _get_windowBrailleCells(self) -> list[int]:
 		windowCells = []
-		for start, end in self._windowRowBufferOffsets:
-			rowCells = self.brailleCells[start:end]
+		for row, rowPositions in enumerate(self._windowRowBufferOffsets):
+			rowCells = self.brailleCells[rowPositions.start : rowPositions.end]
 			remaining = self.handler.displayDimensions.numCols - len(rowCells)
+			if remaining > 0 and rowPositions.showContinuationMark:
+				rowCells.append(CONTINUATION_SHAPE)
+				remaining -= 1
 			if remaining > 0:
 				rowCells.extend([0] * remaining)
 			windowCells.extend(rowCells)
@@ -2370,6 +2522,26 @@ the local braille handler should be disabled as long as the system is in control
 Handlers are called without arguments.
 """
 
+_decide_disabledIncludesMessages = extensionPoints.Decider()
+"""
+Allows Remote Access to decide whether an exception should be made for showing ui.message.
+Handlers are called without arguments.
+"""
+
+_pre_showBrailleMessage = extensionPoints.Action()
+"""
+Called before a `ui.message` is shown,
+to allow Remote Access to show local messages to users who are controlling a remote computer.
+Handlers are called without arguments.
+"""
+
+_post_dismissBrailleMessage = extensionPoints.Action()
+"""
+Called after a `ui.message` is dismissed,
+to allow Remote Access to show local messages to users who are controlling a remote computer.
+Handlers are called without arguments.
+"""
+
 
 class BrailleHandler(baseObject.AutoPropertyObject):
 	# TETHER_AUTO, TETHER_FOCUS, TETHER_REVIEW and tetherValues
@@ -2417,6 +2589,7 @@ class BrailleHandler(baseObject.AutoPropertyObject):
 		self._cursorBlinkUp = True
 		self._cells = []
 		self._cursorBlinkTimer = None
+		self._autoScrollCallLater: wx.CallLater | None = None
 		config.post_configProfileSwitch.register(self.handlePostConfigProfileSwitch)
 		if config.conf["braille"]["tetherTo"] == TetherTo.AUTO.value:
 			self._tether = TetherTo.FOCUS.value
@@ -2452,6 +2625,7 @@ class BrailleHandler(baseObject.AutoPropertyObject):
 		if self._cursorBlinkTimer:
 			self._cursorBlinkTimer.Stop()
 			self._cursorBlinkTimer = None
+		self.autoScroll(enable=False)
 		config.post_configProfileSwitch.unregister(self.handlePostConfigProfileSwitch)
 		post_secureDesktopStateChange.unregister(self._onSecureDesktopStateChanged)
 		post_sessionLockStateChanged.unregister(self._onSessionLockStateChanged)
@@ -2459,7 +2633,7 @@ class BrailleHandler(baseObject.AutoPropertyObject):
 			self.display.terminate()
 			self.display = None
 		if self.ackTimerHandle:
-			if not ctypes.windll.kernel32.CancelWaitableTimer(self.ackTimerHandle):
+			if not winBindings.kernel32.CancelWaitableTimer(self.ackTimerHandle):
 				raise ctypes.WinError()
 			winKernel.closeHandle(self.ackTimerHandle)
 			self.ackTimerHandle = None
@@ -2467,12 +2641,14 @@ class BrailleHandler(baseObject.AutoPropertyObject):
 
 	def _clearAll(self) -> None:
 		"""Clear the braille buffers and update the braille display."""
+		self.autoScroll(enable=False)
 		self.mainBuffer.clear()
 		if self.buffer is self.messageBuffer:
 			self._dismissMessage(False)
 		self.update()
 
 	def _onSecureDesktopStateChanged(self, isSecureDesktop: bool):
+		self.autoScroll(enable=False)
 		self.mainBuffer.clear()
 		if not easeOfAccess.isRegistered():
 			if isSecureDesktop:
@@ -2656,12 +2832,27 @@ class BrailleHandler(baseObject.AutoPropertyObject):
 		and thus is C{True} when the display size is greater than 0.
 		This is a read only property and can't be set.
 		"""
+		self._refreshEnabled()
+		return self._enabled
+
+	def _refreshEnabled(self, *, block: bool = False) -> None:
+		"""Refresh the state of the enabled property.
+
+		If it has gone from ``True`` to ``False``,
+		actions such as dismissing the current message (if any),
+		and clearing the cursor blink interval are performed.
+		These actions are performed synchronously or asynchronously depending on the value of :param:`block`.
+
+		:param block: Whether this operation should be blocking, defaults to False
+		"""
 		currentEnabled = bool(self.displaySize) and decide_enabled.decide()
 		if self._enabled != currentEnabled:
 			self._enabled = currentEnabled
 			if currentEnabled is False:
-				wx.CallAfter(self._handleEnabledDecisionFalse)
-		return currentEnabled
+				if block:
+					wxCallOnMain(self._handleEnabledDecisionFalse)
+				else:
+					wx.CallAfter(self._handleEnabledDecisionFalse)
 
 	def _set_enabled(self, value):
 		raise AttributeError(
@@ -2911,13 +3102,20 @@ class BrailleHandler(baseObject.AutoPropertyObject):
 		self.buffer.scrollForward()
 		if self.buffer is self.messageBuffer:
 			self._resetMessageTimer()
+		if self._autoScrollCallLater:
+			# Reset the timer.
+			self._resetAutoScroll()
 
 	def scrollBack(self):
 		self.buffer.scrollBack()
 		if self.buffer is self.messageBuffer:
 			self._resetMessageTimer()
+		if self._autoScrollCallLater:
+			# Reset the timer.
+			self._resetAutoScroll()
 
 	def routeTo(self, windowPos):
+		self.autoScroll(enable=False)
 		self.buffer.routeTo(windowPos)
 		if self.buffer is self.messageBuffer:
 			self._dismissMessage()
@@ -2935,12 +3133,14 @@ class BrailleHandler(baseObject.AutoPropertyObject):
 		@postcondition: The message is displayed.
 		"""
 		if (
-			not self.enabled
+			(not self.enabled and _decide_disabledIncludesMessages.decide())
 			or config.conf["braille"]["showMessages"] == ShowMessages.DISABLED
 			or text is None
 			or config.conf["braille"]["mode"] == BrailleMode.SPEECH_OUTPUT.value
 		):
 			return
+		_pre_showBrailleMessage.notify()
+		self.autoScroll(enable=False)
 		if self.buffer is self.messageBuffer:
 			self.buffer.clear()
 		else:
@@ -2979,6 +3179,39 @@ class BrailleHandler(baseObject.AutoPropertyObject):
 			self._messageCallLater = None
 		if shouldUpdate:
 			self.update()
+		_post_dismissBrailleMessage.notify()
+
+	def autoScroll(self, enable: bool) -> None:
+		"""
+		Enable or disable automatic scroll.
+
+		:param enable: ``True`` if automatic scroll should be enabled, ``False`` otherwise.
+		"""
+
+		if not self.enabled:
+			return
+		if enable and self._autoScrollCallLater is None:
+			self._autoScrollCallLater = wx.CallLater(self._calculateAutoScrollTimeout(), self.scrollForward)
+		elif not enable and self._autoScrollCallLater is not None:
+			self._autoScrollCallLater.Stop()
+			self._autoScrollCallLater = None
+
+	def _calculateAutoScrollTimeout(self) -> int:
+		"""
+		Calculate the timeout for automatic scroll.
+
+		:return: The number of milliseconds to wait until the next scroll.
+		"""
+
+		autoScrollRate = config.conf["braille"]["autoScrollRate"]
+		return int((self.displaySize / autoScrollRate) * 1000)
+
+	def _resetAutoScroll(self) -> None:
+		"""
+		Reset autoScroll.
+		"""
+
+		self._autoScrollCallLater.Restart()
 
 	def handleGainFocus(self, obj: "NVDAObject", shouldAutoTether: bool = True) -> None:
 		if not self.enabled or config.conf["braille"]["mode"] == BrailleMode.SPEECH_OUTPUT.value:
@@ -3003,6 +3236,7 @@ class BrailleHandler(baseObject.AutoPropertyObject):
 		)
 
 	def _doNewObject(self, regions):
+		self.autoScroll(enable=False)
 		self.mainBuffer.clear()
 		focusToHardLeftSet = False
 		for region in regions:
@@ -3662,7 +3896,7 @@ class BrailleDisplayDriver(driverHandler.Driver):
 		"""Base implementation to handle acknowledgement packets."""
 		if not self.receivesAckPackets:
 			raise NotImplementedError("This display driver does not support ACK packet handling")
-		if not ctypes.windll.kernel32.CancelWaitableTimer(handler.ackTimerHandle):
+		if not winBindings.kernel32.CancelWaitableTimer(handler.ackTimerHandle):
 			raise ctypes.WinError()
 		self._awaitingAck = False
 		handler._writeCellsInBackground()

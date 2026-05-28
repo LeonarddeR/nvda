@@ -34,7 +34,9 @@ import core
 import NVDAState
 from contextlib import contextmanager
 import threading
+import winBindings.kernel32
 import winKernel
+from winBindings import user32
 
 if typing.TYPE_CHECKING:
 	from NVDAObjects import NVDAObject  # noqa: F401
@@ -45,6 +47,43 @@ ignoreInjected = False
 _lastInjectedKeyUp: tuple[int, int] | None = None
 _injectionDoneEvent: int | None = None
 type _ModifierT = tuple[int, bool]
+_TO_UNICODE_EX_FLAG_NO_STATE_CHANGE = 0x04
+_TO_UNICODE_EX_BUFFER_LENGTH = 5
+_KEY_PRESSED_STATE = 0x80
+
+
+def _getKeyStates(
+	modifierVkCodes: list[int],
+	ignoredModifier: int | None = None,
+) -> ctypes.Array:
+	"""Return keyboard state for ToUnicodeEx while forcing selected modifiers pressed."""
+	states: ctypes.Array = (ctypes.c_ubyte * 256)()
+	for i in range(256):
+		if i in modifierVkCodes and i != ignoredModifier:
+			states[i] = _KEY_PRESSED_STATE
+		else:
+			states[i] = user32.GetKeyState(i)
+	return states
+
+
+def _toUnicodeEx(
+	vkCode: int,
+	scanCode: int,
+	states: ctypes.Array,
+	buffer: ctypes.Array,
+	keyboardLayout: int,
+) -> int:
+	"""Call ToUnicodeEx without modifying keyboard state."""
+	return user32.ToUnicodeEx(
+		vkCode,
+		scanCode,
+		states,
+		buffer,
+		len(buffer),
+		_TO_UNICODE_EX_FLAG_NO_STATE_CHANGE,
+		keyboardLayout,
+	)
+
 
 # Fake vk codes.
 # These constants should be assigned to the name that NVDA will use for the key.
@@ -296,14 +335,14 @@ def internal_keyDownEvent(vkCode, scanCode, extended, injected):
 			and not isNVDAModifierKey(vkCode, extended)
 			and vkCode not in KeyboardInputGesture.NORMAL_MODIFIER_KEYS
 		):
-			keyStates = (ctypes.c_byte * 256)()
+			keyStates = (ctypes.c_ubyte * 256)()
 			for k in range(256):
-				keyStates[k] = ctypes.windll.user32.GetKeyState(k)
+				keyStates[k] = user32.GetKeyState(k)
 			charBuf = ctypes.create_unicode_buffer(5)
-			hkl = ctypes.windll.user32.GetKeyboardLayout(focus.windowThreadID)
+			hkl = user32.GetKeyboardLayout(focus.windowThreadID)
 			# In previous Windows builds, calling ToUnicodeEx would destroy keyboard buffer state and therefore cause the app to not produce the right WM_CHAR message.
 			# However, ToUnicodeEx now can take a new flag of 0x4, which stops it from destroying keyboard state, thus allowing us to safely call it here.
-			res = ctypes.windll.user32.ToUnicodeEx(
+			res = user32.ToUnicodeEx(
 				vkCode,
 				scanCode,
 				keyStates,
@@ -342,7 +381,7 @@ def internal_keyUpEvent(vkCode, scanCode, extended, injected):
 				return True
 			if ignoreInjected:
 				if keyCode == _lastInjectedKeyUp:
-					winKernel.kernel32.SetEvent(_injectionDoneEvent)
+					winBindings.kernel32.SetEvent(_injectionDoneEvent)
 				return True
 
 		if passKeyThroughCount >= 1:
@@ -400,7 +439,7 @@ def getInputHkl():
 		thread = focus.windowThreadID
 	else:
 		thread = 0
-	return winUser.user32.GetKeyboardLayout(thread)
+	return user32.GetKeyboardLayout(thread)
 
 
 def canModifiersPerformAction(modifiers):
@@ -526,8 +565,10 @@ class KeyboardInputGesture(inputCore.InputGesture):
 		if self.vkCode == vkCodes.VK_PACKET:
 			# Unicode character from non-keyboard input.
 			return chr(self.scanCode)
-		vkChar = winUser.user32.MapVirtualKeyExW(self.vkCode, winUser.MAPVK_VK_TO_CHAR, getInputHkl())
-		if vkChar > 0:
+		vkChar = user32.MapVirtualKeyEx(self.vkCode, winUser.MAPVK_VK_TO_CHAR, getInputHkl())
+		# the highest bit of a 32 bit value denotes a dead key
+		DEAD_KEY_FLAG = 0x80000000
+		if vkChar > 0 and not (vkChar & DEAD_KEY_FLAG):
 			if vkChar == 43:  # "+"
 				# A gesture identifier can't include "+" except as a separator.
 				return "plus"
@@ -561,6 +602,85 @@ class KeyboardInputGesture(inputCore.InputGesture):
 			else localizedKeyLabels.get(key.lower(), key)
 			for key in self._keyNamesInDisplayOrder
 		)
+
+	def _get_character(self) -> str | None:
+		"""Get the character this key combination would produce.
+
+		Uses ToUnicodeEx with the no-state-change flag to avoid modifying keyboard state.
+		For dead keys, returns the dead key character itself.
+		Returns None for unprintable characters or when Windows key is pressed.
+		"""
+		try:
+			threadID = api.getFocusObject().windowThreadID
+		except AttributeError:
+			return None
+		keyboardLayout = user32.GetKeyboardLayout(threadID)
+		buffer = ctypes.create_unicode_buffer(_TO_UNICODE_EX_BUFFER_LENGTH)
+
+		modifierVkCodes: list[int] = []
+		hasWindowsModifier = False
+		for mod, _ in self.modifiers:
+			modifier = self.NORMAL_MODIFIER_KEYS.get(mod)
+			if modifier is None and mod in self.NORMAL_MODIFIER_KEYS.values():
+				modifier = mod
+			if modifier == VK_WIN:
+				hasWindowsModifier = True
+			elif modifier is not None:
+				modifierVkCodes.append(modifier)
+
+		# Characters with the Windows key are invalid.
+		if hasWindowsModifier:
+			return None
+
+		states = _getKeyStates(modifierVkCodes)
+
+		res = _toUnicodeEx(self.vkCode, self.scanCode, states, buffer, keyboardLayout)
+
+		# res < 0 means dead key - return the dead key character
+		if res < 0:
+			# Dead key: buffer contains the dead key character
+			# Call ToUnicodeEx again to get and clear the dead key from buffer
+			_toUnicodeEx(self.vkCode, self.scanCode, states, buffer, keyboardLayout)
+			return buffer.value[:1] if buffer.value else None
+
+		if res == 0:
+			return None
+
+		# Check alt key behavior - alt sometimes gives same character as without alt
+		if winUser.VK_MENU in modifierVkCodes:
+			altStates = _getKeyStates(modifierVkCodes, ignoredModifier=winUser.VK_MENU)
+			newBuffer = ctypes.create_unicode_buffer(_TO_UNICODE_EX_BUFFER_LENGTH)
+			_toUnicodeEx(
+				self.vkCode,
+				self.scanCode,
+				altStates,
+				newBuffer,
+				keyboardLayout,
+			)
+			# If same character with and without alt, it's not valid
+			if buffer.value == newBuffer.value:
+				return None
+
+		return buffer.value[:res]
+
+	def _get_inputHelpCharacter(self) -> str | None:
+		"""Returns the character this gesture should additionally report in input help mode."""
+		# Commands keep original behavior, even if they also produce a printable character.
+		if any(isNVDAModifierKey(mod, ext) for mod, ext in self.modifiers) or self.script:
+			return None
+
+		char = self.character
+		if not char:
+			return None
+
+		if not char.isprintable():
+			return None
+
+		# Avoid duplicating only when the display name already matches the produced character.
+		if self.displayName == char:
+			return None
+
+		return char
 
 	def _get_identifiers(self):
 		keyName = "+".join(self._keyNamesInDisplayOrder)
@@ -643,7 +763,7 @@ class KeyboardInputGesture(inputCore.InputGesture):
 			# it is already too late.
 			with ignoreInjection():
 				winUser.keybd_event(winUser.VK_NONE, 0, 0, 0)
-				winUser.keybd_event(winUser.VK_NONE, 0, winUser.KEYEVENTF_KEYUP, 0)
+				winUser.keybd_event(winUser.VK_NONE, 0, user32.KEYEVENTF.KEYUP, 0)
 		# Now actually execute the script.
 		super().executeScript(script)
 
@@ -755,6 +875,7 @@ class KeyboardInputGesture(inputCore.InputGesture):
 		keys = set(keys.split("+"))
 		names = []
 		main = None
+		numlock = None
 		try:
 			# If present, the NVDA key should appear first.
 			keys.remove("nvda")
@@ -771,9 +892,15 @@ class KeyboardInputGesture(inputCore.InputGesture):
 			label = localizedKeyLabels.get(key, key)
 			if vk in cls.NORMAL_MODIFIER_KEYS:
 				names.append(label)
+			elif vk == winUser.VK_NUMLOCK:
+				# Numlock can be both modifier or main key so handle it separately and add it at the end after modifiers
+				# but before main key
+				numlock = label
 			else:
 				# The main key must be last, so handle that outside the loop.
 				main = label
+		if numlock is not None:
+			names.append(numlock)
 		if main is not None:
 			# If there is no main key, this gesture identifier only contains modifiers.
 			names.append(main)
@@ -799,7 +926,7 @@ def injectRawKeyboardInput(isPress, code, isExtended):
 	if isExtended:
 		# Change what we pass to MapVirtualKeyEx, but don't change what NVDA gets.
 		mapScan |= 0xE000
-	vkCode = winUser.user32.MapVirtualKeyExW(mapScan, winUser.MAPVK_VSC_TO_VK_EX, getInputHkl())
+	vkCode = user32.MapVirtualKeyEx(mapScan, winUser.MAPVK_VSC_TO_VK_EX, getInputHkl())
 	flags = 0
 	if not isPress:
 		flags |= 2
