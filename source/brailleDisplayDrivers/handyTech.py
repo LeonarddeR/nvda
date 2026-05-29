@@ -11,7 +11,6 @@ Braille display driver for Handy Tech braille displays.
 import datetime
 import time
 import weakref
-from collections import OrderedDict
 from io import BytesIO
 
 import api
@@ -144,20 +143,16 @@ class Model(AutoPropertyObject):
 	"""Extend from this base class to define model specific behavior."""
 
 	#: Device identifier, used in the protocol to identify the device
-	#: @type: string
-	deviceId = None
+	deviceId: bytes | None = None
 
 	#: A generic name that identifies the model/series, used in gesture identifiers
-	#: @type: string
-	genericName = None
+	genericName: str | None = None
 
 	#: Specific name of this model
-	#: @type: string
-	name = None
+	name: str | None = None
 
 	#: Number of braille cells
-	#: @type: int
-	numCells = 0
+	numCells: int = 0
 
 	def __init__(self, display):
 		super().__init__()
@@ -172,9 +167,7 @@ class Model(AutoPropertyObject):
 		not been set, which is needed for sending packets to the display.
 		"""
 
-	def _get__display(self):
-		"""The L{BrailleDisplayDriver} which initialized this Model instance"""
-		# self._displayRef is a weakref, call it to get the object
+	def _get__display(self) -> "BrailleDisplayDriver":
 		return self._displayRef()
 
 	def _get_keys(self):
@@ -185,42 +178,40 @@ class Model(AutoPropertyObject):
 		or relabel keys. Even if a key isn't available on all devices, add it here
 		if it would make sense for most devices.
 		"""
-		return OrderedDict(
-			{
-				# Braille input keys
-				# Numbered from left to right, might be used for braille input on some models
-				KEY_B1: "b1",
-				KEY_B2: "b2",
-				KEY_B3: "b3",
-				KEY_B4: "b4",
-				KEY_B5: "b5",
-				KEY_B6: "b6",
-				KEY_B7: "b7",
-				KEY_B8: "b8",
-				KEY_LEFT_SPACE: "leftSpace",
-				KEY_RIGHT_SPACE: "rightSpace",
-				# Left and right keys, found on Easy Braille and Braille Wave
-				KEY_LEFT: "left",
-				KEY_RIGHT: "right",
-				# Modular/BS80 keypad
-				0x01: "b12",
-				0x09: "b13",
-				0x05: "n0",
-				0x0D: "b14",
-				0x11: "b11",
-				0x15: "n1",
-				0x19: "n2",
-				0x1D: "n3",
-				0x02: "b10",
-				0x06: "n4",
-				0x0A: "n5",
-				0x0E: "n6",
-				0x12: "b9",
-				0x16: "n7",
-				0x1A: "n8",
-				0x1E: "n9",
-			},
-		)
+		return {
+			# Braille input keys
+			# Numbered from left to right, might be used for braille input on some models
+			KEY_B1: "b1",
+			KEY_B2: "b2",
+			KEY_B3: "b3",
+			KEY_B4: "b4",
+			KEY_B5: "b5",
+			KEY_B6: "b6",
+			KEY_B7: "b7",
+			KEY_B8: "b8",
+			KEY_LEFT_SPACE: "leftSpace",
+			KEY_RIGHT_SPACE: "rightSpace",
+			# Left and right keys, found on Easy Braille and Braille Wave
+			KEY_LEFT: "left",
+			KEY_RIGHT: "right",
+			# Modular/BS80 keypad
+			0x01: "b12",
+			0x09: "b13",
+			0x05: "n0",
+			0x0D: "b14",
+			0x11: "b11",
+			0x15: "n1",
+			0x19: "n2",
+			0x1D: "n3",
+			0x02: "b10",
+			0x06: "n4",
+			0x0A: "n5",
+			0x0E: "n6",
+			0x12: "b9",
+			0x16: "n7",
+			0x1A: "n8",
+			0x1E: "n9",
+		}
 
 	def display(self, cells: list[int]):
 		"""Display cells on the braille display
@@ -664,20 +655,13 @@ class ActivatorPro80(ActivatorPro):
 	numCells = 80
 
 
-def _allSubclasses(cls):
-	"""List all direct and indirect subclasses of cls
-
-	This function calls itself recursively to return all subclasses of cls.
-
-	@param cls: the base class to list subclasses of
-	@type cls: class
-	@rtype: [class]
-	"""
+def _allSubclasses(cls: type) -> list[type]:
+	"""List all direct and indirect subclasses of cls recursively."""
 	return cls.__subclasses__() + [g for s in cls.__subclasses__() for g in _allSubclasses(s)]
 
 
 # Model dict for easy lookup
-MODELS = {m.deviceId: m for m in _allSubclasses(Model) if hasattr(m, "deviceId")}
+MODELS = {m.deviceId: m for m in _allSubclasses(Model) if m.deviceId is not None}
 
 
 # Packet types
@@ -733,7 +717,7 @@ def _parseAtcInfo(payload: bytes) -> dict[int, int]:
 	if payload and payload[0]:
 		cellIndex = payload[0] - 1  # byte 0 is a 1-based start index
 		for byte in payload[1:]:
-			for pressure in ((byte >> 4) & 0x0F, byte & 0x0F):
+			for pressure in (byte >> 4, byte & 0x0F):
 				if pressure > 0:
 					pressures[cellIndex] = pressure
 				cellIndex += 1
@@ -837,6 +821,7 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 		self._hidSerialBuffer = b""
 		self._atc = False
 		self._atcSensitivity = 3
+		self._protocolVersion: tuple[int, int] | None = None
 
 		for portType, portId, port, portInfo in self._getTryPorts(port):
 			# At this point, a port bound to this display has been found.
@@ -880,7 +865,7 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 					self._dev.waitForRead(self.timeout)
 				self._model.postInit()
 				log.info(
-					f"Found {self._model.name} connected via {portType} ({port})",
+					f"Found {self._model.name} with protocol {self._protocolVersion}connected via {portType} ({port})",
 				)
 				# Create the message window on the ui thread.
 				wx.CallAfter(self.createMessageWindow)
@@ -969,8 +954,8 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 		]
 		if self._model:
 			# Add the per model supported settings to the list.
-			for cls in self._model.__class__.__mro__:
-				if hasattr(cls, "supportedSettings"):
+			for cls in reversed(self._model.__class__.__mro__):
+				if "supportedSettings" in cls.__dict__:
 					settings.extend(cls.supportedSettings)
 		return settings
 
@@ -1025,14 +1010,7 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 		if BrailleDisplayDriver._sleepcounter > 0:
 			log.debug("Packet discarded as driver was requested to sleep")
 			return
-		packetBytes: bytes = b"".join(
-			[
-				intToByte(len(data) + len(packetType)),
-				packetType,
-				data,
-				b"\x16",
-			],
-		)
+		packetBytes: bytes = intToByte(len(data) + 1) + packetType + data + b"\x16"
 		if self._model:
 			packetBytes = self._model.deviceId + packetBytes
 		self.sendPacket(HT_PKT_EXTENDED, packetBytes)
@@ -1093,7 +1071,7 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 				# Extended packets are at least 5 bytes in size.
 				# The second byte is the model, the third byte is the data length, excluding the terminator
 				packet_length = self._hidSerialBuffer[2] + 4
-				if len(self._hidSerialBuffer) < packet_length:
+				if currentBufferLength < packet_length:
 					# The packet is not yet complete
 					return
 				# We have a complete packet.
@@ -1152,6 +1130,7 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 			elif extPacketType == HT_EXTPKT_KEY:
 				self._handleInput(packet[1])
 			elif extPacketType == HT_EXTPKT_GET_PROTOCOL_PROPERTIES:
+				self._protocolVersion = (packet[1], packet[2])
 				self.numCells = packet[3]
 			else:
 				handled = False
