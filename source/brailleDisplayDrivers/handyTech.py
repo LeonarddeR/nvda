@@ -257,8 +257,16 @@ class OldProtocolMixin(object):
 class AtcMixin(object):
 	"""Support for displays with Active Tactile Control (ATC).
 
-	Used by ActiveBraille-family devices (sensitivity packet 0x53, range 0-6).
+	Receive of both ATC formats (HT_EXTPKT_ATC_INFO pressure map and
+	HT_EXTPKT_READING_POSITION direct position) is handled model-agnostically in
+	the driver packet loop, so this single mixin covers all ATC devices. Only the
+	sensitivity send encoding differs by device generation, selected via
+	:attr:`_atcSensitivityLegacy`.
 	"""
+
+	#: Modular Evolution uses the legacy sensitivity packet (0x51, inverse byte);
+	#: the ActiveBraille family uses packet 0x53 with the direct value.
+	_atcSensitivityLegacy = False
 
 	supportedSettings = (
 		# Translators: Label for a setting in braille settings dialog.
@@ -275,17 +283,13 @@ class AtcMixin(object):
 	)
 
 	def sendSensitivity(self, display: "BrailleDisplayDriver", value: int) -> None:
-		"""Send ATC sensitivity to the device (ActiveBraille family: packet 0x53, range 0-6)."""
-		display.sendExtendedPacket(HT_EXTPKT_SET_ATC_SENSITIVITY_2, intToByte(value))
-
-
-class AtcEvolutionMixin(AtcMixin):
-	"""ATC support for Modular Evolution devices (sensitivity packet 0x51, inverse byte 0x0F-0xFF)."""
-
-	def sendSensitivity(self, display: "BrailleDisplayDriver", value: int) -> None:
-		"""Send ATC sensitivity to the device (Evolution: packet 0x51, 0=0xFF, 6=0x0F)."""
-		raw = 0xFF - (value * 0x28)
-		display.sendExtendedPacket(HT_EXTPKT_SET_ATC_SENSITIVITY, intToByte(raw))
+		"""Send ATC sensitivity to the device."""
+		if self._atcSensitivityLegacy:
+			# Modular Evolution: packet 0x51, inverse byte (0=0xFF, 6=0x0F).
+			display.sendExtendedPacket(HT_EXTPKT_SET_ATC_SENSITIVITY, intToByte(0xFF - value * 0x28))
+		else:
+			# ActiveBraille family: packet 0x53, direct value 0-6.
+			display.sendExtendedPacket(HT_EXTPKT_SET_ATC_SENSITIVITY_2, intToByte(value))
 
 
 class TimeSyncFirmnessMixin(object):
@@ -428,7 +432,8 @@ class ModularConnect88(TripleActionKeysMixin, Model):
 	numCells = 88
 
 
-class ModularEvolution(AtcEvolutionMixin, TripleActionKeysMixin, Model):
+class ModularEvolution(AtcMixin, TripleActionKeysMixin, Model):
+	_atcSensitivityLegacy = True
 	genericName = "Modular Evolution"
 
 	def _get_name(self):
