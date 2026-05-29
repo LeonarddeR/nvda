@@ -1138,20 +1138,17 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 			elif extPacketType == HT_EXTPKT_KEY:
 				self._handleInput(packet[1])
 			elif extPacketType == HT_EXTPKT_ATC_INFO:
-				pos = _parseAtcReadingPosition(packet[1:], self.numCells)
-				if pos is not None:
-					inputCore.manager.executeGesture(
-						InputGesture(self._model, atc=pos),
-					)
+				pressures = _parseAtcInfo(packet[1:], self.numCells)
+				if pressures:
+					inputCore.manager.executeGesture(AtcGesture(self._model, pressures=pressures))
 			elif extPacketType == HT_EXTPKT_READING_POSITION:
-				log.error(packet)
-				# Older ATC format used by Modular Evolution: a single byte
-				# containing the 0-based cell index, or 0xFF for no touch.
+				# Direct reading position from ActiveBraille / Actilino / ActiveStar:
+				# a single byte holding the 0-based cell index, or 0xFF for no touch.
 				# See brltty Drivers/Braille/HandyTech/braille.c case HT_EXTPKT_ReadingPosition.
 				rawPos = packet[1] if len(packet) > 1 else 0xFF
 				if rawPos != 0xFF and rawPos < self.numCells:
 					inputCore.manager.executeGesture(
-						InputGesture(self._model, atc=rawPos),
+						AtcGesture(self._model, cellIndexes=[rawPos], readingPosition=rawPos),
 					)
 			elif extPacketType == HT_EXTPKT_GET_PROTOCOL_PROPERTIES:
 				self.numCells = packet[3]
@@ -1205,8 +1202,8 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 	# Translators: description of the script to toggle braille input
 	script_toggleBrailleInput.__doc__ = _("Toggle braille input")
 
-	def script_atcRouteReview(self, gesture: "InputGesture") -> None:
-		pos = gesture.routingIndex
+	def script_atcRouteReview(self, gesture: "AtcGesture") -> None:
+		pos = gesture.readingPosition
 		if pos is None:
 			return
 		bufferPos = braille.handler.buffer.windowStartPos + pos
@@ -1304,7 +1301,13 @@ class AtcGesture(braille.BrailleDisplayGesture):
 	#: 0-based index of the highest-pressure (focal) cell, or None.
 	readingPosition: int | None
 
-	def __init__(self, model, pressures=None, cellIndexes=None, readingPosition=None):
+	def __init__(
+		self,
+		model,
+		pressures: dict[int, int] | None = None,
+		cellIndexes: list[int] | None = None,
+		readingPosition: int | None = None,
+	):
 		super().__init__()
 		self.model = model.genericName.replace(" ", "")
 		self.id = "atc"
@@ -1323,13 +1326,9 @@ class AtcGesture(braille.BrailleDisplayGesture):
 class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGesture):
 	source = BrailleDisplayDriver.name
 
-	def __init__(self, model, keys=(), isBrailleInput=False, atc=None):
+	def __init__(self, model, keys=(), isBrailleInput=False):
 		super(InputGesture, self).__init__()
 		self.model = model.genericName.replace(" ", "")
-		if atc is not None:
-			self.routingIndex = atc
-			self.id = "atc"
-			return
 		self.keys = set(keys)
 
 		self.keyNames = names = []
