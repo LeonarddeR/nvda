@@ -1292,6 +1292,34 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 	)
 
 
+class AtcGesture(braille.BrailleDisplayGesture):
+	"""A touch reported by Active Tactile Control (ATC) on a Handy Tech display."""
+
+	source = BrailleDisplayDriver.name
+
+	#: Per-cell touch pressure {0-based cell index: pressure 1-15}.
+	#: Empty for the 0x55 direct-position path, which reports no pressures.
+	pressures: dict[int, int]
+
+	#: 0-based index of the highest-pressure (focal) cell, or None.
+	readingPosition: int | None
+
+	def __init__(self, model, pressures=None, cellIndexes=None, readingPosition=None):
+		super().__init__()
+		self.model = model.genericName.replace(" ", "")
+		self.id = "atc"
+		if pressures:
+			# 0x52 pressure-map path: derive cells + focal point from pressures.
+			self.pressures = pressures
+			self.cellIndexes = sorted(pressures)
+			self.readingPosition = max(pressures, key=pressures.get)
+		else:
+			# 0x55 direct path: a finished reading position, no pressure data.
+			self.pressures = {}
+			self.cellIndexes = cellIndexes
+			self.readingPosition = readingPosition
+
+
 class InputGesture(braille.BrailleDisplayGesture, brailleInput.BrailleInputGesture):
 	source = BrailleDisplayDriver.name
 
