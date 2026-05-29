@@ -693,6 +693,14 @@ HT_EXTPKT_GET_PROTOCOL_PROPERTIES = b"\xc1"
 HT_EXTPKT_GET_FIRMWARE_VERSION = b"\xc2"
 HT_EXTPKT_NO_RECONNECT = b"\xae"
 
+# Reason codes carried in the second data byte of an extended confirmation (NAK) packet.
+HT_NAK_REASONS = {
+	1: "unknown command byte",
+	2: "wrong count of data bytes",
+	3: "invalid value",
+	4: "protocol mismatch",
+}
+
 # HID specific constants
 HT_HID_RPT_OutData = b"\x01"  # receive data from device
 HT_HID_RPT_InData = b"\x02"  # send data to device
@@ -1126,7 +1134,13 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 				if packet[1:2] == HT_PKT_ACK:
 					self._handleAck()
 				elif packet[1:2] == HT_PKT_NAK:
-					log.debugWarning("NAK received!")
+					if len(packet) > 2:
+						reason = packet[2]
+						log.debugWarning(
+							f"NAK received: {HT_NAK_REASONS.get(reason, 'unknown reason')} ({reason})",
+						)
+					else:
+						log.debugWarning("NAK received!")
 			elif extPacketType == HT_EXTPKT_KEY:
 				self._handleInput(packet[1])
 			elif extPacketType == HT_EXTPKT_GET_PROTOCOL_PROPERTIES:
