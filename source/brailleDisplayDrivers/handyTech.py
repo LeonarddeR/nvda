@@ -701,29 +701,25 @@ HT_HID_RPT_InBaud = b"\xfe"  # set baud rate of serial connection
 HT_HID_CMD_FlushBuffers = b"\x01"  # flush input and output buffers
 
 
-def _parseAtcReadingPosition(payload: bytes, cellCount: int) -> Optional[int]:
-	"""Parse an HT_EXTPKT_ATC_INFO payload and return the cell index with highest touch pressure.
+def _parseAtcInfo(payload: bytes, cellCount: int) -> dict[int, int]:
+	"""Parse an HT_EXTPKT_ATC_INFO payload into a per-cell touch pressure map.
 
 	Payload layout (from brltty braille.c:1813-1850):
 	- Byte 0: 1-based starting cell index; 0 means no touch.
 	- Bytes 1..N: packed 4-bit pressure values, high nibble first, for consecutive cells.
 
-	Returns the 0-based cell index with highest pressure, or None if no touch or out of range.
+	:return: {0-based cell index: pressure 1-15} for every touched cell.
+		Empty if no touch.
 	"""
-	if not payload or payload[0] == 0:
-		return None
-	cellIndex = payload[0] - 1
-	highestPressure = 0
-	readingPosition: Optional[int] = None
-	for byte in payload[1:]:
-		for pressure in ((byte >> 4) & 0x0F, byte & 0x0F):
-			if pressure > highestPressure:
-				highestPressure = pressure
-				readingPosition = cellIndex
-			cellIndex += 1
-	if readingPosition is None or readingPosition >= cellCount:
-		return None
-	return readingPosition
+	pressures: dict[int, int] = {}
+	if payload and payload[0]:
+		cellIndex = payload[0] - 1  # byte 0 is a 1-based start index
+		for byte in payload[1:]:
+			for pressure in ((byte >> 4) & 0x0F, byte & 0x0F):  # high nibble first
+				if pressure > 0 and cellIndex < cellCount:
+					pressures[cellIndex] = pressure
+				cellIndex += 1
+	return pressures
 
 
 class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
