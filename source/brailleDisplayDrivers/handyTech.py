@@ -248,23 +248,31 @@ class OldProtocolMixin:
 
 
 class AtcMixin:
-	"""Support for displays with Active Tactile Control (ATC).
+	"""Base ATC support for all ATC-capable Handy Tech displays.
 
-	Receive of both ATC formats (HT_EXTPKT_ATC_INFO pressure map and
-	HT_EXTPKT_READING_POSITION direct position) is handled model-agnostically in
-	the driver packet loop, so this single mixin covers all ATC devices. Only the
-	sensitivity send encoding differs by device generation, selected via
-	:attr:`_atcSensitivityLegacy`. ``atcSensitivity`` is always in range 0-6; the
-	legacy path inverts this to the hardware byte 0xFF-0x0F.
+	Owns the ``atc`` toggle setting. Subclasses own the ``atcSensitivity`` setting
+	with the appropriate ``useConfig`` value and send encoding.
 	"""
-
-	#: Modular Evolution uses the legacy sensitivity packet (0x51, inverse byte);
-	#: the ActiveBraille family uses packet 0x53 with the direct value.
-	_atcSensitivityLegacy = False
 
 	supportedSettings = (
 		# Translators: Label for a setting in braille settings dialog.
 		BooleanDriverSetting("atc", _("&Active tactile control"), defaultVal=True, useConfig=True),
+	)
+
+	def sendSensitivity(self, display: "BrailleDisplayDriver", value: int) -> None:
+		"""Send ATC sensitivity (value 0-6) using the legacy Modular Evolution encoding."""
+		# Packet 0x51, inverse byte: sensitivity 0 → 0xFF, 6 → 0x0F.
+		display.sendExtendedPacket(HT_EXTPKT_SET_ATC_SENSITIVITY, intToByte(0xFF - (value * 0x28)))
+
+
+class AtcReadingPositionMixin(AtcMixin):
+	"""ATC support for Active-family displays (ActiveBraille, Actilino, ActiveStar, Activator).
+
+	Uses the newer sensitivity packet (0x53, direct value). ATC sensitivity is a
+	display-side setting; NVDA reads it from the device on init and does not persist it.
+	"""
+
+	supportedSettings = (
 		# Translators: Label for a setting in braille settings dialog.
 		NumericDriverSetting(
 			"atcSensitivity",
@@ -272,21 +280,18 @@ class AtcMixin:
 			defaultVal=3,
 			minVal=0,
 			maxVal=6,
-			useConfig=True,
+			useConfig=False,
 		),
 	)
 
-	def sendSensitivity(self, display: "BrailleDisplayDriver", value: int) -> None:
-		"""Send ATC sensitivity (value 0-6) to the device.
+	def postInit(self):
+		super().postInit()
+		log.debug("Request current ATC sensitivity")
+		self._display.sendExtendedPacket(HT_EXTPKT_GET_ATC_SENSITIVITY_2)
 
-		The encoding is selected by :attr:`_atcSensitivityLegacy`.
-		"""
-		if self._atcSensitivityLegacy:
-			# Modular Evolution: packet 0x51, inverse byte (0=0xFF, 6=0x0F).
-			display.sendExtendedPacket(HT_EXTPKT_SET_ATC_SENSITIVITY, intToByte(0xFF - (value * 0x28)))
-		else:
-			# ActiveBraille family: packet 0x53, direct value 0-6.
-			display.sendExtendedPacket(HT_EXTPKT_SET_ATC_SENSITIVITY_2, intToByte(value))
+	def sendSensitivity(self, display: "BrailleDisplayDriver", value: int) -> None:
+		"""Send ATC sensitivity (value 0-6) using the direct Active-family encoding."""
+		display.sendExtendedPacket(HT_EXTPKT_SET_ATC_SENSITIVITY_2, intToByte(value))
 
 
 class TimeSyncFirmnessMixin:
@@ -430,8 +435,19 @@ class ModularConnect88(TripleActionKeysMixin, Model):
 
 
 class ModularEvolution(AtcMixin, TripleActionKeysMixin, Model):
-	_atcSensitivityLegacy = True  # 0x51 inverse-byte encoding rather than the default 0x53 direct value
 	genericName = "Modular Evolution"
+
+	supportedSettings = (
+		# Translators: Label for a setting in braille settings dialog.
+		NumericDriverSetting(
+			"atcSensitivity",
+			_("ATC &sensitivity"),
+			defaultVal=3,
+			minVal=0,
+			maxVal=6,
+			useConfig=True,
+		),
+	)
 
 	def _get_name(self):
 		return f"{self.genericName} {self.numCells}"
@@ -453,7 +469,7 @@ class EasyBraille(OldProtocolMixin, Model):
 	genericName = name = "Easy Braille"
 
 
-class ActiveBraille(TimeSyncFirmnessMixin, AtcMixin, JoystickMixin, TripleActionKeysMixin, Model):
+class ActiveBraille(TimeSyncFirmnessMixin, AtcReadingPositionMixin, JoystickMixin, TripleActionKeysMixin, Model):
 	deviceId = MODEL_ACTIVE_BRAILLE
 	numCells = 40
 	genericName = name = "Active Braille"
@@ -466,13 +482,13 @@ class ConnectBraille(TripleActionKeysMixin, Model):
 	name = "Connect Braille"
 
 
-class Actilino(TimeSyncFirmnessMixin, AtcMixin, JoystickMixin, TripleActionKeysMixin, Model):
+class Actilino(TimeSyncFirmnessMixin, AtcReadingPositionMixin, JoystickMixin, TripleActionKeysMixin, Model):
 	deviceId = MODEL_ACTILINO
 	numCells = 16
 	genericName = name = "Actilino"
 
 
-class ActiveStar40(TimeSyncFirmnessMixin, AtcMixin, TripleActionKeysMixin, Model):
+class ActiveStar40(TimeSyncFirmnessMixin, AtcReadingPositionMixin, TripleActionKeysMixin, Model):
 	deviceId = MODEL_ACTIVE_STAR_40
 	numCells = 40
 	name = "Active Star 40"
@@ -595,7 +611,7 @@ class Modular80(Modular):
 class Activator(
 	ActiveSplitMixin,
 	TimeSyncFirmnessMixin,
-	AtcMixin,
+	AtcReadingPositionMixin,
 	JoystickMixin,
 	TripleActionKeysMixin,
 	Model,
@@ -618,7 +634,7 @@ class Activator(
 class ActivatorPro(
 	ActiveSplitMixin,
 	TimeSyncFirmnessMixin,
-	AtcMixin,
+	AtcReadingPositionMixin,
 	TripleActionKeysMixin,
 	Model,
 ):
@@ -1135,28 +1151,41 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 					log.debugWarning("NAK received!")
 			elif extPacketType == HT_EXTPKT_KEY:
 				self._handleInput(packet[1])
-			elif extPacketType == HT_EXTPKT_ATC_INFO:
-				pressures = _parseAtcInfo(packet[1:])
-				if pressures:
-					inputCore.manager.executeGesture(AtcGesture(self._model, pressures=pressures))
-			elif extPacketType == HT_EXTPKT_READING_POSITION:
-				# Direct reading position from ActiveBraille / Actilino / ActiveStar:
-				# a single byte holding the 0-based cell index, or 0xFF for no touch.
-				rawPos = packet[1] if len(packet) > 1 else 0xFF
-				if rawPos != 0xFF and rawPos < self.numCells:
-					inputCore.manager.executeGesture(
-						AtcGesture(self._model, cellIndexes=[rawPos], readingPosition=rawPos),
-					)
 			elif extPacketType == HT_EXTPKT_GET_PROTOCOL_PROPERTIES:
 				self.numCells = packet[3]
 			else:
+				handled = False
+				if isinstance(self._model, AtcMixin):
+					if extPacketType == HT_EXTPKT_ATC_INFO:
+						pressures = _parseAtcInfo(packet[1:])
+						if pressures:
+							inputCore.manager.executeGesture(AtcGesture(self._model, pressures=pressures))
+						else:
+							inputCore.manager.executeGesture(AtcGesture(self._model))
+						handled = True
+					elif extPacketType == HT_EXTPKT_READING_POSITION:
+						# Direct reading position: a single byte holding the 0-based cell index,
+						# or 0xFF for no touch.
+						rawPos = packet[1] if len(packet) > 1 else 0xFF
+						if rawPos != 0xFF and rawPos < self.numCells:
+							inputCore.manager.executeGesture(
+								AtcGesture(self._model, cellIndexes=[rawPos], readingPosition=rawPos),
+							)
+						else:
+							inputCore.manager.executeGesture(AtcGesture(self._model))
+						handled = True
+				if isinstance(self._model, AtcReadingPositionMixin):
+					if extPacketType == HT_EXTPKT_GET_ATC_SENSITIVITY_2 and len(packet) > 1:
+						self._atcSensitivity = packet[1]
+						handled = True
 				if isinstance(self._model, TimeSyncFirmnessMixin):
 					if extPacketType == HT_EXTPKT_GET_RTC:
 						self._model.handleTime(packet[1:])
+						handled = True
 					elif extPacketType == HT_EXTPKT_GET_FIRMNESS:
 						self._dotFirmness = packet[1]
-				else:
-					# Unknown extended packet, log it
+						handled = True
+				if not handled:
 					log.debugWarning(
 						f"Unhandled extended packet of type {extPacketType!r}: {packet!r}",
 					)
