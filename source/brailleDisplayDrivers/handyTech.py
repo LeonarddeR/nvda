@@ -710,12 +710,12 @@ HT_HID_RPT_InBaud = b"\xfe"  # set baud rate of serial connection
 HT_HID_CMD_FlushBuffers = b"\x01"  # flush input and output buffers
 
 
-def _parseAtcInfo(payload: bytes, cellCount: int) -> dict[int, int]:
+def _parseAtcInfo(payload: bytes) -> dict[int, int]:
 	"""Parse an HT_EXTPKT_ATC_INFO payload into a per-cell touch pressure map.
 
-	Payload layout (from brltty braille.c:1813-1850):
+	Payload layout:
 	- Byte 0: 1-based starting cell index; 0 means no touch.
-	- Bytes 1..N: packed 4-bit pressure values, high nibble first, for consecutive cells.
+	- Bytes 1..N: packed 4-bit pressure values, two cells per byte.
 
 	:return: {0-based cell index: pressure 1-15} for every touched cell.
 		Empty if no touch.
@@ -724,10 +724,10 @@ def _parseAtcInfo(payload: bytes, cellCount: int) -> dict[int, int]:
 	if payload and payload[0]:
 		cellIndex = payload[0] - 1  # byte 0 is a 1-based start index
 		for byte in payload[1:]:
-			for pressure in ((byte >> 4) & 0x0F, byte & 0x0F):  # high nibble first
-				if pressure > 0 and cellIndex < cellCount:
+			for pressure in ((byte >> 4) & 0x0F, byte & 0x0F):
+				if pressure > 0:
 					pressures[cellIndex] = pressure
-				cellIndex += 1  # advance index even for out-of-range cells
+				cellIndex += 1
 	return pressures
 
 
@@ -1147,13 +1147,12 @@ class BrailleDisplayDriver(braille.BrailleDisplayDriver, ScriptableObject):
 			elif extPacketType == HT_EXTPKT_KEY:
 				self._handleInput(packet[1])
 			elif extPacketType == HT_EXTPKT_ATC_INFO:
-				pressures = _parseAtcInfo(packet[1:], self.numCells)
+				pressures = _parseAtcInfo(packet[1:])
 				if pressures:
 					inputCore.manager.executeGesture(AtcGesture(self._model, pressures=pressures))
 			elif extPacketType == HT_EXTPKT_READING_POSITION:
 				# Direct reading position from ActiveBraille / Actilino / ActiveStar:
 				# a single byte holding the 0-based cell index, or 0xFF for no touch.
-				# See brltty Drivers/Braille/HandyTech/braille.c case HT_EXTPKT_ReadingPosition.
 				rawPos = packet[1] if len(packet) > 1 else 0xFF
 				if rawPos != 0xFF and rawPos < self.numCells:
 					inputCore.manager.executeGesture(
