@@ -33,6 +33,10 @@ Please refer to [the developer guide](https://download.nvaccess.org/documentatio
   * Drivers should set `cellIndexes` directly instead of `routingIndex`.
   * When a gesture addresses more than one cell, its `id` should be set to `"multiRouting"` (or be built via the new `BrailleDisplayGesture.idForCellCount(n)` helper).
   * `cellIndexes` is not limited to routing keys; touch-sensitive cells (e.g. Handy Tech Active Tactile Control) can reuse the same attribute.
+* Add-ons can now provide `onEnable` and `onDisable` functions in their `installTasks.py` module, which NVDA runs when the add-on is enabled or disabled after a restart. (#18687, @LeonarddeR)
+  * `onEnable` receives `isInstall=True` when the add-on is enabled as part of a fresh installation, and `onDisable` receives `isRemove=True` when the add-on is disabled as part of its removal.
+  * The `onInstall` task now accepts an optional `previousVersion` argument and `onUninstall` an optional `isUpdating` argument, so add-ons can tell a fresh install or removal apart from an update.
+  * Install tasks are now called via `extensionPoints.util.callWithSupportedKwargs`, so each function only needs to declare the keyword arguments it uses; existing argument-less tasks keep working unchanged.
 
 #### Deprecations
 

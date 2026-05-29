@@ -42,6 +42,7 @@ from types import ModuleType
 from addonStore.models.status import AddonStateCategory, SupportsAddonState
 from addonStore.models.version import MajorMinorPatch, SupportsVersionCheck
 import extensionPoints
+from extensionPoints.util import callWithSupportedKwargs
 from utils._deprecate import handleDeprecations, MovedSymbol
 from utils.caseInsensitiveCollections import CaseInsensitiveSet
 from utils.tempFile import _createEmptyTempFileForDeletingFile
@@ -389,12 +390,65 @@ def disableAddonsIfAny():
 	state[AddonStateCategory.PENDING_ENABLE].clear()
 
 
+def _runEnableDisableTasks(
+	pendingInstall: set[str],
+	pendingEnable: set[str],
+	pendingDisable: set[str],
+) -> None:
+	"""Run onEnable/onDisable install tasks for add-ons whose enabled state changed this startup.
+
+	Called once pending installs, removes, enables and disables have been resolved.
+	Each argument holds the add-on names that were, respectively, pending install, pending enable
+	and pending disable before that resolution.
+
+	``onEnable`` runs for add-ons that have just become enabled: with ``isInstall=True`` when the
+	add-on was freshly installed, otherwise ``isInstall=False``.
+	``onDisable`` runs with ``isRemove=False`` for add-ons the user has just disabled.
+	(The removal case, ``onDisable(isRemove=True)``, is handled in :meth:`Addon.completeRemove`.)
+
+	Add-ons that are incompatible with this version of NVDA, or otherwise blocked, are skipped:
+	their install tasks may fail to import under the current API. Running ``onDisable`` for such
+	add-ons inside a previous, still-compatible copy of NVDA is tracked separately (#18687).
+	"""
+	for addon in getAvailableAddons():
+		if not addon.isCompatible or addon.isBlocked:
+			# Deferred: incompatible add-ons may not import under the current API.
+			continue
+		if addon.name in pendingInstall and not addon.isDisabled:
+			taskName, taskKwargs = "onEnable", {"isInstall": True}
+		elif addon.name in pendingEnable and not addon.isDisabled:
+			taskName, taskKwargs = "onEnable", {"isInstall": False}
+		elif addon.name in pendingDisable and addon.isDisabled:
+			taskName, taskKwargs = "onDisable", {"isRemove": False}
+		else:
+			continue
+		# Ensure the add-on is discoverable so its installTasks module can use translations,
+		# mirroring completeRemove. Only remove it again if we added it ourselves.
+		wasAvailable = addon.path in _availableAddons
+		if not wasAvailable:
+			_availableAddons[addon.path] = addon
+		try:
+			addon.runInstallTask(taskName, **taskKwargs)
+		except:  # noqa: E722
+			log.error(f"task '{taskName}' on addon '{addon.name}' failed", exc_info=True)
+		finally:
+			if not wasAvailable:
+				del _availableAddons[addon.path]
+			addon._cleanupAddonImports()
+
+
 def initialize():
 	"""Initializes the add-ons subsystem."""
 	if config.isAppX:
 		log.info("Add-ons not supported when running as a Windows Store application")
 		return
 	state.load()
+	# #18687: Snapshot the add-ons whose enabled state is about to change, before
+	# disableAddonsIfAny() and getAvailableAddons() resolve and clear these pending sets.
+	# These drive the onEnable/onDisable install tasks run further below.
+	pendingInstall = CaseInsensitiveSet(state[AddonStateCategory.PENDING_INSTALL])
+	pendingEnable = CaseInsensitiveSet(state[AddonStateCategory.PENDING_ENABLE])
+	pendingDisable = CaseInsensitiveSet(state[AddonStateCategory.PENDING_DISABLE])
 	# #3090: Are there add-ons that are supposed to not run for this session?
 	disableAddonsIfAny()
 	getAvailableAddons(refresh=True, isFirstLoad=True)
@@ -416,6 +470,8 @@ def initialize():
 		state[AddonStateCategory.PENDING_OVERRIDE_COMPATIBILITY] -= missingPendingOverrideCompat
 	if NVDAState.shouldWriteToDisk():
 		state.save()
+	# #18687: Run onEnable/onDisable install tasks for add-ons whose enabled state just changed.
+	_runEnableDisableTasks(pendingInstall, pendingEnable, pendingDisable)
 	initializeModulePackagePaths()
 
 
@@ -443,6 +499,10 @@ def _getAvailableAddonsFromPath(
 	@param path: path from where to find addon directories.
 	"""
 	log.debug("Listing add-ons from %s", path)
+	# #18687: Snapshot pending installs before processing so completeRemove can tell whether a
+	# removal is part of an update (a newer same-name version is pending install). This must not
+	# be read live inside the loop, since completeInstall discards names from this set as it runs.
+	pendingInstallsSnapshot = CaseInsensitiveSet(state[AddonStateCategory.PENDING_INSTALL])
 	for p in os.listdir(path):
 		if p.endswith(DELETEDIR_SUFFIX):
 			if isFirstLoad and NVDAState.shouldWriteToDisk():
@@ -464,7 +524,7 @@ def _getAvailableAddonsFromPath(
 						and not a.path.endswith(ADDON_PENDINGINSTALL_SUFFIX)
 					):
 						try:
-							a.completeRemove()
+							a.completeRemove(isUpdating=name in pendingInstallsSnapshot)
 							continue
 						except RuntimeError:
 							log.exception(f"Failed to remove {name} add-on")
@@ -533,6 +593,23 @@ def getAvailableAddons(
 	return (addon for addon in _availableAddons.values() if not filterFunc or filterFunc(addon))
 
 
+def _getInstalledAddonVersion(name: str, excludePath: str | None = None) -> str | None:
+	"""Return the version of the currently available add-on with the given name, if any.
+
+	Used to provide the ``previousVersion`` argument to an add-on's ``onInstall`` task,
+	so authors can tell a fresh install apart from an update.
+
+	:param name: The add-on name to look up.
+	:param excludePath: An add-on path to ignore, e.g. the pending-install copy of the add-on
+		that is currently being installed (which shares the same name).
+	:return: The matching add-on's version, or ``None`` if there is no other add-on with this name.
+	"""
+	for addon in getAvailableAddons():
+		if addon.name == name and addon.path != excludePath:
+			return addon.version
+	return None
+
+
 def installAddonBundle(bundle: AddonBundle) -> Addon | None:
 	"""Extracts an Addon bundle in to a unique subdirectory of the user addons directory,
 	marking the addon as needing 'install completion' on NVDA restart.
@@ -559,8 +636,11 @@ def installAddonBundle(bundle: AddonBundle) -> Addon | None:
 	# #2715: The add-on must be added to _availableAddons here so that
 	# translations can be used in installTasks module.
 	_availableAddons[addon.path] = addon
+	# #18687: Provide the version being replaced (if any) so onInstall can distinguish a fresh
+	# install from an update. The new copy lives at a `.pendingInstall` path, so exclude it.
+	previousVersion = _getInstalledAddonVersion(addon.name, excludePath=addon.path)
 	try:
-		addon.runInstallTask("onInstall")
+		addon.runInstallTask("onInstall", previousVersion=previousVersion)
 	except Exception as onInstallException:
 		bundle._installExceptions.append(onInstallException)
 		# Broad except used, since we can not know what exceptions might be thrown by the install tasks.
@@ -683,15 +763,32 @@ class Addon(AddonBase):
 			state[AddonStateCategory.PENDING_DISABLE].discard(self.name)
 		state.save()
 
-	def completeRemove(self, runUninstallTask: bool = True) -> None:
+	def completeRemove(self, runUninstallTask: bool = True, isUpdating: bool = False) -> None:
+		"""Completes removal of this add-on, running its uninstall install tasks first.
+
+		:param runUninstallTask: Whether to run the ``onDisable``/``onUninstall`` install tasks.
+			Set to ``False`` when rolling back a failed installation.
+		:param isUpdating: Whether this removal is part of an update
+			(i.e. a newer version of the same add-on is pending installation).
+			Passed to the ``onUninstall`` task.
+		"""
 		if runUninstallTask:
+			# #2715: The add-on must be added to _availableAddons here so that
+			# translations can be used in installTasks module.
+			_availableAddons[self.path] = self
 			try:
-				# #2715: The add-on must be added to _availableAddons here so that
-				# translations can be used in installTasks module.
-				_availableAddons[self.path] = self
-				self.runInstallTask("onUninstall")
-			except:  # noqa: E722
-				log.error("task 'onUninstall' on addon '%s' failed" % self.name, exc_info=True)
+				# #18687: onDisable runs before onUninstall, mirroring the enable/disable
+				# lifecycle, so removal can tear down runtime state (e.g. registry changes).
+				# Each task is best-effort and independent: a failure in one is logged but
+				# does not prevent the other (or the removal itself) from running.
+				for taskName, taskKwargs in (
+					("onDisable", {"isRemove": True}),
+					("onUninstall", {"isUpdating": isUpdating}),
+				):
+					try:
+						self.runInstallTask(taskName, **taskKwargs)
+					except:  # noqa: E722
+						log.error(f"task '{taskName}' on addon '{self.name}' failed", exc_info=True)
 			finally:
 				del _availableAddons[self.path]
 				self._cleanupAddonImports()
@@ -863,13 +960,17 @@ class Addon(AddonBase):
 
 	def runInstallTask(
 		self,
-		taskName: Literal["onInstall", "onUninstall"],
+		taskName: Literal["onInstall", "onUninstall", "onEnable", "onDisable"],
 		*args,
 		**kwargs,
 	) -> None:
 		"""
 		Executes the function having the given taskName with the given args and kwargs,
 		in the add-on's installTasks module if it exists.
+		Keyword arguments are passed using :func:`extensionPoints.util.callWithSupportedKwargs`,
+		so that tasks only receive the arguments their signature declares.
+		This keeps add-ons that define tasks with no (or fewer) parameters working when new
+		keyword arguments are introduced.
 		"""
 		self._modulesBeforeInstall = set(sys.modules.keys())
 		if not hasattr(self, "_installTasksModule"):
@@ -881,7 +982,7 @@ class Addon(AddonBase):
 		if self._installTasksModule:
 			func = getattr(self._installTasksModule, taskName, None)
 			if func:
-				func(*args, **kwargs)
+				callWithSupportedKwargs(func, *args, **kwargs)
 
 	def _cleanupAddonImports(self) -> None:
 		for modName in self._importedAddonModules:

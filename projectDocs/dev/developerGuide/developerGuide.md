@@ -1136,10 +1136,14 @@ The following plugins and drivers can be included in an add-on:
 
 ### Optional install / Uninstall code {#installUninstallCode}
 
-If you need to execute code as your add-on is being installed or uninstalled from NVDA (e.g. to validate license information or to copy files to a custom location), you can provide a Python file called `installTasks.py` in the archive which contains special functions that NVDA will call while installing or uninstalling your add-on.
+If you need to execute code as your add-on is being installed, uninstalled, enabled or disabled from NVDA (e.g. to validate license information or to copy files to a custom location), you can provide a Python file called `installTasks.py` in the archive which contains special functions that NVDA will call at these points in the add-on's lifecycle.
 This file should avoid loading any modules that are not absolutely necessary, especially Python C extensions or dlls from your own add-on, as this could cause later removal of the add-on to fail.
 However, if this does happen, the add-on directory will be renamed and then deleted after the next restart of NVDA.
 Finally, it should not depend on the existence or state of other add-ons, as they may not be installed, may have already been removed or may not yet be initialized.
+
+Each of these functions is optional, and so are their keyword arguments.
+NVDA only passes a keyword argument to a function that declares it, so you can define `def onInstall():` without arguments, or `def onInstall(previousVersion=None):` to receive the extra information.
+This keeps add-ons working when new keyword arguments are introduced in future NVDA versions.
 
 #### the onInstall function {#onInstall}
 
@@ -1147,11 +1151,40 @@ NVDA will look for and execute an `onInstall` function in `installTasks.py` afte
 Note that although the add-on will have been extracted at this point, its directory will have a `.pendingInstall` suffix until NVDA is restarted, the directory is renamed and the add-on is really loaded for the first time.
 If this function raises an exception, the installation of the add-on will fail and its directory will be cleaned up.
 
+This function accepts an optional `previousVersion` keyword argument.
+When the add-on is replacing an already installed version of itself (i.e. an update), `previousVersion` is the version string of the add-on being replaced; for a fresh install it is `None`.
+This allows you to skip install behaviour that should only run for a first-time installation.
+
 #### The onUninstall Function {#onUninstall}
 
 NVDA will look for and execute an `onUninstall` function in `installTasks.py` when NVDA is restarted after the user has chosen to remove the add-on.
 After this function completes, the add-on's directory will automatically be removed.
 As this happens on NVDA startup before other components are initialized, this function cannot request input from the user.
+
+This function accepts an optional `isUpdating` keyword argument.
+It is `True` when the removal is part of an update (a newer version of the same add-on is pending installation), and `False` otherwise.
+This allows you to suppress uninstall behaviour, such as removing user data, when the add-on is merely being updated.
+
+#### The onEnable function {#onEnable}
+
+NVDA will look for and execute an `onEnable` function in `installTasks.py` when the add-on becomes enabled, after NVDA is restarted.
+This runs both when the user enables a previously disabled add-on and after a fresh installation completes.
+It runs only on the transition to the enabled state, not on every start of NVDA.
+
+This function accepts an optional `isInstall` keyword argument.
+It is `True` when the add-on is being enabled as part of a fresh installation, and `False` when a previously disabled add-on is being re-enabled.
+
+#### The onDisable function {#onDisable}
+
+NVDA will look for and execute an `onDisable` function in `installTasks.py` when the add-on becomes disabled, after NVDA is restarted.
+This is the counterpart of `onEnable`, and is the right place to undo runtime changes made by `onEnable` (e.g. registry changes that should not persist while the add-on is disabled).
+Like `onEnable`, it runs only on the transition to the disabled state.
+
+This function accepts an optional `isRemove` keyword argument.
+It is `True` when the add-on is being disabled as part of its removal, and `False` for a plain disable.
+As with `onUninstall`, this happens on NVDA startup before other components are initialized, so this function cannot request input from the user.
+
+Note that `onDisable` is not currently run for add-ons that NVDA automatically disables because they became incompatible after an NVDA upgrade, as the add-on's code may not be able to run under the new version of NVDA.
 
 ### Localizing Add-ons {#localizingAddons}
 
