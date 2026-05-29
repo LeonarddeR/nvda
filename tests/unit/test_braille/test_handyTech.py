@@ -28,16 +28,13 @@ class Test_parseAtcInfo(unittest.TestCase):
 		self.assertEqual(result, {0: 5})
 
 	def test_multiCellMap(self):
-		"""Multiple cells with various pressures; verify exact dict and highest-pressure cell."""
+		"""Multiple cells with various pressures; verify exact dict."""
 		# byte0 = 0x01 -> 0-based start index 0
 		# data byte 0xAB: high nibble = 0xA = 10 (cell 0), low nibble = 0xB = 11 (cell 1)
 		# data byte 0x03: high nibble = 0x0 = 0 (cell 2, no touch), low nibble = 0x3 = 3 (cell 3)
 		# data byte 0x70: high nibble = 0x7 = 7 (cell 4), low nibble = 0x0 = 0 (cell 5, no touch)
 		result = handyTech._parseAtcInfo(b"\x01\xab\x03\x70", 40)
 		self.assertEqual(result, {0: 10, 1: 11, 3: 3, 4: 7})
-		# Cell 1 has the highest pressure (11)
-		focalCell = max(result, key=result.get)
-		self.assertEqual(focalCell, 1)
 
 	def test_outOfRangeCellsExcluded(self):
 		"""Cells at or beyond cellCount are excluded from the result."""
@@ -47,8 +44,6 @@ class Test_parseAtcInfo(unittest.TestCase):
 		result = handyTech._parseAtcInfo(b"\x01\xab\xcd", 2)
 		# Only cells 0 and 1 are within range (cellCount=2 means indices 0 and 1 are valid)
 		self.assertEqual(result, {0: 10, 1: 11})
-		self.assertNotIn(2, result)
-		self.assertNotIn(3, result)
 
 	def test_startOffsetNotAtZero(self):
 		"""Start index > 1 places pressures at the correct 0-based offset."""
@@ -61,4 +56,11 @@ class Test_parseAtcInfo(unittest.TestCase):
 		"""Payload with all-zero pressure nibbles returns empty dict."""
 		# byte0 = 0x01 -> 0-based start index 0; data byte 0x00 has both nibbles = 0
 		result = handyTech._parseAtcInfo(b"\x01\x00\x00", 40)
+		self.assertEqual(result, {})
+
+	def test_startIndexBeyondCellCount(self):
+		"""Start index already >= cellCount means every cell is out of range; returns empty dict."""
+		# byte0 = 0x05 -> 0-based start index 4; cellCount = 4 means valid indices are 0-3 only
+		# data byte 0xAB: high nibble = 10 (cell 4), low nibble = 11 (cell 5) — both out of range
+		result = handyTech._parseAtcInfo(b"\x05\xab", 4)
 		self.assertEqual(result, {})

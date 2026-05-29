@@ -718,7 +718,7 @@ def _parseAtcInfo(payload: bytes, cellCount: int) -> dict[int, int]:
 			for pressure in ((byte >> 4) & 0x0F, byte & 0x0F):  # high nibble first
 				if pressure > 0 and cellIndex < cellCount:
 					pressures[cellIndex] = pressure
-				cellIndex += 1
+				cellIndex += 1  # advance index even for out-of-range cells
 	return pressures
 
 
