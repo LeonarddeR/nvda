@@ -261,7 +261,8 @@ class AtcMixin(object):
 	HT_EXTPKT_READING_POSITION direct position) is handled model-agnostically in
 	the driver packet loop, so this single mixin covers all ATC devices. Only the
 	sensitivity send encoding differs by device generation, selected via
-	:attr:`_atcSensitivityLegacy`.
+	:attr:`_atcSensitivityLegacy`. ``atcSensitivity`` is always in range 0-6; the
+	legacy path inverts this to the hardware byte 0xFF-0x0F.
 	"""
 
 	#: Modular Evolution uses the legacy sensitivity packet (0x51, inverse byte);
@@ -283,10 +284,13 @@ class AtcMixin(object):
 	)
 
 	def sendSensitivity(self, display: "BrailleDisplayDriver", value: int) -> None:
-		"""Send ATC sensitivity to the device."""
+		"""Send ATC sensitivity (value 0-6) to the device.
+
+		The encoding is selected by :attr:`_atcSensitivityLegacy`.
+		"""
 		if self._atcSensitivityLegacy:
 			# Modular Evolution: packet 0x51, inverse byte (0=0xFF, 6=0x0F).
-			display.sendExtendedPacket(HT_EXTPKT_SET_ATC_SENSITIVITY, intToByte(0xFF - value * 0x28))
+			display.sendExtendedPacket(HT_EXTPKT_SET_ATC_SENSITIVITY, intToByte(0xFF - (value * 0x28)))
 		else:
 			# ActiveBraille family: packet 0x53, direct value 0-6.
 			display.sendExtendedPacket(HT_EXTPKT_SET_ATC_SENSITIVITY_2, intToByte(value))
@@ -433,7 +437,7 @@ class ModularConnect88(TripleActionKeysMixin, Model):
 
 
 class ModularEvolution(AtcMixin, TripleActionKeysMixin, Model):
-	_atcSensitivityLegacy = True
+	_atcSensitivityLegacy = True  # 0x51 inverse-byte encoding rather than the default 0x53 direct value
 	genericName = "Modular Evolution"
 
 	def _get_name(self):
