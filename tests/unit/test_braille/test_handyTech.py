@@ -64,3 +64,34 @@ class Test_parseAtcInfo(unittest.TestCase):
 		# data byte 0xAB: high nibble = 10 (cell 4), low nibble = 11 (cell 5) — both out of range
 		result = handyTech._parseAtcInfo(b"\x05\xab", 4)
 		self.assertEqual(result, {})
+
+
+class _FakeModel:
+	"""Minimal stand-in for a Handy Tech model, as accepted by AtcGesture."""
+
+	genericName = "Active Braille"
+
+
+class TestAtcGesture(unittest.TestCase):
+	"""Tests for handyTech.AtcGesture derivation of cellIndexes and readingPosition."""
+
+	def test_pressureMapDerivesCellsAndFocalCell(self):
+		"""The pressure-map path sorts touched cells and picks the highest-pressure focal cell."""
+		# _parseAtcInfo yields cells in ascending order, so dicts here mirror that.
+		gesture = handyTech.AtcGesture(_FakeModel(), pressures={1: 4, 3: 9, 6: 7})
+		self.assertEqual(gesture.pressures, {1: 4, 3: 9, 6: 7})
+		self.assertEqual(gesture.cellIndexes, [1, 3, 6])
+		self.assertEqual(gesture.readingPosition, 3)
+		self.assertEqual(gesture.id, "atc")
+
+	def test_focalCellTieBreaksToLowestIndex(self):
+		"""When pressures tie, the lowest-indexed cell is the focal cell (matches the parser order)."""
+		gesture = handyTech.AtcGesture(_FakeModel(), pressures={2: 9, 5: 9})
+		self.assertEqual(gesture.readingPosition, 2)
+
+	def test_directPositionPath(self):
+		"""The 0x55 direct path passes a single cell through with no pressure data."""
+		gesture = handyTech.AtcGesture(_FakeModel(), cellIndexes=[7], readingPosition=7)
+		self.assertEqual(gesture.pressures, {})
+		self.assertEqual(gesture.cellIndexes, [7])
+		self.assertEqual(gesture.readingPosition, 7)
