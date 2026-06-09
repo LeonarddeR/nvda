@@ -1201,16 +1201,8 @@ class HtmlMessageDialog(MessageDialog):
 	_FAIL_ON_NO_BUTTONS = False
 	"""HtmlMessageDialog can be shown without buttons; the HTML content handles its own close action."""
 
-	_webViewBackend: str = wx.html2.WebViewBackendIE
-	"""Identifier of the WebView backend to render the message with. Override in a subclass to use another.
-
-	.. note:: The Edge backend (wx.html2.WebViewBackendEdge) is preferred over IE for modern HTML support,
-		but incurs a ~4 second cold start on each new WebView instance because wxPython 4.2 does not expose
-		wx.html2.WebViewConfiguration, preventing reuse of the underlying CoreWebView2Environment across
-		instances. Once NVDA upgrades to wxPython 4.3.0, WebViewConfiguration can be created once, held
-		alive, and passed to each WebView.New() call to eliminate the cold start. Switch this backend to
-		wx.html2.WebViewBackendEdge at that point.
-	"""
+	_webViewBackend: str = wx.html2.WebViewBackendDefault
+	"""Identifier of the WebView backend to render the message with. Override in a subclass to use another."""
 
 	def __init__(self, *args, **kwargs):
 		# Initialised before super().__init__() because it creates the WebView (binding its events) and sets
@@ -1219,9 +1211,9 @@ class HtmlMessageDialog(MessageDialog):
 		self._isContentLoaded = False
 		self._deferShowUntilLoaded = False
 		super().__init__(*args, **kwargs)
-		# The WebView (IE backend) consumes Escape natively before JavaScript keydown fires.
+		# The WebView captures keyboard focus; Escape won't naturally propagate to the dialog.
 		# Use a wx accelerator table, which is translated before the message reaches the focused
-		# child window, so Escape reliably triggers Close() regardless of what IE does with it.
+		# child window, so Escape reliably triggers Close() regardless of what the WebView does with it.
 		escapeId = wx.NewIdRef()
 		self.Bind(wx.EVT_MENU, lambda evt: self.Close(), id=escapeId)
 		self.SetAcceleratorTable(
@@ -1245,8 +1237,8 @@ class HtmlMessageDialog(MessageDialog):
 	def Show(self, show: bool = True) -> bool:
 		"""Show the dialog, deferring until the WebView content has loaded.
 
-		Some backends (e.g. Edge) load content asynchronously; showing the dialog before the content
-		is ready would present a blank WebView to the user.  If content is not yet loaded, the show is
+		The WebView loads content asynchronously; showing the dialog before the content is ready
+		would present a blank WebView to the user. If content is not yet loaded, the show is
 		deferred until :meth:`_onLoaded` fires.
 		"""
 		if show and not self._isContentLoaded:
@@ -1280,17 +1272,19 @@ class HtmlMessageDialog(MessageDialog):
 		evt.Skip()
 
 	def _onNavigating(self, evt: wx.html2.WebViewEvent) -> None:
-		evt.Veto()
 		url = evt.GetURL()
-		if not url.lower().startswith(self._ACTION_URL_PREFIX):
-			if url.lower().startswith(("http://", "https://")):
-				wx.LaunchDefaultBrowser(url)
+		if url.lower().startswith("data:text/html"):
+			# Edge fires this URL for SetPage; allow it so content loads.
 			return
-		action = url[len(self._ACTION_URL_PREFIX) :]
-		if action == "close":
-			self.Close()
-		elif handler := self._actionHandlers.get(action):
-			handler()
+		evt.Veto()
+		if url.lower().startswith(self._ACTION_URL_PREFIX):
+			action = url[len(self._ACTION_URL_PREFIX) :]
+			if action == "close":
+				self.Close()
+			elif handler := self._actionHandlers.get(action):
+				handler()
+		elif url.lower().startswith(("http://", "https://")):
+			wx.LaunchDefaultBrowser(url)
 
 	def _getFallbackAction(self) -> _Command | None:
 		"""Return a fallback close action even when no buttons are registered.
