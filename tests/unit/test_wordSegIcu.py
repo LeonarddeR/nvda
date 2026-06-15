@@ -27,3 +27,57 @@ class TestIcuStrategy(unittest.TestCase):
 	def test_icu_segmentedText_returns_text_unchanged(self):
 		strat = wordSegStrategy.IcuWordSegmentationStrategy("hello", None)
 		self.assertEqual(strat.segmentedText(), "hello")
+
+	def test_segmenter_forwards_language(self):
+		from textUtils._wordSeg.wordSegmenter import WordSegmenter
+		from textUtils.segFlag import WordSegFlag
+
+		seg = WordSegmenter("hello", None, WordSegFlag.UNISCRIBE, language="en")
+		self.assertEqual(seg.strategy.language, "en")
+
+	def test_explicit_icu_flag_selects_icu_when_available(self):
+		from textUtils._wordSeg import wordSegmenter
+		from textUtils.segFlag import WordSegFlag
+
+		with patch.object(wordSegmenter, "_ICU_AVAILABLE", True):
+			seg = wordSegmenter.WordSegmenter("hello", None, WordSegFlag.ICU)
+		self.assertIsInstance(seg.strategy, wordSegStrategy.IcuWordSegmentationStrategy)
+
+	def test_explicit_icu_flag_falls_back_when_unavailable(self):
+		from textUtils._wordSeg import wordSegmenter
+		from textUtils.segFlag import WordSegFlag
+
+		with patch.object(wordSegmenter, "_ICU_AVAILABLE", False):
+			seg = wordSegmenter.WordSegmenter("hello", None, WordSegFlag.ICU)
+		self.assertIsInstance(seg.strategy, wordSegStrategy.UniscribeWordSegmentationStrategy)
+
+	def test_auto_selects_icu_for_thai(self):
+		from textUtils._wordSeg import wordSegmenter
+		from textUtils.segFlag import WordSegFlag
+
+		thai = "สวัสดีครับ"
+		with (
+			patch.object(wordSegmenter, "_ICU_AVAILABLE", True),
+			patch.object(
+				wordSegStrategy.ChineseWordSegmentationStrategy,
+				"_lib",
+				None,
+			),
+		):
+			seg = wordSegmenter.WordSegmenter(thai, None, WordSegFlag.AUTO)
+		self.assertIsInstance(seg.strategy, wordSegStrategy.IcuWordSegmentationStrategy)
+
+	def test_auto_keeps_uniscribe_for_latin(self):
+		from textUtils._wordSeg import wordSegmenter
+		from textUtils.segFlag import WordSegFlag
+
+		with (
+			patch.object(wordSegmenter, "_ICU_AVAILABLE", True),
+			patch.object(
+				wordSegStrategy.ChineseWordSegmentationStrategy,
+				"_lib",
+				None,
+			),
+		):
+			seg = wordSegmenter.WordSegmenter("hello world", None, WordSegFlag.AUTO)
+		self.assertIsInstance(seg.strategy, wordSegStrategy.UniscribeWordSegmentationStrategy)
