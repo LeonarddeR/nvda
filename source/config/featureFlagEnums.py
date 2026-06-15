@@ -162,6 +162,26 @@ class WordNavigationUnitFlag(DisplayStringEnum):
 		}
 
 
+class CharacterNavigationUnitFlag(DisplayStringEnum):
+	"""Enumeration for character segmentation."""
+
+	DEFAULT = enum.auto()
+	AUTO = enum.auto()
+	UNISCRIBE = enum.auto()
+	ICU = enum.auto()
+
+	@property
+	def _displayStringLabels(self) -> dict["CharacterNavigationUnitFlag", str]:
+		return {
+			# Translators: Label for a method of character segmentation.
+			self.AUTO: _("Auto"),
+			# Translators: Label for a method of character segmentation.
+			self.UNISCRIBE: _("Standard"),
+			# Translators: Label for a method of character segmentation.
+			self.ICU: _("Unicode (ICU)"),
+		}
+
+
 class BrailleTextWrapFlag(DisplayStringEnum):
 	"""Enumeration containing the possible ways to wrap text in braille when a row would exceed the display.
 

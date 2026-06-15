@@ -29,9 +29,6 @@ class WordSegmenter:
 	_CHINESE_CHARACTER_AND_JAPANESE_KANJI: re.Pattern[str] = re.compile(r"[\u4E00-\u9FFF]")
 	# Japanese kana (Hiragana U+3040 - U+309F, Katakana U+30A0 - U+30FF)
 	_KANA: re.Pattern[str] = re.compile(r"[\u3040-\u309F\u30A0-\u30FF]")
-	# Thai (U+0E00-0E7F), Lao (U+0E80-0EFF), Khmer (U+1780-17FF):
-	# complex scripts where Uniscribe word breaking is weak and ICU helps.
-	_COMPLEX_SCRIPT: re.Pattern[str] = re.compile(r"[\u0E00-\u0E7F\u0E80-\u0EFF\u1780-\u17FF]")
 
 	def __init__(
 		self,
@@ -61,7 +58,11 @@ class WordSegmenter:
 					self.encoding,
 					self.language,
 				)
-			if _ICU_AVAILABLE and WordSegmenter._COMPLEX_SCRIPT.search(self.text):
+			# Prefer ICU over Uniscribe whenever it is available: ICU follows UAX#29 and
+			# handles complex scripts that Uniscribe breaks poorly. Uniscribe remains the
+			# fallback when ICU is unavailable, and stays pinned where it is strictly
+			# required (e.g. EditTextInfo, to match the Windows edit control / Notepad).
+			if _ICU_AVAILABLE:
 				return wordSegStrategy.IcuWordSegmentationStrategy(
 					self.text,
 					self.encoding,

@@ -67,12 +67,27 @@ class TestIcuStrategy(unittest.TestCase):
 			seg = wordSegmenter.WordSegmenter(thai, None, WordSegFlag.AUTO)
 		self.assertIsInstance(seg.strategy, wordSegStrategy.IcuWordSegmentationStrategy)
 
-	def test_auto_keeps_uniscribe_for_latin(self):
+	def test_auto_prefers_icu_for_latin_when_available(self):
 		from textUtils._wordSeg import wordSegmenter
 		from textUtils.segFlag import WordSegFlag
 
 		with (
 			patch.object(wordSegmenter, "_ICU_AVAILABLE", True),
+			patch.object(
+				wordSegStrategy.ChineseWordSegmentationStrategy,
+				"_lib",
+				None,
+			),
+		):
+			seg = wordSegmenter.WordSegmenter("hello world", None, WordSegFlag.AUTO)
+		self.assertIsInstance(seg.strategy, wordSegStrategy.IcuWordSegmentationStrategy)
+
+	def test_auto_falls_back_to_uniscribe_when_icu_unavailable(self):
+		from textUtils._wordSeg import wordSegmenter
+		from textUtils.segFlag import WordSegFlag
+
+		with (
+			patch.object(wordSegmenter, "_ICU_AVAILABLE", False),
 			patch.object(
 				wordSegStrategy.ChineseWordSegmentationStrategy,
 				"_lib",
@@ -87,3 +102,12 @@ class TestIcuStrategy(unittest.TestCase):
 
 		self.assertTrue(hasattr(WordNavigationUnitFlag, "ICU"))
 		self.assertTrue(WordNavigationUnitFlag.ICU.displayString)
+
+	def test_character_navigation_unit_flag_options(self):
+		from config.featureFlagEnums import CharacterNavigationUnitFlag
+
+		for member in ("DEFAULT", "AUTO", "UNISCRIBE", "ICU"):
+			self.assertTrue(hasattr(CharacterNavigationUnitFlag, member))
+		# No Chinese option for character segmentation.
+		self.assertFalse(hasattr(CharacterNavigationUnitFlag, "CHINESE"))
+		self.assertTrue(CharacterNavigationUnitFlag.ICU.displayString)

@@ -18,6 +18,7 @@ from treeInterceptorHandler import TreeInterceptor
 import textUtils
 from textUtils.segFlag import CharSegFlag, WordSegFlag
 from textUtils._wordSeg.wordSegmenter import WordSegmenter
+from winBindings.icu import ICU_AVAILABLE
 from dataclasses import dataclass
 from typing import (
 	Any,
@@ -209,8 +210,6 @@ class OffsetsTextInfo(textInfos.TextInfo, metaclass=_OffsetsTextInfoMeta):
 
 	#: Honours documentFormatting config option if true - set to false if this is not at all slow.
 	detectFormattingAfterCursorMaybeSlow: bool = True
-	#: Method to calculate character and word offsets.
-	charSegFlag: CharSegFlag = CharSegFlag.UNISCRIBE
 	#: Backing value for the deprecated useUniscribe compatibility attribute.
 	_useUniscribeOverride: bool | None = None
 
@@ -271,6 +270,19 @@ class OffsetsTextInfo(textInfos.TextInfo, metaclass=_OffsetsTextInfoMeta):
 			case _:
 				log.error(f"Unknown word segmentation standard, {self.wordSegConf.calculated()!r}")
 		return None
+
+	@property
+	def charSegFlag(self) -> CharSegFlag:
+		match self.charSegConf.calculated():
+			case config.featureFlagEnums.CharacterNavigationUnitFlag.UNISCRIBE:
+				return CharSegFlag.UNISCRIBE
+			case config.featureFlagEnums.CharacterNavigationUnitFlag.AUTO:
+				return CharSegFlag.AUTO
+			case config.featureFlagEnums.CharacterNavigationUnitFlag.ICU:
+				return CharSegFlag.ICU
+			case _:
+				log.error(f"Unknown character segmentation standard, {self.charSegConf.calculated()!r}")
+		return CharSegFlag.AUTO
 
 	#: The encoding internal to the underlying text info implementation.
 	encoding: Optional[str] = textUtils.WCHAR_ENCODING
@@ -508,7 +520,11 @@ class OffsetsTextInfo(textInfos.TextInfo, metaclass=_OffsetsTextInfoMeta):
 		lineStart, lineEnd = self._getLineOffsets(offset)
 		lineText = self._getTextRange(lineStart, lineEnd)
 		relOffset = offset - lineStart
-		if self._getEffectiveCharSegFlag() == CharSegFlag.ICU:
+		charSegFlag = self._getEffectiveCharSegFlag()
+		if charSegFlag == CharSegFlag.AUTO:
+			# Prefer ICU over Uniscribe whenever it is available; fall back to Uniscribe otherwise.
+			charSegFlag = CharSegFlag.ICU if ICU_AVAILABLE else CharSegFlag.UNISCRIBE
+		if charSegFlag == CharSegFlag.ICU:
 			from textUtils import icu
 
 			language = None
@@ -527,7 +543,7 @@ class OffsetsTextInfo(textInfos.TextInfo, metaclass=_OffsetsTextInfoMeta):
 				)
 			if offsets is not None:
 				return (offsets[0] + lineStart, offsets[1] + lineStart)
-		if self._getEffectiveCharSegFlag() == CharSegFlag.UNISCRIBE:
+		if charSegFlag == CharSegFlag.UNISCRIBE:
 			offsets = self._calculateUniscribeOffsets(lineText, textInfos.UNIT_CHARACTER, relOffset)
 			if offsets is not None:
 				return (offsets[0] + lineStart, offsets[1] + lineStart)
@@ -636,6 +652,7 @@ class OffsetsTextInfo(textInfos.TextInfo, metaclass=_OffsetsTextInfoMeta):
 		"""
 		super(OffsetsTextInfo, self).__init__(obj, position)
 		self.wordSegConf: FeatureFlag = config.conf["documentNavigation"]["wordSegmentationStandard"]
+		self.charSegConf: FeatureFlag = config.conf["documentNavigation"]["characterSegmentationStandard"]
 
 		from NVDAObjects import NVDAObject
 

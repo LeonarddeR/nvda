@@ -3566,9 +3566,20 @@ class DocumentNavigationPanel(SettingsPanel):
 		)
 		self.bindHelpEvent("WordSegmentationStandard", self.wordSegCombo)
 
+		# Translators: This is a label for the character segmentation standard in the document navigation dialog
+		characterNavigationUnitLabel = _("&Character Segmentation Standard:")
+		self.charSegCombo: nvdaControls.FeatureFlagCombo = sHelper.addLabeledControl(
+			labelText=characterNavigationUnitLabel,
+			wxCtrlClass=nvdaControls.FeatureFlagCombo,
+			keyPath=["documentNavigation", "characterSegmentationStandard"],
+			conf=config.conf,
+		)
+		self.bindHelpEvent("CharacterSegmentationStandard", self.charSegCombo)
+
 	def onSave(self) -> None:
 		self.paragraphStyleCombo.saveCurrentValueToConf()
 		self.wordSegCombo.saveCurrentValueToConf()
+		self.charSegCombo.saveCurrentValueToConf()
 
 	def postSave(self) -> None:
 		import textUtils._wordSeg

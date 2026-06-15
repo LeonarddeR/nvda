@@ -394,6 +394,7 @@ class TestIcuCharacterOffsets(unittest.TestCase):
 		text = "éx"  # e + combining acute + x
 		obj = BasicTextProvider(text=text)
 		ti = obj.makeTextInfo(Offsets(0, 0))
-		ti.charSegFlag = CharSegFlag.ICU
+		# Default charSegFlag is AUTO, which resolves to ICU when ICU is available.
+		self.assertEqual(ti._getEffectiveCharSegFlag(), CharSegFlag.AUTO)
 		result = ti._getCharacterOffsets(0)
 		self.assertEqual(result, (0, 2))
