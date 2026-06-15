@@ -81,3 +81,9 @@ class TestIcuStrategy(unittest.TestCase):
 		):
 			seg = wordSegmenter.WordSegmenter("hello world", None, WordSegFlag.AUTO)
 		self.assertIsInstance(seg.strategy, wordSegStrategy.UniscribeWordSegmentationStrategy)
+
+	def test_word_navigation_unit_flag_has_icu(self):
+		from config.featureFlagEnums import WordNavigationUnitFlag
+
+		self.assertTrue(hasattr(WordNavigationUnitFlag, "ICU"))
+		self.assertTrue(WordNavigationUnitFlag.ICU.displayString)
