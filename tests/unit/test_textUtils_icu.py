@@ -153,6 +153,15 @@ class TestCalculateCharacterOffsetsEnglish(unittest.TestCase):
 		text = "abc"
 		self.assertEqual(calculateCharacterOffsets(text, 3), (3, 4))
 
+	def test_consecutive_surrogate_pairs_each_offset(self):
+		# Regression: consecutive multi-unit grapheme clusters. Every offset (including
+		# offsets sitting exactly on a cluster boundary) must return the cluster that
+		# contains it, never the preceding cluster merged in.
+		text = "\U0001f926\U0001f60a\U0001f44d"  # 🤦😊👍, boundaries at 0, 2, 4, 6
+		expected = {0: (0, 2), 1: (0, 2), 2: (2, 4), 3: (2, 4), 4: (4, 6), 5: (4, 6)}
+		for offset, want in expected.items():
+			self.assertEqual(calculateCharacterOffsets(text, offset), want, msg=f"offset {offset}")
+
 
 @skipIfNoICU
 class TestCalculateCharacterOffsetsHebrew(unittest.TestCase):

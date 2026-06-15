@@ -102,13 +102,19 @@ def calculateCharacterOffsets(
 	locale = _resolveLocale(language)
 	try:
 		with _breakIterator(_icu.UBRK_CHARACTER, locale, text) as bi:
-			# ubrk_preceding(offset + 1) yields the largest boundary <= offset.
-			start = _icu.ubrk_preceding(bi, offset + 1)
-			if start == _icu.UBRK_DONE:
-				start = 0
+			# ICU offsets are code-point indexed: an index that falls inside a surrogate
+			# pair is normalised to that code point's start before the boundary is found.
+			# So we cannot use ubrk_preceding(offset + 1) to mean "boundary at or before
+			# offset" — for a multi-unit cluster the +1 lands inside the pair and snaps
+			# back, returning the previous cluster's start. Instead anchor on the boundary
+			# following offset, then take the boundary preceding that: this always yields
+			# the grapheme cluster that contains offset.
 			end = _icu.ubrk_following(bi, offset)
 			if end == _icu.UBRK_DONE:
 				end = textLength
+			start = _icu.ubrk_preceding(bi, end)
+			if start == _icu.UBRK_DONE:
+				start = 0
 			return (start, end)
 	except RuntimeError:
 		log.debugWarning("ICU character break iterator failed", exc_info=True)
@@ -130,6 +136,11 @@ def calculateWordOffsets(
 	falls inside a whitespace run, the returned segment is the preceding word plus
 	the whitespace.
 
+	Note: ICU coalesces a run of identical whitespace into one segment but splits
+	mixed whitespace (e.g. space + tab) into separate segments, so a mixed run is
+	not merged into a single word.  This is not worth special-casing: the legacy
+	Uniscribe/Notepad behaviour for mixed whitespace runs is itself inconsistent.
+
 	:param text: The line text as a Python str.
 	:param offset: UTF-16 code unit offset within text at which to find the boundary.
 	:param language: Optional NVDA language code for locale-aware segmentation.
@@ -148,14 +159,15 @@ def calculateWordOffsets(
 	try:
 		with _breakIterator(_icu.UBRK_WORD, locale, text) as bi:
 			# Find [start, end) — the ICU segment containing offset.
-			# ubrk_preceding positions the iterator at the boundary before offset+1,
-			# then ubrk_next advances to the next boundary giving us end.
-			start = _icu.ubrk_preceding(bi, offset + 1)
-			if start == _icu.UBRK_DONE:
-				start = 0
-			end = _icu.ubrk_next(bi)
+			# ICU offsets are code-point indexed, so anchor on the boundary following
+			# offset and take the boundary preceding that. (ubrk_preceding(offset + 1)
+			# would snap back for multi-unit segments; see calculateCharacterOffsets.)
+			end = _icu.ubrk_following(bi, offset)
 			if end == _icu.UBRK_DONE:
 				end = textLength
+			start = _icu.ubrk_preceding(bi, end)
+			if start == _icu.UBRK_DONE:
+				start = 0
 
 			if _segText(start, end).isspace():
 				# Offset is inside a whitespace run.  Attach this run to the
@@ -168,7 +180,7 @@ def calculateWordOffsets(
 			else:
 				# Offset is inside a word/punctuation segment.  Extend the end
 				# through any immediately following whitespace run.
-				nextEnd = _icu.ubrk_next(bi)
+				nextEnd = _icu.ubrk_following(bi, end)
 				if nextEnd != _icu.UBRK_DONE and _segText(end, nextEnd).isspace():
 					return (start, nextEnd)
 
