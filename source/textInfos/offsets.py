@@ -266,6 +266,8 @@ class OffsetsTextInfo(textInfos.TextInfo, metaclass=_OffsetsTextInfoMeta):
 				return WordSegFlag.AUTO
 			case config.featureFlagEnums.WordNavigationUnitFlag.CHINESE:
 				return WordSegFlag.CHINESE
+			case config.featureFlagEnums.WordNavigationUnitFlag.ICU:
+				return WordSegFlag.ICU
 			case _:
 				log.error(f"Unknown word segmentation standard, {self.wordSegConf.calculated()!r}")
 		return None
@@ -478,6 +480,20 @@ class OffsetsTextInfo(textInfos.TextInfo, metaclass=_OffsetsTextInfoMeta):
 		log.debugWarning(f"Uniscribe failed to calculate {unit} offsets for text {lineText!r}")
 		return None
 
+	def _getLanguageForOffset(self, offset: int) -> str | None:
+		"""Return the NVDA language code at the given story offset, or None.
+
+		Reads the "language" key from the format field at offset. Subclasses that
+		populate "language" (e.g. virtual buffers driven by HTML lang) provide
+		per-range language data without any override. Passed to ICU as the locale.
+		"""
+		formatField, _ = self._getFormatFieldAndOffsets(
+			offset,
+			config.conf["documentFormatting"],
+			calculateOffsets=False,
+		)
+		return formatField.get("language")
+
 	def _getCharacterOffsets(self, offset):
 		if not (
 			self.encoding == textUtils.WCHAR_ENCODING
@@ -489,6 +505,25 @@ class OffsetsTextInfo(textInfos.TextInfo, metaclass=_OffsetsTextInfoMeta):
 		lineStart, lineEnd = self._getLineOffsets(offset)
 		lineText = self._getTextRange(lineStart, lineEnd)
 		relOffset = offset - lineStart
+		if self._getEffectiveCharSegFlag() == CharSegFlag.ICU:
+			from textUtils import icu
+
+			language = None
+			try:
+				language = self._getLanguageForOffset(offset)
+			except (NotImplementedError, LookupError):
+				pass
+			if self.encoding == textUtils.WCHAR_ENCODING:
+				offsets = icu.calculateCharacterOffsets(lineText, relOffset, language)
+			else:
+				offsetConverter = textUtils.WideStringOffsetConverter(lineText)
+				wideRelOffset = offsetConverter.strToEncodedOffsets(relOffset, relOffset)[0]
+				wideOffsets = icu.calculateCharacterOffsets(lineText, wideRelOffset, language)
+				offsets = (
+					offsetConverter.encodedToStrOffsets(*wideOffsets) if wideOffsets is not None else None
+				)
+			if offsets is not None:
+				return (offsets[0] + lineStart, offsets[1] + lineStart)
 		if self._getEffectiveCharSegFlag() == CharSegFlag.UNISCRIBE:
 			offsets = self._calculateUniscribeOffsets(lineText, textInfos.UNIT_CHARACTER, relOffset)
 			if offsets is not None:
@@ -514,8 +549,14 @@ class OffsetsTextInfo(textInfos.TextInfo, metaclass=_OffsetsTextInfoMeta):
 		lineText = lineText.translate({0: " ", 0xA0: " "})
 		relOffset = offset - lineStart
 		wordSegFlag = self._getEffectiveWordSegFlag()
+		language = None
+		if wordSegFlag in (WordSegFlag.ICU, WordSegFlag.AUTO):
+			try:
+				language = self._getLanguageForOffset(offset)
+			except (NotImplementedError, LookupError):
+				pass
 		if wordSegFlag:
-			offsets = WordSegmenter(lineText, self.encoding, wordSegFlag).getSegmentForOffset(
+			offsets = WordSegmenter(lineText, self.encoding, wordSegFlag, language).getSegmentForOffset(
 				relOffset,
 			)
 			if offsets is not None:
