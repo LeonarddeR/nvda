@@ -10,6 +10,7 @@ from logHandler import log
 
 from ..segFlag import WordSegFlag
 from . import wordSegStrategy
+from winBindings.icu import ICU_AVAILABLE as _ICU_AVAILABLE
 
 
 _GET_SEGMENT_RECOVERABLE_EXCEPTIONS = (
@@ -34,39 +35,56 @@ class WordSegmenter:
 		text: str,
 		encoding: str | None = "UTF-8",
 		wordSegFlag: WordSegFlag = WordSegFlag.AUTO,
+		language: str | None = None,
 	) -> None:
 		self.text: str = text
 		self.encoding: str | None = encoding
 		self.wordSegFlag: WordSegFlag = wordSegFlag
+		self.language: str | None = language
 		self.strategy: wordSegStrategy.WordSegmentationStrategy = self._chooseStrategy()
 
 	def _chooseStrategy(
 		self,
 	) -> wordSegStrategy.WordSegmentationStrategy:
-		"""Choose the appropriate segmentation strategy based on the text content."""
+		"""Choose the appropriate segmentation strategy based on flag and text content."""
+
+		def make(
+			strategyClass: type[wordSegStrategy.WordSegmentationStrategy],
+		) -> wordSegStrategy.WordSegmentationStrategy:
+			return strategyClass(self.text, self.encoding, self.language)
+
 		if self.wordSegFlag == WordSegFlag.AUTO:
 			if (
 				wordSegStrategy.ChineseWordSegmentationStrategy._lib
-				and WordSegmenter._CHINESE_CHARACTER_AND_JAPANESE_KANJI.search(
-					self.text,
-				)
+				and WordSegmenter._CHINESE_CHARACTER_AND_JAPANESE_KANJI.search(self.text)
 				and not WordSegmenter._KANA.search(self.text)
 			):
-				return wordSegStrategy.ChineseWordSegmentationStrategy(self.text, self.encoding)
-			return wordSegStrategy.UniscribeWordSegmentationStrategy(self.text, self.encoding)
+				return make(wordSegStrategy.ChineseWordSegmentationStrategy)
+			# Prefer ICU over Uniscribe whenever it is available: ICU follows UAX#29 and
+			# handles complex scripts that Uniscribe breaks poorly. Uniscribe remains the
+			# fallback when ICU is unavailable, and stays pinned where it is strictly
+			# required (e.g. EditTextInfo, to match the Windows edit control / Notepad).
+			if _ICU_AVAILABLE:
+				return make(wordSegStrategy.IcuWordSegmentationStrategy)
+			return make(wordSegStrategy.UniscribeWordSegmentationStrategy)
 		match self.wordSegFlag:
 			case WordSegFlag.UNISCRIBE:
-				return wordSegStrategy.UniscribeWordSegmentationStrategy(self.text, self.encoding)
+				return make(wordSegStrategy.UniscribeWordSegmentationStrategy)
 			case WordSegFlag.CHINESE:
 				if wordSegStrategy.ChineseWordSegmentationStrategy._lib:
-					return wordSegStrategy.ChineseWordSegmentationStrategy(self.text, self.encoding)
+					return make(wordSegStrategy.ChineseWordSegmentationStrategy)
 				log.debugWarning(
 					"Chinese word segmenter is currently unavailable. Falling back to Uniscribe.",
 				)
-				return wordSegStrategy.UniscribeWordSegmentationStrategy(self.text, self.encoding)
+			case WordSegFlag.ICU:
+				if _ICU_AVAILABLE:
+					return make(wordSegStrategy.IcuWordSegmentationStrategy)
+				log.debugWarning(
+					"ICU word segmenter is currently unavailable. Falling back to Uniscribe.",
+				)
 			case _:
 				pass
-		return wordSegStrategy.UniscribeWordSegmentationStrategy(self.text, self.encoding)
+		return make(wordSegStrategy.UniscribeWordSegmentationStrategy)
 
 	def getSegmentForOffset(self, offset: int) -> tuple[int, int] | None:
 		"""Get the segment containing the given offset."""

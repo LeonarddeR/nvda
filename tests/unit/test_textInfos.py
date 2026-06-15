@@ -270,7 +270,12 @@ class TestUseUniscribeCompatibility(unittest.TestCase):
 			wordSegmenter.return_value.getSegmentForOffset.return_value = (0, 3)
 			ti.expand(textInfos.UNIT_WORD)
 
-		wordSegmenter.assert_called_once_with("abc def", textUtils.WCHAR_ENCODING, WordSegFlag.UNISCRIBE)
+		wordSegmenter.assert_called_once_with(
+			"abc def",
+			textUtils.WCHAR_ENCODING,
+			WordSegFlag.UNISCRIBE,
+			None,
+		)
 		self.assertEqual(ti.text, "abc")
 
 
