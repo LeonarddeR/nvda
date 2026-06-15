@@ -20,3 +20,20 @@ class TestSegFlagIcu(unittest.TestCase):
 			self.assertNotEqual(CharSegFlag.ICU & other, CharSegFlag.ICU)
 		for other in (WordSegFlag.AUTO, WordSegFlag.UNISCRIBE, WordSegFlag.CHINESE):
 			self.assertNotEqual(WordSegFlag.ICU & other, WordSegFlag.ICU)
+
+	def test_split_dispatch_native_yields_codepoints(self):
+		import textUtils
+
+		out = list(textUtils.splitAtCharacterBoundaries("ab", charSegFlag=CharSegFlag.NONE))
+		self.assertEqual(out, ["a", "b"])
+
+	def test_split_dispatch_icu_uses_icu_module(self):
+		import textUtils
+		from unittest.mock import patch
+
+		with patch("textUtils.icu.splitAtCharacterBoundaries", return_value=iter(["x"])) as m:
+			out = list(
+				textUtils.splitAtCharacterBoundaries("x", language="en", charSegFlag=CharSegFlag.ICU),
+			)
+		m.assert_called_once_with("x", "en")
+		self.assertEqual(out, ["x"])

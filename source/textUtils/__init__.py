@@ -17,7 +17,33 @@ from typing import Generator, Optional, Tuple, Type
 
 from logHandler import log
 
-from .uniscribe import splitAtCharacterBoundaries
+from .segFlag import CharSegFlag
+
+
+def splitAtCharacterBoundaries(
+	text: str,
+	language: str | None = None,
+	charSegFlag: CharSegFlag = CharSegFlag.UNISCRIBE,
+) -> Generator[str, None, None]:
+	"""Split text into user-perceived characters (grapheme clusters).
+
+	@param text: The text to split.
+	@param language: NVDA language code for locale-aware segmentation.
+		Only used when charSegFlag is ICU; ignored otherwise.
+	@param charSegFlag: Which backend to use. Defaults to UNISCRIBE.
+	"""
+	match charSegFlag:
+		case CharSegFlag.ICU:
+			from .icu import splitAtCharacterBoundaries as _split
+
+			yield from _split(text, language)
+		case CharSegFlag.NONE:
+			yield from text
+		case _:  # UNISCRIBE / AUTO
+			from .uniscribe import splitAtCharacterBoundaries as _split
+
+			yield from _split(text)
+
 
 WCHAR_ENCODING = "utf_16_le"
 UTF8_ENCODING = "utf-8"
