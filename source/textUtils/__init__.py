@@ -27,10 +27,10 @@ def splitAtCharacterBoundaries(
 ) -> Generator[str, None, None]:
 	"""Split text into user-perceived characters (grapheme clusters).
 
-	@param text: The text to split.
-	@param language: NVDA language code for locale-aware segmentation.
+	:param text: The text to split.
+	:param language: NVDA language code for locale-aware segmentation.
 		Only used when charSegFlag is ICU; ignored otherwise.
-	@param charSegFlag: Which backend to use. Defaults to UNISCRIBE.
+	:param charSegFlag: Which backend to use. Defaults to UNISCRIBE.
 	"""
 	match charSegFlag:
 		case CharSegFlag.ICU:

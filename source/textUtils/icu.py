@@ -34,10 +34,10 @@ def _breakIterator(kind: int, locale: bytes, text: str):
 	The ctypes buffer is kept alive for the duration of the block, satisfying
 	ICU's requirement that the text pointer remains valid while the iterator is in use.
 
-	@param kind: One of the UBRK_* constants from winBindings.icu.
-	@param locale: ICU locale byte string (from _resolveLocale).
-	@param text: Python str to analyze.
-	@raise RuntimeError: If ICU reports an error opening the iterator.
+	:param kind: One of the UBRK_* constants from winBindings.icu.
+	:param locale: ICU locale byte string (from _resolveLocale).
+	:param text: Python str to analyze.
+	:raises RuntimeError: If ICU reports an error opening the iterator.
 	"""
 	buf = ctypes.create_unicode_buffer(text)
 	textLength = len(buf) - 1
@@ -60,8 +60,8 @@ def splitAtCharacterBoundaries(
 	Correctly handles surrogate pairs, combining character sequences, and other
 	multi-codepoint grapheme clusters, with locale-aware behaviour where relevant.
 
-	@param text: The text to split.
-	@param language: Optional NVDA language code (e.g. "en", "ru_RU"). When None,
+	:param text: The text to split.
+	:param language: Optional NVDA language code (e.g. "en", "ru_RU"). When None,
 	    ICU's root locale is used.
 	"""
 	if not text:
@@ -90,10 +90,10 @@ def calculateCharacterOffsets(
 ) -> tuple[int, int] | None:
 	"""Calculate the UTF-16 start and end offsets of the character at the given offset.
 
-	@param text: The line text as a Python str.
-	@param offset: UTF-16 code unit offset within text at which to find the boundary.
-	@param language: Optional NVDA language code for locale-aware segmentation.
-	@return: (startOffset, endOffset) as UTF-16 code unit indices (endOffset exclusive),
+	:param text: The line text as a Python str.
+	:param offset: UTF-16 code unit offset within text at which to find the boundary.
+	:param language: Optional NVDA language code for locale-aware segmentation.
+	:return: (startOffset, endOffset) as UTF-16 code unit indices (endOffset exclusive),
 	    or None if the ICU call failed.
 	"""
 	textLength = len(text.encode("utf-16-le", errors="surrogatepass")) // 2
@@ -130,10 +130,10 @@ def calculateWordOffsets(
 	falls inside a whitespace run, the returned segment is the preceding word plus
 	the whitespace.
 
-	@param text: The line text as a Python str.
-	@param offset: UTF-16 code unit offset within text at which to find the boundary.
-	@param language: Optional NVDA language code for locale-aware segmentation.
-	@return: (startOffset, endOffset) as UTF-16 code unit indices (endOffset exclusive),
+	:param text: The line text as a Python str.
+	:param offset: UTF-16 code unit offset within text at which to find the boundary.
+	:param language: Optional NVDA language code for locale-aware segmentation.
+	:return: (startOffset, endOffset) as UTF-16 code unit indices (endOffset exclusive),
 	    or None if the ICU call failed.
 	"""
 	utf16_bytes = text.encode("utf-16-le", errors="surrogatepass")
