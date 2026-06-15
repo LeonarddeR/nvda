@@ -13,7 +13,7 @@ from .textProvider import BasicTextProvider, MockBlackBoxTextInfo
 import textInfos
 from textInfos.offsets import Offsets
 import textUtils
-from textUtils.segFlag import WordSegFlag
+from textUtils.segFlag import CharSegFlag, WordSegFlag
 
 
 class TestCharacterOffsets(unittest.TestCase):
@@ -377,3 +377,24 @@ class TestMoveToCodepointOffsetInOffsetsTextInfo(unittest.TestCase):
 
 	def test_smileyFace(self):
 		self.runTestAllEncodingsAllPrefixes("😂0😂", "0")
+
+
+class TestIcuCharacterOffsets(unittest.TestCase):
+	"""Integration tests for ICU-based character offset calculation in OffsetsTextInfo."""
+
+	def setUp(self):
+		from winBindings.icu import ICU_AVAILABLE
+
+		if not ICU_AVAILABLE:
+			self.skipTest("ICU not available")
+
+	def test_combiningSequenceIsOneGrapheme(self):
+		"""e + combining acute (U+0065 U+0301) must be treated as a single grapheme cluster."""
+		# "é" as decomposed form: e (U+0065) + combining acute accent (U+0301)
+		text = "éx"  # e + combining acute + x
+		obj = BasicTextProvider(text=text)
+		ti = obj.makeTextInfo(Offsets(0, 0))
+		# Default charSegFlag is AUTO, which resolves to ICU when ICU is available.
+		self.assertEqual(ti._getEffectiveCharSegFlag(), CharSegFlag.AUTO)
+		result = ti._getCharacterOffsets(0)
+		self.assertEqual(result, (0, 2))

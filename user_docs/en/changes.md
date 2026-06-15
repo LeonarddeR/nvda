@@ -8,8 +8,8 @@
 
 * Chinese text can now be navigated by word using built-in input gestures.
   A Word Segmentation Standard setting was added to the "Document Navigation" panel. (#18735, @CrazySteve0605, @Cary-rowen)
-* Word segmentation can now use the Windows built-in ICU library (Unicode Standard Annex #29) for dictionary-based, locale-aware boundary detection.
-  A new "Unicode (ICU)" option was added to the Word Segmentation Standard setting in the "Document Navigation" panel.
+* Word and character segmentation can now use the Windows built-in ICU library (Unicode Standard Annex #29) for dictionary-based, locale-aware boundary detection.
+  New "Unicode (ICU)" options were added to the Word Segmentation Standard setting and to a new Character Segmentation Standard setting in the "Document Navigation" panel.
   Under "Auto", ICU is now preferred over standard Windows segmentation wherever available, while Chinese word segmentation continues to take precedence for Chinese text. (#18735)
 * Braille output for Chinese now includes spaces between words. (#18865, @CrazySteve0605, @Cary-rowen)
 * Added sequential two-flick touch gestures that combine two flicks performed in quick succession into a single gesture, increasing the number of touch gestures that can be bound to scripts. (#19938, @kefaslungu)

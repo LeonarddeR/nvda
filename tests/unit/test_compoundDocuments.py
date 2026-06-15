@@ -74,7 +74,9 @@ class TestTreeCompoundTextInfo(unittest.TestCase):
 	def test_characterMovement(self):
 		"""Test character movement across the compound text info."""
 		info: compoundDocuments.TreeCompoundTextInfo = self.document.makeTextInfo(textInfos.POSITION_FIRST)
-		expected = [*"one\r\n", "", *"two\r\n", "", *"three"]
+		# Under the default ICU character segmentation, CRLF is a single grapheme
+		# cluster (Unicode Standard Annex #29, rule GB3), so "\r\n" is one character.
+		expected = [*"one", "\r\n", "", *"two", "\r\n", "", *"three"]
 		for i in range(len(expected) + 1):
 			c = expected[i] if i < len(expected) else ""
 			with self.subTest(i=i, c=c):

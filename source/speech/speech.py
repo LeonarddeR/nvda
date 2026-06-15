@@ -25,7 +25,7 @@ import speechDictHandler
 import characterProcessing
 import languageHandler
 from textUtils import unicodeNormalize
-from textUtils.uniscribe import splitAtCharacterBoundaries
+from textUtils import splitAtCharacterBoundaries
 from . import manager, languageHandling
 from .extensions import speechCanceled, post_speechPaused, pre_speechCanceled, pre_speech
 from .extensions import filter_speechSequence
@@ -500,7 +500,7 @@ def _getSpellingSpeechWithoutCharMode(
 	if localeHasConjuncts:
 		charDescList = getCharDescListFromText(text, locale)
 	elif not textIsNormalized and unicodeNormalization:
-		charDescList = list(splitAtCharacterBoundaries(text))
+		charDescList = list(splitAtCharacterBoundaries(text, locale))
 	else:
 		charDescList = text
 	for item in charDescList:

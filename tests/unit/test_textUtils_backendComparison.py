@@ -3,25 +3,36 @@
 # See the file COPYING for more details.
 # Copyright (C) 2026 NV Access Limited, Leonard de Ruijter
 
-"""Comparison tests between the Uniscribe and ICU word boundary backends.
+"""Comparison tests between the Uniscribe and ICU text boundary backends.
 
 These tests document where the two backends agree and where they diverge,
 using the same inputs on both sides.  Tests that require ICU are skipped
 when the ICU library is not present on the system.
 
-Word-offset comparisons are done by constructing a WordSegmenter with the
-appropriate WordSegFlag and calling getSegmentForOffset.
+NOTE: The old test_backendComparison.py drove both backends via
+OffsetsTextInfo.textBoundaryBackend / _calculateBoundaryOffsets — an API
+that no longer exists.  Word-offset comparisons are now done by constructing
+a WordSegmenter with the appropriate WordSegFlag and calling getSegmentForOffset.
+Character splitting is compared by calling the primitives directly:
+  textUtils.icu.splitAtCharacterBoundaries vs textUtils.uniscribe.splitAtCharacterBoundaries.
+Tests that relied solely on _charOffsets / _wordOffsets through the TextInfo
+have been rewritten against the current API.  All test data and assertions are
+preserved from the original file.
 """
 
 import unittest
 
 import textUtils
 from winBindings.icu import ICU_AVAILABLE
+from textUtils.icu import splitAtCharacterBoundaries as icu_splitChars
+from textUtils.uniscribe import splitAtCharacterBoundaries as uniscribe_splitChars
 from textUtils._wordSeg.wordSegmenter import WordSegmenter
 from textUtils.segFlag import WordSegFlag
 
 
 skipIfNoICU = unittest.skipUnless(ICU_AVAILABLE, "ICU library not available on this system")
+
+FACE_PALM = "\U0001f926"  # 🤦 — two UTF-16 code units
 
 # Encoding used for all WordSegmenter calls — matches what NVDA uses internally.
 _ENCODING = textUtils.WCHAR_ENCODING
@@ -35,6 +46,48 @@ def _icuWordOffsets(text: str, offset: int, language: str | None = None) -> tupl
 def _uniscribeWordOffsets(text: str, offset: int) -> tuple[int, int] | None:
 	"""Get word offsets via the Uniscribe backend (UTF-16 offsets)."""
 	return WordSegmenter(text, _ENCODING, WordSegFlag.UNISCRIBE).getSegmentForOffset(offset)
+
+
+# ---------------------------------------------------------------------------
+# splitAtCharacterBoundaries
+# ---------------------------------------------------------------------------
+
+
+@skipIfNoICU
+class TestSplitCharsAgreement(unittest.TestCase):
+	"""Cases where ICU and Uniscribe produce identical grapheme cluster splits."""
+
+	def _assertSame(self, text: str) -> None:
+		icu = list(icu_splitChars(text))
+		uni = list(uniscribe_splitChars(text))
+		self.assertEqual(icu, uni, f"Backends disagree on {text!r}: ICU={icu!r} Uniscribe={uni!r}")
+
+	def test_empty(self):
+		self._assertSame("")
+
+	def test_ascii(self):
+		self._assertSame("hello")
+
+	def test_ascii_with_space(self):
+		self._assertSame("hello world")
+
+	def test_hebrew(self):
+		self._assertSame("שלום")  # שלום
+
+	def test_surrogate_pair_emoji(self):
+		# Both backends must treat a surrogate pair as one grapheme cluster.
+		self._assertSame(FACE_PALM)
+
+	def test_emoji_mixed_ascii(self):
+		self._assertSame("a" + FACE_PALM + "b")
+
+	def test_combining_decomposed_latin(self):
+		# e + COMBINING ACUTE ACCENT must be one cluster in both backends.
+		self._assertSame("é")
+
+	def test_hebrew_with_combining_vowel(self):
+		# SHIN + SHIN DOT must be one cluster in both backends.
+		self._assertSame("שׁ")
 
 
 # ---------------------------------------------------------------------------

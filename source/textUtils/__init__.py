@@ -17,7 +17,55 @@ from typing import Generator, Optional, Tuple, Type
 
 from logHandler import log
 
-from .uniscribe import splitAtCharacterBoundaries
+from .segFlag import CharSegFlag, resolveCharSegFlag
+
+
+def getConfiguredCharSegFlag() -> CharSegFlag:
+	"""Return the CharSegFlag selected by the documentNavigation.characterSegmentationStandard setting."""
+	import config
+	from config.featureFlagEnums import CharacterNavigationUnitFlag
+
+	calculated = config.conf["documentNavigation"]["characterSegmentationStandard"].calculated()
+	match calculated:
+		case CharacterNavigationUnitFlag.UNISCRIBE:
+			return CharSegFlag.UNISCRIBE
+		case CharacterNavigationUnitFlag.AUTO:
+			return CharSegFlag.AUTO
+		case CharacterNavigationUnitFlag.ICU:
+			return CharSegFlag.ICU
+		case _:
+			log.error(f"Unknown character segmentation standard, {calculated!r}")
+	return CharSegFlag.AUTO
+
+
+def splitAtCharacterBoundaries(
+	text: str,
+	language: str | None = None,
+	charSegFlag: CharSegFlag | None = None,
+) -> Generator[str, None, None]:
+	"""Split text into user-perceived characters (grapheme clusters).
+
+	:param text: The text to split.
+	:param language: NVDA language code for locale-aware segmentation.
+		Only used when the resolved backend is ICU; ignored otherwise.
+	:param charSegFlag: Which backend to use. When None (the default), the
+		documentNavigation.characterSegmentationStandard setting is honoured.
+	"""
+	if charSegFlag is None:
+		charSegFlag = getConfiguredCharSegFlag()
+	charSegFlag = resolveCharSegFlag(charSegFlag)
+	match charSegFlag:
+		case CharSegFlag.ICU:
+			from .icu import splitAtCharacterBoundaries as _split
+
+			yield from _split(text, language)
+		case CharSegFlag.NONE:
+			yield from text
+		case _:  # UNISCRIBE
+			from .uniscribe import splitAtCharacterBoundaries as _split
+
+			yield from _split(text)
+
 
 WCHAR_ENCODING = "utf_16_le"
 UTF8_ENCODING = "utf-8"
@@ -444,7 +492,9 @@ class UnicodeNormalizationOffsetConverter(OffsetConverter):
 		self.computedEncodedToStrOffsets = computedEncodedToStrOffsets = []
 		origOffset = normOffset = 0
 		normalized = ""
-		for origPart in splitAtCharacterBoundaries(text):
+		# Use a fixed backend: normalization offset mapping must be stable and must not
+		# depend on the user's character segmentation setting.
+		for origPart in splitAtCharacterBoundaries(text, charSegFlag=CharSegFlag.UNISCRIBE):
 			normPart = unicodedata.normalize(
 				normalizationForm,
 				origPart.translate(_supplementaryNormalizationTable),

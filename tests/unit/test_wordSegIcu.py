@@ -102,3 +102,12 @@ class TestIcuStrategy(unittest.TestCase):
 
 		self.assertTrue(hasattr(WordNavigationUnitFlag, "ICU"))
 		self.assertTrue(WordNavigationUnitFlag.ICU.displayString)
+
+	def test_character_navigation_unit_flag_options(self):
+		from config.featureFlagEnums import CharacterNavigationUnitFlag
+
+		for member in ("DEFAULT", "AUTO", "UNISCRIBE", "ICU"):
+			self.assertTrue(hasattr(CharacterNavigationUnitFlag, member))
+		# No Chinese option for character segmentation.
+		self.assertFalse(hasattr(CharacterNavigationUnitFlag, "CHINESE"))
+		self.assertTrue(CharacterNavigationUnitFlag.ICU.displayString)

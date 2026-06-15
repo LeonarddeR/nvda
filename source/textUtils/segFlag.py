@@ -18,6 +18,7 @@ class CharSegFlag(IntFlag):
 	NONE = 0
 	AUTO = _AUTO
 	UNISCRIBE = _UNISCRIBE
+	ICU = _ICU
 
 
 class WordSegFlag(IntFlag):
@@ -28,3 +29,16 @@ class WordSegFlag(IntFlag):
 	UNISCRIBE = _UNISCRIBE
 	CHINESE = _CHINESE
 	ICU = _ICU
+
+
+def resolveCharSegFlag(charSegFlag: CharSegFlag) -> CharSegFlag:
+	"""Resolve L{CharSegFlag.AUTO} to a concrete backend.
+
+	AUTO prefers ICU when the Windows ICU library is available, falling back to Uniscribe.
+	Any non-AUTO flag is returned unchanged.
+	"""
+	if charSegFlag == CharSegFlag.AUTO:
+		from winBindings.icu import ICU_AVAILABLE
+
+		return CharSegFlag.ICU if ICU_AVAILABLE else CharSegFlag.UNISCRIBE
+	return charSegFlag
