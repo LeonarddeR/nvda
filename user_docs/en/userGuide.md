@@ -3571,14 +3571,15 @@ When a Chinese braille output table is in use, NVDA can insert spaces between Ch
 
 | . {.hideHeaderRow} |.|
 |---|---|
-| Options | Default (Auto), Auto, Standard, Chinese |
+| Options | Default (Auto), Auto, Standard, Chinese, Unicode (ICU) |
 | Default | Auto |
 
 | Option | Behaviour |
 |---|---|
-| Auto | Use Chinese word segmentation for Chinese text when available. For other text, use standard word segmentation. |
+| Auto | Use Chinese word segmentation for Chinese text when available. For complex scripts such as Thai, Lao, and Khmer, use Unicode (ICU) word segmentation. For other text, use standard word segmentation. |
 | Standard | Use standard Windows word segmentation. |
 | Chinese | Use Chinese word segmentation. If Chinese word segmentation is not available, NVDA falls back to standard word segmentation. |
+| Unicode (ICU) | Use the Windows built-in ICU library (Unicode Standard Annex #29) for dictionary-based, locale-aware word boundary detection. This is particularly useful for complex scripts such as Thai, Lao, and Khmer, where standard word segmentation is unreliable. |
 
 #### Math Settings {#MathSettings}
 
