@@ -486,6 +486,9 @@ class OffsetsTextInfo(textInfos.TextInfo, metaclass=_OffsetsTextInfoMeta):
 		Reads the "language" key from the format field at offset. Subclasses that
 		populate "language" (e.g. virtual buffers driven by HTML lang) provide
 		per-range language data without any override. Passed to ICU as the locale.
+
+		:param offset: Story offset in the TextInfo's internal encoding.
+		:return: NVDA language code (e.g. "en", "ru_RU") or None.
 		"""
 		formatField, _ = self._getFormatFieldAndOffsets(
 			offset,
