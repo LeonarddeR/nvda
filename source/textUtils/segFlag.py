@@ -9,6 +9,7 @@ from enum import IntFlag
 _AUTO: int = 1 << 0
 _UNISCRIBE: int = 1 << 1
 _CHINESE: int = 1 << 2
+_ICU: int = 1 << 3
 
 
 class CharSegFlag(IntFlag):
@@ -17,6 +18,7 @@ class CharSegFlag(IntFlag):
 	NONE = 0
 	AUTO = _AUTO
 	UNISCRIBE = _UNISCRIBE
+	ICU = _ICU
 
 
 class WordSegFlag(IntFlag):
@@ -26,3 +28,4 @@ class WordSegFlag(IntFlag):
 	AUTO = _AUTO
 	UNISCRIBE = _UNISCRIBE
 	CHINESE = _CHINESE
+	ICU = _ICU
