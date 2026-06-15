@@ -132,9 +132,10 @@ def _callCppJiebaLib(lib: CDLL, textUtf8: bytes) -> list[int]:
 class WordSegmentationStrategy(ABC):
 	"""Abstract base class for word segmentation strategies."""
 
-	def __init__(self, text: str, encoding: str | None = None) -> None:
+	def __init__(self, text: str, encoding: str | None = None, language: str | None = None) -> None:
 		self.text: str = text
 		self.encoding: str | None = encoding
+		self.language: str | None = language
 		self.wordEnds: list[int] = []
 
 	@abstractmethod
@@ -344,6 +345,30 @@ class ChineseWordSegmentationStrategy(WordSegmentationStrategy):
 			return offsetConverter.strToEncodedOffsets(*offsets)
 		return self.getWordOffsetRange(offset)
 
-	def __init__(self, text: str, encoding: str | None = None) -> None:
-		super().__init__(text, encoding)
+	def __init__(self, text: str, encoding: str | None = None, language: str | None = None) -> None:
+		super().__init__(text, encoding, language)
 		self.wordEnds = self._callCppJieba()
+
+
+class IcuWordSegmentationStrategy(WordSegmentationStrategy):
+	"""ICU-based UAX#29 word segmentation (Windows built-in ICU library).
+
+	Locale-aware via the optional language code. Boundary lookup only:
+	segmentedText returns the text unchanged (no braille separator insertion).
+	"""
+
+	def getSegmentForOffset(self, offset: int) -> tuple[int, int] | None:
+		from textUtils import icu
+
+		if self.encoding == textUtils.WCHAR_ENCODING:
+			return icu.calculateWordOffsets(self.text, offset, self.language)
+		# Convert the str offset to a UTF-16 offset for ICU, then convert the result back.
+		offsetConverter = textUtils.WideStringOffsetConverter(self.text)
+		wideOffset = offsetConverter.strToEncodedOffsets(offset, offset)[0]
+		result = icu.calculateWordOffsets(self.text, wideOffset, self.language)
+		if result is None:
+			return None
+		return offsetConverter.encodedToStrOffsets(*result)
+
+	def segmentedText(self, sep: str = " ", newSepIndex: list[int] | None = None) -> str:
+		return self.text
