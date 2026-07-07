@@ -7,9 +7,16 @@
 ### New Features
 <!-- Note we are in a feature freeze, only features related to API breaking changes should be listed here -->
 
+* A new "Speak typing using" option in Keyboard settings allows NVDA to announce typed words based on the real text present in the document rather than the keys you pressed. (#8065, @LeonarddeR)
+  * When set to "Real text", the announced word matches what the application itself considers a word.
+  * This is disabled by default; the classic "Predicted text" behaviour is unchanged for existing users.
+
 ### Changes
 
 ### Bug Fixes
+
+* When "Speak typing using" is set to "Real text" and typing overrides a selection, NVDA no longer omits the first character when announcing the first typed word. (#7812, @LeonarddeR)
+* When "Speak typing using" is set to "Real text", NVDA now treats words containing apostrophes (such as "won't" and "aren't") as one word if the application prescribes this. (#6215, @LeonarddeR)
 
 #### Performance
 
