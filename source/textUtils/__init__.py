@@ -1,7 +1,7 @@
 # A part of NonVisual Desktop Access (NVDA)
-# This file is covered by the GNU General Public License.
-# See the file COPYING for more details.
-# Copyright (C) 2018-2026 NV Access Limited, Babbage B.V., Łukasz Golonka
+# Copyright (C) 2018-2026 NV Access Limited, Babbage B.V., Łukasz Golonka, Leonard de Ruijter
+# This file may be used under the terms of the GNU General Public License, version 2 or later, as modified by the NVDA license.
+# For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
 """
 Classes and utilities to deal with offsets variable width encodings, particularly utf_16.
@@ -22,6 +22,45 @@ from .uniscribe import splitAtCharacterBoundaries
 WCHAR_ENCODING = "utf_16_le"
 UTF8_ENCODING = "utf-8"
 USER_ANSI_CODE_PAGE = locale.getpreferredencoding()
+
+_WORD_INTERNAL_CHARS = "'’"
+"""Characters kept inside a typed word even though they are not letters/digits, so
+contractions like "won't" stay one word (#6215). Mirrors the apostrophe carve-out in
+:meth:`NVDAObjects.behaviors.EditableTextBase.event_typedCharacter`."""
+
+
+def isForcedWordSeparator(ch: str) -> bool:
+	"""Whether a character always ends a typed word for real-text echo, regardless of how the
+	application groups it into a word unit.
+
+	A character is a word character iff its Unicode category is Letter/Mark/Number — the same
+	test :func:`speech.speech.speakTypedCharacters` uses — except apostrophes, which are kept
+	word-internal (see :data:`_WORD_INTERNAL_CHARS`).
+
+	:param ch: The character to classify.
+	:return: ``True`` if the character forces a word boundary, ``False`` otherwise.
+	"""
+	return unicodedata.category(ch)[0] not in "LMN" and ch not in _WORD_INTERNAL_CHARS
+
+
+def clampWordToForcedSeparators(text: str) -> tuple[int, int]:
+	"""Return the ``(start, end)`` slice of ``text`` for the typed word, trimmed so it never
+	spans a forced separator.
+
+	Trailing forced separators (the just-typed dot, or a trailing space the application kept in
+	the word unit) are dropped, and the start is moved past the last forced separator inside the
+	remaining text, so an application that glues a word (e.g. Notepad's ``foo.bar``) still clamps
+	to the final run (``bar``).
+
+	:param text: The application's word-unit text ending at the caret.
+	:return: The ``(start, end)`` slice bounding the typed word; ``start == end`` when there is
+		no real word (only separators/spaces).
+	"""
+	end = len(text)
+	while end > 0 and isForcedWordSeparator(text[end - 1]):
+		end -= 1
+	start = max((i + 1 for i in range(end) if isForcedWordSeparator(text[i])), default=0)
+	return (start, end)
 
 
 class OffsetConverter(metaclass=ABCMeta):

@@ -23,7 +23,7 @@ import textInfos
 import speechDictHandler
 import characterProcessing
 import languageHandler
-from textUtils import unicodeNormalize
+from textUtils import isForcedWordSeparator, unicodeNormalize
 from textUtils.uniscribe import splitAtCharacterBoundaries
 from . import manager, languageHandling
 from .extensions import speechCanceled, post_speechPaused, pre_speechCanceled, pre_speech
@@ -1444,9 +1444,7 @@ def speakTypedCharacters(ch: str):
 		realChar = PROTECTED_CHAR
 	else:
 		realChar = ch
-	from NVDAObjects.behaviors import _isForcedWordSeparator
-
-	if not _isForcedWordSeparator(ch):
+	if not isForcedWordSeparator(ch):
 		_curWordChars.append(realChar)
 	elif ch == "\b":
 		# Backspace, so remove the last character from our buffer.
@@ -1509,14 +1507,14 @@ def speakPreviousWord(wordSeparator: str) -> None:
 	from NVDAObjects.behaviors import EditableTextBase
 
 	if isinstance(obj, EditableTextBase) and controlTypes.State.READONLY not in getattr(obj, "states", set()):
-		wordFound, wordInfo = obj.hasUnitBeenTyped(textInfos.UNIT_WORD, wordSeparator)
+		wordFound, typedWord = obj.hasUnitBeenTyped(textInfos.UNIT_WORD, wordSeparator)
 		if wordFound is False:
 			# The caret is still within a word (e.g. an apostrophe in "won't").
 			# Keep buffering so the whole word can be announced when it is actually completed.
 			_curWordChars.append(wordSeparator)
 			return
-		if wordFound is True and wordInfo is not None and not isBlank(wordInfo.text):
-			word = wordInfo.text
+		if wordFound is True and typedWord and not isBlank(typedWord):
+			word = typedWord
 	clearTypedWordBuffer()
 	if log.isEnabledFor(log.IO):
 		log.io(f"typed word: {word!r} (predicted: {predictedWord!r})")

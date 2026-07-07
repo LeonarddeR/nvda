@@ -12,7 +12,6 @@ import os
 import time
 import threading
 import math
-import unicodedata
 import tones
 import queueHandler
 import eventHandler
@@ -23,6 +22,7 @@ import config
 from . import NVDAObject, NVDAObjectTextInfo
 import textInfos
 import editableText
+from textUtils import clampWordToForcedSeparators, isForcedWordSeparator
 from logHandler import log
 from scriptHandler import script
 import api
@@ -41,46 +41,6 @@ from config.configFlags import (
 from config.featureFlagEnums import TypingEchoModeFlag
 from inputCore import InputGesture
 from speech.extensions import pre_speechCanceled
-
-
-_WORD_INTERNAL_CHARS = "'’"
-"""Characters kept inside a typed word even though they are not letters/digits, so
-contractions like "won't" stay one word (#6215). Mirrors the apostrophe carve-out in
-:meth:`EditableTextBase.event_typedCharacter`."""
-
-
-def _isForcedWordSeparator(ch: str) -> bool:
-	"""Whether a character always ends a typed word for real-text echo, regardless of how the
-	application groups it into a word unit.
-
-	A character is a word character iff its Unicode category is Letter/Mark/Number — the same
-	test :func:`speech.speech.speakTypedCharacters` uses — except apostrophes, which are kept
-	word-internal (see :data:`_WORD_INTERNAL_CHARS`).
-
-	:param ch: The character to classify.
-	:return: ``True`` if the character forces a word boundary, ``False`` otherwise.
-	"""
-	return unicodedata.category(ch)[0] not in "LMN" and ch not in _WORD_INTERNAL_CHARS
-
-
-def _clampWordToForcedSeparators(text: str) -> tuple[int, int]:
-	"""Return the ``(start, end)`` slice of ``text`` for the typed word, trimmed so it never
-	spans a forced separator.
-
-	Trailing forced separators (the just-typed dot, or a trailing space the application kept in
-	the word unit) are dropped, and the start is moved past the last forced separator inside the
-	remaining text, so an application that glues a word (e.g. Notepad's ``foo.bar``) still clamps
-	to the final run (``bar``).
-
-	:param text: The application's word-unit text ending at the caret.
-	:return: The ``(start, end)`` slice bounding the typed word; ``start == end`` when there is
-		no real word (only separators/spaces).
-	"""
-	end = len(text)
-	while end > 0 and _isForcedWordSeparator(text[end - 1]):
-		end -= 1
-	start = max((i + 1 for i in range(end) if _isForcedWordSeparator(text[i])), default=0)
-	return (start, end)
 
 
 class ProgressBar(NVDAObject):
@@ -358,24 +318,27 @@ class EditableTextBase(editableText.EditableText, NVDAObject):
 		self,
 		unit: str,
 		separator: str,
-	) -> tuple[bool | None, textInfos.TextInfo | None]:
-		"""Returns whether a new text unit has been typed during this core cycle.
+	) -> tuple[bool | None, str | None]:
+		"""Returns whether a new word has been typed during this core cycle.
 
 		It relies on :attr:`_cachedCaretBookmark`, which is cleared after every core cycle.
 
-		:param unit: The text unit to look for, e.g. ``textInfos.UNIT_WORD``.
+		:param unit: The text unit to look for. Only :const:`textInfos.UNIT_WORD` is supported.
 		:param separator: The separator character that has just been typed.
+		:raises NotImplementedError: If ``unit`` is not :const:`textInfos.UNIT_WORD`.
 		:return: A tuple containing the following two values:
 
-			1. Whether a new unit has been typed. This could be:
+			1. Whether a new word has been typed. This could be:
 
-				* ``False`` if a caret move has been detected, but no unit has been typed.
-				* ``True`` if a caret move has been detected and a new unit has been typed.
+				* ``False`` if a caret move has been detected, but no word has been typed.
+				* ``True`` if a caret move has been detected and a new word has been typed.
 				* ``None`` if no caret move could be detected.
 
-			2. If the caret has moved and a new unit has been typed, a TextInfo expanded to the
-				unit that has just been typed; ``None`` otherwise.
+			2. If the caret has moved and a new word has been typed, the text of that word;
+				``None`` otherwise.
 		"""
+		if unit is not textInfos.UNIT_WORD:
+			raise NotImplementedError(f"Only UNIT_WORD is supported, got {unit!r}")
 		if not self._useTextInfoForTypingEcho():
 			return (None, None)
 		bookmark = self._cachedCaretBookmark
@@ -385,36 +348,32 @@ class EditableTextBase(editableText.EditableText, NVDAObject):
 		caretMoved, caretInfo = self._hasCaretMoved(bookmark, timeout=self._useEvents_maxTimeoutSec)
 		if not caretMoved or not caretInfo or not caretInfo.obj:
 			return (None, None)
-		unitInfo = self.makeTextInfo(bookmark)
-		# The bookmark is positioned after the end of the unit.
+		wordInfo = self.makeTextInfo(bookmark)
+		# The bookmark is positioned after the end of the word.
 		# Therefore, we need to move it one character backwards.
-		unitInfo.move(textInfos.UNIT_CHARACTER, -1)
-		unitInfo.expand(unit)
-		diff = unitInfo.compareEndPoints(caretInfo, "endToStart")
-		if diff >= 0 and not _isForcedWordSeparator(separator):
-			# This is no unit boundary.
+		wordInfo.move(textInfos.UNIT_CHARACTER, -1)
+		wordInfo.expand(unit)
+		diff = wordInfo.compareEndPoints(caretInfo, "endToStart")
+		if diff >= 0 and not isForcedWordSeparator(separator):
+			# This is no word boundary.
 			return (False, None)
 		if diff > 0:
 			# The application's word unit extends past the caret (e.g. it glues "foo.bar" into a
 			# single word while the caret sits after the just-typed dot). Trim it to the caret so
 			# only the text typed so far is considered.
-			unitInfo.setEndPoint(caretInfo, "endToStart")
+			wordInfo.setEndPoint(caretInfo, "endToStart")
 		# Clamp the word so it never spans a forced separator, even when the application glues
 		# it into a single word unit (e.g. Notepad's "foo.bar", or a trailing typed dot).
-		text = unitInfo.text
-		start, end = _clampWordToForcedSeparators(text)
+		# The clamp works in code-point space, so return the slice as text rather than translating
+		# offsets back onto the TextInfo, whose character units are not code points.
+		text = wordInfo.text
+		start, end = clampWordToForcedSeparators(text)
 		if start == end:
-			# Only separators/spaces before the caret, which is not considered a unit.
+			# Only separators/spaces before the caret, which is not considered a word.
 			# For example, this can occur in Notepad++ when auto indentation is on.
 			log.debug("No word to announce before caret after clamping to forced separators")
 			return (None, None)
-		# Narrow unitInfo so its text is the clamped word (callers, e.g. speech.speakPreviousWord,
-		# read .text).
-		if start:
-			unitInfo.move(textInfos.UNIT_CHARACTER, start, endPoint="start")
-		if end != len(text):
-			unitInfo.move(textInfos.UNIT_CHARACTER, end - len(text), endPoint="end")
-		return (True, unitInfo)
+		return (True, text[start:end])
 
 	def _reportErrorInPreviousWord(self):
 		try:
