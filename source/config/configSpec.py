@@ -203,6 +203,7 @@ schemaVersion = integer(min=0, default={latestSchemaVersion})
 	speakTypedCharacters = integer(default=1,min=0,max=2)
 	# 0: Off, 1: Only in edit controls, 2: Always
 	speakTypedWords = integer(default=0,min=0,max=2)
+	typingEchoMode = featureFlag(optionsEnum="TypingEchoModeFlag", behaviorOfDefault="predicted_text")
 	beepForLowercaseWithCapslock = boolean(default=true)
 	speakCommandKeys = boolean(default=false)
 	speechInterruptForCharacters = boolean(default=true)

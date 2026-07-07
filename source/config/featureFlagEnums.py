@@ -192,6 +192,27 @@ class BrailleTextWrapFlag(DisplayStringEnum):
 		}
 
 
+class TypingEchoModeFlag(DisplayStringEnum):
+	"""Selects the source NVDA uses to announce typed words:
+	the predicted keystroke buffer, or the real text present in the document.
+	"""
+
+	DEFAULT = enum.auto()
+	PREDICTED_TEXT = enum.auto()
+	REAL_TEXT = enum.auto()
+
+	@property
+	def _displayStringLabels(self) -> dict["TypingEchoModeFlag", str]:
+		return {
+			# Translators: Label for an option in NVDA's keyboard settings.
+			# Typed text is announced based on the keys the user pressed.
+			self.PREDICTED_TEXT: _("Predicted text"),
+			# Translators: Label for an option in NVDA's keyboard settings.
+			# Typed text is announced based on the actual text present in the document.
+			self.REAL_TEXT: _("Real text"),
+		}
+
+
 def getAvailableEnums() -> typing.Generator[typing.Tuple[str, FlagValueEnum], None, None]:
 	for name, value in globals().items():
 		if (

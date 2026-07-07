@@ -3064,6 +3064,19 @@ The available options are:
 * Only in edit controls: NVDA will only announce words typed in edit controls and other areas where text can be typed.
 * Always: NVDA will announce all typed words.
 
+##### Speak typing using {#KeyboardSettingsTypingEchoMode}
+
+This option controls the source NVDA uses to announce the words you type.
+It only has an effect when [Speak typed words](#KeyboardSettingsSpeakTypedWords) is not set to Off.
+The available options are:
+
+* Predicted text: NVDA announces typed words based on the keys you pressed.
+This is the classic behaviour and is used by default.
+* Real text: In editable text where it is supported, NVDA announces typed words based on the actual text present in the document, rather than the keys you pressed.
+This makes the announcement match what the application itself considers a word.
+For example, words containing an apostrophe (such as "won't") are treated as a single word when the application does so, and typing over selected text no longer omits the first character of the announced word.
+Note that with this option, in some applications (such as Notepad or Firefox) pressing a dot or comma while typing may no longer announce the completed word, because these characters can be considered part of a word.
+
 ##### Speech interrupt for typed characters {#KeyboardSettingsSpeechInteruptForCharacters}
 
 If on, this option will cause speech to be interrupted each time a character is typed. This is on by default.

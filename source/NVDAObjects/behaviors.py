@@ -1,8 +1,8 @@
 # A part of NonVisual Desktop Access (NVDA)
-# This file is covered by the GNU General Public License.
-# See the file COPYING for more details.
 # Copyright (C) 2006-2026 NV Access Limited, Peter Vágner, Joseph Lee, Bill Dengler,
-# Burman's Computer and Education Ltd, Cary-rowen, Cyrille Bougot, Ethin Probst
+# Burman's Computer and Education Ltd, Cary-rowen, Cyrille Bougot, Ethin Probst, Leonard de Ruijter
+# This file may be used under the terms of the GNU General Public License, version 2 or later, as modified by the NVDA license.
+# For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
 """Mix-in classes which provide common behaviour for particular types of controls across different APIs.
 Behaviors described in this mix-in include providing table navigation commands for certain table rows, terminal input and output support, announcing notifications and suggestion items and so on.
@@ -37,6 +37,8 @@ from config.configFlags import (
 	TypingEcho,
 	ReportSpellingErrors,
 )
+from config.featureFlagEnums import TypingEchoModeFlag
+from inputCore import InputGesture
 from speech.extensions import pre_speechCanceled
 
 
@@ -246,6 +248,12 @@ class EditableTextBase(editableText.EditableText, NVDAObject):
 
 	shouldFireCaretMovementFailedEvents = True
 
+	_cachedCaretBookmark: textInfos.Bookmark | None = None
+	"""A bookmark for the caret, cached just before a character is typed.
+
+	Cleared by :meth:`hasUnitBeenTyped` and whenever the caret moves via a caret script.
+	"""
+
 	def initOverlayClass(self):
 		# #4264: the caret_newLine script can only be bound for processes other than NVDA's process
 		# As Pressing enter on an edit field can cause modal dialogs to appear,
@@ -257,7 +265,100 @@ class EditableTextBase(editableText.EditableText, NVDAObject):
 	def _caretScriptPostMovedHelper(self, speakUnit, gesture, info=None):
 		if eventHandler.isPendingEvents("gainFocus"):
 			return
+		# Forget the cached caret bookmark used to announce typed text from real text,
+		# as the user has moved the caret somewhere else.
+		self._clearCachedCaretBookmark()
 		super()._caretScriptPostMovedHelper(speakUnit, gesture, info)
+
+	def _useTextInfoForTypingEcho(self) -> bool:
+		"""Whether typed text should be announced from the real document text for this object.
+
+		Requires both the user preference (``TypingEchoModeFlag.REAL_TEXT``) and reliable caret
+		movement detection (:attr:`caretMovementDetectionUsesEvents`).
+		Controls such as consoles, where the caret lags and caret events are unreliable, are
+		excluded by the latter.
+		"""
+		if not self.caretMovementDetectionUsesEvents:
+			return False
+		return config.conf["keyboard"]["typingEchoMode"].calculated() == TypingEchoModeFlag.REAL_TEXT
+
+	def getScript(self, gesture: InputGesture):
+		script = super().getScript(gesture)
+		if script or not self._useTextInfoForTypingEcho():
+			return script
+		if getattr(gesture, "isCharacter", False):
+			# Cache the caret position before the character is typed,
+			# so the resulting word can be announced from the real document text.
+			return self.script_preTypedCharacter
+		return None
+
+	def script_preTypedCharacter(self, gesture: InputGesture) -> None:
+		try:
+			self._cachedCaretBookmark = self.caret.bookmark
+		except (LookupError, RuntimeError):
+			log.debug("Could not cache caret bookmark before typed character", exc_info=True)
+		gesture.send()
+
+	def _clearCachedCaretBookmark(self) -> None:
+		"""Forgets the cached caret bookmark used to announce typed text from real text."""
+		self._cachedCaretBookmark = None
+
+	def script_caret_newLine(self, gesture):
+		if self._useTextInfoForTypingEcho():
+			# Cache the caret bookmark so the word before the new line can be announced
+			# from the real document text by speech.speakPreviousWord for the typed line separator.
+			try:
+				self._cachedCaretBookmark = self.caret.bookmark
+			except (LookupError, RuntimeError):
+				log.debug("Could not cache caret bookmark before new line", exc_info=True)
+		super().script_caret_newLine(gesture)
+
+	def hasUnitBeenTyped(
+		self,
+		unit: str,
+		separator: str,
+	) -> tuple[bool | None, textInfos.TextInfo | None]:
+		"""Returns whether a new text unit has been typed during this core cycle.
+
+		It relies on :attr:`_cachedCaretBookmark`, which is cleared after every core cycle.
+
+		:param unit: The text unit to look for, e.g. ``textInfos.UNIT_WORD``.
+		:param separator: The separator character that has just been typed.
+		:return: A tuple containing the following two values:
+
+			1. Whether a new unit has been typed. This could be:
+
+				* ``False`` if a caret move has been detected, but no unit has been typed.
+				* ``True`` if a caret move has been detected and a new unit has been typed.
+				* ``None`` if no caret move could be detected.
+
+			2. If the caret has moved and a new unit has been typed, a TextInfo expanded to the
+				unit that has just been typed; ``None`` otherwise.
+		"""
+		if not self._useTextInfoForTypingEcho():
+			return (None, None)
+		bookmark = self._cachedCaretBookmark
+		if not bookmark:
+			return (None, None)
+		self._clearCachedCaretBookmark()
+		caretMoved, caretInfo = self._hasCaretMoved(bookmark, timeout=self._useEvents_maxTimeoutSec)
+		if not caretMoved or not caretInfo or not caretInfo.obj:
+			return (None, None)
+		unitInfo = self.makeTextInfo(bookmark)
+		# The bookmark is positioned after the end of the unit.
+		# Therefore, we need to move it one character backwards.
+		unitInfo.move(textInfos.UNIT_CHARACTER, -1)
+		unitInfo.expand(unit)
+		diff = unitInfo.compareEndPoints(caretInfo, "endToStart")
+		if diff >= 0 and not separator.isspace():
+			# This is no unit boundary.
+			return (False, None)
+		elif unitInfo.text.isspace():
+			# There is only space, which is not considered a unit.
+			# For example, this can occur in Notepad++ when auto indentation is on.
+			log.debug("Text before caret contains only spaces")
+			return (None, None)
+		return (True, unitInfo)
 
 	def _reportErrorInPreviousWord(self):
 		try:

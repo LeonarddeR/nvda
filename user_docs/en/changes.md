@@ -20,6 +20,9 @@
   * In modes that show a continuation mark, when a word is cut across rows, the last cell of the row now shows a continuation mark (braille dots 7-8) so it is clear that the word continues on the next row.
   * The "At word or syllable boundaries" option uses hyphenation dictionaries to split long words at syllable boundaries when they do not fit on the display.
 * Magnifier: A new unassigned command has been added to move the mouse cursor to the center of the magnified view. (#20127, @CyrilleB79)
+* A new "Speak typing using" option in Keyboard settings allows NVDA to announce typed words based on the real text present in the document rather than the keys you pressed. (#8065, @LeonarddeR)
+  * When set to "Real text", the announced word matches what the application itself considers a word.
+  * This is disabled by default; the classic "Predicted text" behaviour is unchanged for existing users.
 
 ### Changes
 
@@ -31,6 +34,8 @@
 
 ### Bug Fixes
 
+* When "Speak typing using" is set to "Real text" and typing overrides a selection, NVDA no longer omits the first character when announcing the first typed word. (#7812, @LeonarddeR)
+* When "Speak typing using" is set to "Real text", NVDA now treats words containing apostrophes (such as "won't" and "aren't") as one word if the application prescribes this. (#6215, @LeonarddeR)
 * In PowerPoint and other Office applications, NVDA will now correctly read and navigate the edit fields in the insert hyperlink dialog. (#17390, @aryanchoudharypro)
 * The actions button can now be used when selecting multiple add-ons in the Add-on Store to perform batch actions, instead of just via the context menu in the add-ons list. (#19971, @amirmahdifard)
 * When moving to an ARIA grid cell in focus mode in web browsers, NVDA no longer reports both the row and column headers even if only the row or only the column changed. (#17750, @jcsteh)

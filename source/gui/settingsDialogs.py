@@ -2055,6 +2055,16 @@ class KeyboardSettingsPanel(SettingsPanel):
 		self.bindHelpEvent("KeyboardSettingsSpeakTypedWords", self.speakTypedWordsList)
 		self.speakTypedWordsList.SetSelection(config.conf["keyboard"]["speakTypedWords"])
 
+		# Translators: This is the label for a combobox in the keyboard settings panel.
+		typingEchoModeLabelText = _("Speak &typing using:")
+		self.typingEchoModeCombo: nvdaControls.FeatureFlagCombo = sHelper.addLabeledControl(
+			labelText=typingEchoModeLabelText,
+			wxCtrlClass=nvdaControls.FeatureFlagCombo,
+			keyPath=["keyboard", "typingEchoMode"],
+			conf=config.conf,
+		)
+		self.bindHelpEvent("KeyboardSettingsTypingEchoMode", self.typingEchoModeCombo)
+
 		# Translators: This is the label for a checkbox in the
 		# keyboard settings panel.
 		speechInterruptForCharText = _("Speech &interrupt for typed characters")
@@ -2155,6 +2165,7 @@ class KeyboardSettingsPanel(SettingsPanel):
 		)
 		config.conf["keyboard"]["speakTypedCharacters"] = self.speakTypedCharsList.GetSelection()
 		config.conf["keyboard"]["speakTypedWords"] = self.speakTypedWordsList.GetSelection()
+		self.typingEchoModeCombo.saveCurrentValueToConf()
 		config.conf["keyboard"]["speechInterruptForCharacters"] = (
 			self.speechInterruptForCharsCheckBox.IsChecked()
 		)

@@ -1,8 +1,8 @@
 # A part of NonVisual Desktop Access (NVDA)
-# This file is covered by the GNU General Public License.
-# See the file COPYING for more details.
-# Copyright (C) 2006-2025 NV Access Limited, Peter Vágner, Aleksey Sadovoy, Babbage B.V., Bill Dengler,
+# Copyright (C) 2006-2026 NV Access Limited, Peter Vágner, Aleksey Sadovoy, Babbage B.V., Bill Dengler,
 # Julien Cochuyt, Derek Riemer, Cyrille Bougot, Leonard de Ruijter, Łukasz Golonka, Cary-rowen
+# This file may be used under the terms of the GNU General Public License, version 2 or later, as modified by the NVDA license.
+# For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
 """High-level functions to speak information."""
 
@@ -1454,16 +1454,7 @@ def speakTypedCharacters(ch: str):
 		# delete character produced in some apps with control+backspace
 		return
 	elif len(_curWordChars) > 0:
-		typedWord = "".join(_curWordChars)
-		clearTypedWordBuffer()
-		if log.isEnabledFor(log.IO):
-			log.io("typed word: %s" % typedWord)
-		typingEchoMode = config.conf["keyboard"]["speakTypedWords"]
-		if typingEchoMode != TypingEcho.OFF.value and not typingIsProtected:
-			if typingEchoMode == TypingEcho.ALWAYS.value or (
-				typingEchoMode == TypingEcho.EDIT_CONTROLS.value and isFocusEditable()
-			):
-				speakText(typedWord)
+		speakPreviousWord(realChar)
 	if _speechState._suppressSpeakTypedCharactersNumber > 0:
 		# We primarily suppress based on character count and still have characters to suppress.
 		# However, we time out after a short while just in case.
@@ -1482,6 +1473,57 @@ def speakTypedCharacters(ch: str):
 			typingEchoMode == TypingEcho.EDIT_CONTROLS.value and isFocusEditable()
 		):
 			speakSpelling(realChar)
+
+
+def speakPreviousWord(wordSeparator: str) -> None:
+	"""Speaks the word that was just completed by typing ``wordSeparator``.
+
+	When the typing echo mode is set to real text and the caret object supports it, the word is
+	announced based on the actual text present in the document
+	(see :meth:`NVDAObjects.behaviors.EditableTextBase.hasUnitBeenTyped`).
+	Otherwise, the word is announced from the predicted keystroke buffer (``_curWordChars``).
+
+	Spelling errors are not handled here; they are reported separately, with a delay, by
+	:meth:`NVDAObjects.behaviors.EditableTextBase._reportErrorInPreviousWord`.
+
+	:param wordSeparator: The word separator character that has just been typed.
+	"""
+	typingIsProtected = api.isTypingProtected()
+	wordEchoMode = config.conf["keyboard"]["speakTypedWords"]
+	wantEcho = wordEchoMode != TypingEcho.OFF.value and not typingIsProtected
+	if not (log.isEnabledFor(log.IO) or wantEcho):
+		clearTypedWordBuffer()
+		return
+	predictedWord = "".join(_curWordChars)
+	word = predictedWord
+	# When configured, try to announce the word based on the real text present in the document
+	# rather than the predicted keystroke buffer.
+	# This is skipped while typing is protected, so that protected content is never fetched.
+	obj = None
+	if not typingIsProtected:
+		try:
+			obj = api.getCaretObject()
+		except Exception:
+			pass  # No caret object; fall back to the predicted buffer.
+	from NVDAObjects.behaviors import EditableTextBase
+
+	if isinstance(obj, EditableTextBase) and controlTypes.State.READONLY not in getattr(obj, "states", set()):
+		wordFound, wordInfo = obj.hasUnitBeenTyped(textInfos.UNIT_WORD, wordSeparator)
+		if wordFound is False:
+			# The caret is still within a word (e.g. an apostrophe in "won't").
+			# Keep buffering so the whole word can be announced when it is actually completed.
+			_curWordChars.append(wordSeparator)
+			return
+		if wordFound is True and wordInfo is not None and not isBlank(wordInfo.text):
+			word = wordInfo.text
+	clearTypedWordBuffer()
+	if log.isEnabledFor(log.IO):
+		log.io(f"typed word: {word!r} (predicted: {predictedWord!r})")
+	if wantEcho and (
+		wordEchoMode == TypingEcho.ALWAYS.value
+		or (wordEchoMode == TypingEcho.EDIT_CONTROLS.value and isFocusEditable())
+	):
+		speakText(word)
 
 
 class SpeakTextInfoState(object):
