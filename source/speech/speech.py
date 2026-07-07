@@ -9,7 +9,6 @@
 import itertools
 import typing
 import weakref
-import unicodedata
 import time
 import colors
 import api
@@ -1445,7 +1444,9 @@ def speakTypedCharacters(ch: str):
 		realChar = PROTECTED_CHAR
 	else:
 		realChar = ch
-	if unicodedata.category(ch)[0] in "LMN":
+	from NVDAObjects.behaviors import _isForcedWordSeparator
+
+	if not _isForcedWordSeparator(ch):
 		_curWordChars.append(realChar)
 	elif ch == "\b":
 		# Backspace, so remove the last character from our buffer.

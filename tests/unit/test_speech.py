@@ -1,15 +1,17 @@
 # A part of NonVisual Desktop Access (NVDA)
-# This file is covered by the GNU General Public License.
-# See the file COPYING for more details.
-# Copyright (C) 2021-2024 NV Access Limited, Cyrille Bougot, Leonard de Ruijter
+# Copyright (C) 2021-2026 NV Access Limited, Cyrille Bougot, Leonard de Ruijter
+# This file may be used under the terms of the GNU General Public License, version 2 or later, as modified by the NVDA license.
+# For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
 """Unit tests for the speech module."""
 
 import gettext
 import typing
 import unittest
+from unittest.mock import patch
 
 import config
+from config.configFlags import TypingEcho
 from characterProcessing import processSpeechSymbol
 from speech import (
 	_getSpellingCharAddCapNotification,
@@ -20,6 +22,7 @@ from speech import (
 	speechCanceled,
 	post_speechPaused,
 )
+from speech import speech as speechModule
 from speech.commands import (
 	BeepCommand,
 	CharacterModeCommand,
@@ -29,6 +32,38 @@ from speech.commands import (
 )
 
 from .extensionPointTestHelpers import actionTester
+
+
+class TestSpeakTypedCharacters(unittest.TestCase):
+	"""Tests for speech.speakTypedCharacters' word-character classification."""
+
+	def setUp(self) -> None:
+		self._originalEcho = config.conf["keyboard"]["speakTypedCharacters"]
+		# Disable character echo so the test only exercises the word-buffer classification.
+		config.conf["keyboard"]["speakTypedCharacters"] = TypingEcho.OFF.value
+		speechModule.clearTypedWordBuffer()
+		patch.object(speechModule.api, "isTypingProtected", return_value=False).start()
+		self._speakPreviousWord = patch.object(speechModule, "speakPreviousWord").start()
+		self.addCleanup(patch.stopall)
+
+	def tearDown(self) -> None:
+		speechModule.clearTypedWordBuffer()
+		config.conf["keyboard"]["speakTypedCharacters"] = self._originalEcho
+
+	def test_apostropheIsWordInternal(self):
+		"""An apostrophe is buffered as part of the word, not treated as a word separator."""
+		for ch in "won't":
+			speechModule.speakTypedCharacters(ch)
+		# The apostrophe never completes a word, so speakPreviousWord is not called.
+		self._speakPreviousWord.assert_not_called()
+		self.assertEqual(speechModule._curWordChars, list("won't"))
+
+	def test_dotCompletesWord(self):
+		"""A dot is a word separator, so it routes to speakPreviousWord."""
+		for ch in "foo":
+			speechModule.speakTypedCharacters(ch)
+		speechModule.speakTypedCharacters(".")
+		self._speakPreviousWord.assert_called_once_with(".")
 
 
 class Test_getSpellingSpeechAddCharMode(unittest.TestCase):

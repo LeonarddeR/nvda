@@ -22,6 +22,7 @@
 * Magnifier: A new unassigned command has been added to move the mouse cursor to the center of the magnified view. (#20127, @CyrilleB79)
 * A new "Speak typing using" option in Keyboard settings allows NVDA to announce typed words based on the real text present in the document rather than the keys you pressed. (#8065, @LeonarddeR)
   * When set to "Real text", the announced word matches what the application itself considers a word.
+  * When set to "Real text", a non-word character such as a full stop always ends the typed word, even in applications (such as Notepad) that group it into a larger word: typing "example.com" announces "example", then "com".
   * This is disabled by default; the classic "Predicted text" behaviour is unchanged for existing users.
 
 ### Changes

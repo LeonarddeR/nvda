@@ -13,12 +13,25 @@ import config
 from config.configFlags import TypingEcho
 from config.featureFlag import FeatureFlag
 from config.featureFlagEnums import TypingEchoModeFlag
-from NVDAObjects.behaviors import EditableTextBase
+from NVDAObjects.behaviors import (
+	EditableTextBase,
+	_clampWordToForcedSeparators,
+	_isForcedWordSeparator,
+)
 import textInfos
 from textInfos.offsets import Offsets
+from textUtils.segFlag import WordSegFlag
 
 from speech import speech as speechModule
-from .textProvider import BasicTextProvider
+from .textProvider import BasicTextInfo, BasicTextProvider
+
+
+class UniscribeTextInfo(BasicTextInfo):
+	"""A TextInfo whose word segmentation is pinned to uniscribe, mirroring Win32 edit controls
+	(Notepad) which glue e.g. ``foo.bar`` into a single word unit
+	(see :class:`NVDAObjects.window.edit.EditTextInfo`)."""
+
+	wordSegFlag = WordSegFlag.UNISCRIBE
 
 
 class EditableTextProvider(EditableTextBase, BasicTextProvider):
@@ -42,6 +55,13 @@ class ConsoleLikeProvider(EditableTextProvider):
 	consoles where the caret lags. Such objects are excluded from real-text typing echo."""
 
 	caretMovementDetectionUsesEvents: bool = False
+
+
+class UniscribeEditableTextProvider(EditableTextProvider):
+	"""An editable text object whose word segmentation is pinned to uniscribe, so it glues words
+	across dots like Notepad does."""
+
+	TextInfo = UniscribeTextInfo
 
 
 class TestHasUnitBeenTyped(unittest.TestCase):
@@ -108,12 +128,64 @@ class TestHasUnitBeenTyped(unittest.TestCase):
 		self.assertEqual(unitInfo.text.strip(), "ab")
 
 	def test_caretStillWithinWord(self):
-		"""Typing a non-space separator while still inside a word reports no unit boundary."""
-		# The caret is within the single word "abcd"; a dot is typed but the word is not complete.
-		obj = EditableTextProvider(text="abcd", selection=(3, 3))
+		"""Typing a word-internal separator (apostrophe) reports no unit boundary."""
+		# The caret is within the contraction "won't"; the apostrophe does not complete the word.
+		obj = EditableTextProvider(text="wont", selection=(3, 3))
 		obj._cachedCaretBookmark = self._bookmarkAt(obj, 3)
 		obj.fakeCaretInfo = self._infoAt(obj, 3)
-		self.assertEqual(obj.hasUnitBeenTyped(textInfos.UNIT_WORD, "."), (False, None))
+		self.assertEqual(obj.hasUnitBeenTyped(textInfos.UNIT_WORD, "'"), (False, None))
+
+	def test_dotForcesBoundaryWhenUniscribeGluesWord(self):
+		"""A dot ends the typed word even when the application glues "foo.bar" into one word."""
+		# Uniscribe glues "foo.bar"; the caret sits after the just-typed dot (offset 4).
+		obj = UniscribeEditableTextProvider(text="foo.bar", selection=(4, 4))
+		obj._cachedCaretBookmark = self._bookmarkAt(obj, 3)
+		obj.fakeCaretInfo = self._infoAt(obj, 4)
+		unitFound, unitInfo = obj.hasUnitBeenTyped(textInfos.UNIT_WORD, ".")
+		self.assertIs(unitFound, True)
+		self.assertIsNotNone(unitInfo)
+		self.assertEqual(unitInfo.text, "foo")
+
+	def test_dotSeparatorClampsGluedSecondWord(self):
+		"""When a glued "foo.bar" is completed by a space, only the final run "bar" is announced."""
+		obj = UniscribeEditableTextProvider(text="foo.bar ", selection=(8, 8))
+		obj._cachedCaretBookmark = self._bookmarkAt(obj, 7)
+		obj.fakeCaretInfo = self._infoAt(obj, 8)
+		unitFound, unitInfo = obj.hasUnitBeenTyped(textInfos.UNIT_WORD, " ")
+		self.assertIs(unitFound, True)
+		self.assertIsNotNone(unitInfo)
+		self.assertEqual(unitInfo.text, "bar")
+
+	def test_commaForcesBoundary(self):
+		"""The forced boundary is category-based, not a hardcoded dot: a comma behaves like a dot."""
+		obj = UniscribeEditableTextProvider(text="foo,bar", selection=(4, 4))
+		obj._cachedCaretBookmark = self._bookmarkAt(obj, 3)
+		obj.fakeCaretInfo = self._infoAt(obj, 4)
+		unitFound, unitInfo = obj.hasUnitBeenTyped(textInfos.UNIT_WORD, ",")
+		self.assertIs(unitFound, True)
+		self.assertIsNotNone(unitInfo)
+		self.assertEqual(unitInfo.text, "foo")
+
+
+class TestForcedWordSeparatorHelpers(unittest.TestCase):
+	"""Tests for the pure helpers that classify forced word separators and clamp a word to them."""
+
+	def test_isForcedWordSeparator(self):
+		for ch in ".,:/ ":
+			self.assertTrue(_isForcedWordSeparator(ch), f"{ch!r} should force a boundary")
+		for ch in "aZ9" + "'’":
+			self.assertFalse(_isForcedWordSeparator(ch), f"{ch!r} should be word-internal")
+
+	def test_clampWordToForcedSeparators(self):
+		self.assertEqual(_clampWordToForcedSeparators("foo."), (0, 3))
+		self.assertEqual(_clampWordToForcedSeparators("foo.bar"), (4, 7))
+		self.assertEqual(_clampWordToForcedSeparators("ab "), (0, 2))
+		self.assertEqual(_clampWordToForcedSeparators("won't"), (0, 5))
+		# Only separators / spaces: start == end signals no real word.
+		start, end = _clampWordToForcedSeparators(".")
+		self.assertEqual(start, end)
+		start, end = _clampWordToForcedSeparators("  ")
+		self.assertEqual(start, end)
 
 
 class TestSpeakPreviousWord(unittest.TestCase):
