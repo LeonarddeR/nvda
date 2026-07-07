@@ -6,19 +6,18 @@
 """Unit tests for the editableText module, in particular announcing typed words from real text."""
 
 import unittest
-from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import config
 from config.configFlags import TypingEcho
 from config.featureFlag import FeatureFlag
 from config.featureFlagEnums import TypingEchoModeFlag
-from NVDAObjects.behaviors import (
-	EditableTextBase,
-	_clampWordToForcedSeparators,
-	_isForcedWordSeparator,
-)
+from NVDAObjects.behaviors import EditableTextBase
 import textInfos
+from textUtils import (
+	clampWordToForcedSeparators,
+	isForcedWordSeparator,
+)
 from textInfos.offsets import Offsets
 from textUtils.segFlag import WordSegFlag
 
@@ -116,16 +115,23 @@ class TestHasUnitBeenTyped(unittest.TestCase):
 		obj.fakeCaretInfo = None  # _hasCaretMoved will report no movement.
 		self.assertEqual(obj.hasUnitBeenTyped(textInfos.UNIT_WORD, " "), (None, None))
 
+	def test_unsupportedUnitRaises(self):
+		"""Only UNIT_WORD is supported; other units raise NotImplementedError."""
+		obj = EditableTextProvider(text="ab cd", selection=(3, 3))
+		obj._cachedCaretBookmark = self._bookmarkAt(obj, 2)
+		obj.fakeCaretInfo = self._infoAt(obj, 3)
+		with self.assertRaises(NotImplementedError):
+			obj.hasUnitBeenTyped(textInfos.UNIT_CHARACTER, " ")
+
 	def test_wordCompletedBySpace(self):
 		"""Typing a space after a word yields that word from the document text."""
 		# "ab" has just been completed by typing a space; the caret is now after the space.
 		obj = EditableTextProvider(text="ab cd", selection=(3, 3))
 		obj._cachedCaretBookmark = self._bookmarkAt(obj, 2)
 		obj.fakeCaretInfo = self._infoAt(obj, 3)
-		unitFound, unitInfo = obj.hasUnitBeenTyped(textInfos.UNIT_WORD, " ")
-		self.assertIs(unitFound, True)
-		self.assertIsNotNone(unitInfo)
-		self.assertEqual(unitInfo.text.strip(), "ab")
+		wordFound, typedWord = obj.hasUnitBeenTyped(textInfos.UNIT_WORD, " ")
+		self.assertIs(wordFound, True)
+		self.assertEqual(typedWord.strip(), "ab")
 
 	def test_caretStillWithinWord(self):
 		"""Typing a word-internal separator (apostrophe) reports no unit boundary."""
@@ -141,30 +147,27 @@ class TestHasUnitBeenTyped(unittest.TestCase):
 		obj = UniscribeEditableTextProvider(text="foo.bar", selection=(4, 4))
 		obj._cachedCaretBookmark = self._bookmarkAt(obj, 3)
 		obj.fakeCaretInfo = self._infoAt(obj, 4)
-		unitFound, unitInfo = obj.hasUnitBeenTyped(textInfos.UNIT_WORD, ".")
-		self.assertIs(unitFound, True)
-		self.assertIsNotNone(unitInfo)
-		self.assertEqual(unitInfo.text, "foo")
+		wordFound, typedWord = obj.hasUnitBeenTyped(textInfos.UNIT_WORD, ".")
+		self.assertIs(wordFound, True)
+		self.assertEqual(typedWord, "foo")
 
 	def test_dotSeparatorClampsGluedSecondWord(self):
 		"""When a glued "foo.bar" is completed by a space, only the final run "bar" is announced."""
 		obj = UniscribeEditableTextProvider(text="foo.bar ", selection=(8, 8))
 		obj._cachedCaretBookmark = self._bookmarkAt(obj, 7)
 		obj.fakeCaretInfo = self._infoAt(obj, 8)
-		unitFound, unitInfo = obj.hasUnitBeenTyped(textInfos.UNIT_WORD, " ")
-		self.assertIs(unitFound, True)
-		self.assertIsNotNone(unitInfo)
-		self.assertEqual(unitInfo.text, "bar")
+		wordFound, typedWord = obj.hasUnitBeenTyped(textInfos.UNIT_WORD, " ")
+		self.assertIs(wordFound, True)
+		self.assertEqual(typedWord, "bar")
 
 	def test_commaForcesBoundary(self):
 		"""The forced boundary is category-based, not a hardcoded dot: a comma behaves like a dot."""
 		obj = UniscribeEditableTextProvider(text="foo,bar", selection=(4, 4))
 		obj._cachedCaretBookmark = self._bookmarkAt(obj, 3)
 		obj.fakeCaretInfo = self._infoAt(obj, 4)
-		unitFound, unitInfo = obj.hasUnitBeenTyped(textInfos.UNIT_WORD, ",")
-		self.assertIs(unitFound, True)
-		self.assertIsNotNone(unitInfo)
-		self.assertEqual(unitInfo.text, "foo")
+		wordFound, typedWord = obj.hasUnitBeenTyped(textInfos.UNIT_WORD, ",")
+		self.assertIs(wordFound, True)
+		self.assertEqual(typedWord, "foo")
 
 
 class TestForcedWordSeparatorHelpers(unittest.TestCase):
@@ -172,19 +175,19 @@ class TestForcedWordSeparatorHelpers(unittest.TestCase):
 
 	def test_isForcedWordSeparator(self):
 		for ch in ".,:/ ":
-			self.assertTrue(_isForcedWordSeparator(ch), f"{ch!r} should force a boundary")
+			self.assertTrue(isForcedWordSeparator(ch), f"{ch!r} should force a boundary")
 		for ch in "aZ9" + "'’":
-			self.assertFalse(_isForcedWordSeparator(ch), f"{ch!r} should be word-internal")
+			self.assertFalse(isForcedWordSeparator(ch), f"{ch!r} should be word-internal")
 
 	def test_clampWordToForcedSeparators(self):
-		self.assertEqual(_clampWordToForcedSeparators("foo."), (0, 3))
-		self.assertEqual(_clampWordToForcedSeparators("foo.bar"), (4, 7))
-		self.assertEqual(_clampWordToForcedSeparators("ab "), (0, 2))
-		self.assertEqual(_clampWordToForcedSeparators("won't"), (0, 5))
+		self.assertEqual(clampWordToForcedSeparators("foo."), (0, 3))
+		self.assertEqual(clampWordToForcedSeparators("foo.bar"), (4, 7))
+		self.assertEqual(clampWordToForcedSeparators("ab "), (0, 2))
+		self.assertEqual(clampWordToForcedSeparators("won't"), (0, 5))
 		# Only separators / spaces: start == end signals no real word.
-		start, end = _clampWordToForcedSeparators(".")
+		start, end = clampWordToForcedSeparators(".")
 		self.assertEqual(start, end)
-		start, end = _clampWordToForcedSeparators("  ")
+		start, end = clampWordToForcedSeparators("  ")
 		self.assertEqual(start, end)
 
 
@@ -233,7 +236,7 @@ class TestSpeakPreviousWord(unittest.TestCase):
 	def test_speaksDocumentWordWhenFound(self):
 		"""When the document yields a word (True), that word is spoken instead of the buffer."""
 		self._setBuffer("helo")  # Buffer differs from the real word to prove the source.
-		self._makeCaretObject((True, SimpleNamespace(text="hello")))
+		self._makeCaretObject((True, "hello"))
 		speechModule.speakPreviousWord(" ")
 		self._speakText.assert_called_once_with("hello")
 		self.assertEqual(speechModule._curWordChars, [])
@@ -251,7 +254,7 @@ class TestSpeakPreviousWord(unittest.TestCase):
 		"""While typing is protected, the document is never consulted and nothing is spoken."""
 		self._isTypingProtected.return_value = True
 		self._setBuffer("****")
-		obj = self._makeCaretObject((True, SimpleNamespace(text="secret")))
+		obj = self._makeCaretObject((True, "secret"))
 		speechModule.speakPreviousWord(" ")
 		obj.hasUnitBeenTyped.assert_not_called()
 		self._speakText.assert_not_called()
