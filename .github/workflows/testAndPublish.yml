@@ -32,7 +32,7 @@ env:
   # Cache details about available MSVC tooling for subsequent SCons invocations to the provided file.
   SCONS_CACHE_MSVC_CONFIG: ".scons_msvc_cache.json"
   defaultRunner: 'windows-2025-vs2026'
-  supportedRunners: '["windows-2022", "windows-2025-vs2026", "windows-11-vs2026-arm"]'
+  supportedRunners: '["windows-2022", "windows-2025-vs2026", "windows-11-arm"]'
   defaultArch: x64
   supportedArchitectures: '["x64"]'
   defaultPythonVersion: '3.13.13'
@@ -480,7 +480,7 @@ jobs:
         pythonVersion: ${{ fromJson(needs.matrix.outputs.supportedPythonVersions) }}
         # A bug exists with Windows 2022 notepad that prevents NVDA from focusing it.
         # This causes our symbol pronunciation and browseable message tests to fail on this runner.
-        # The same two suites fail on windows-11-vs2026-arm: there NVDA (running
+        # The same two suites fail on windows-11-arm: there NVDA (running
         # emulated, without UIAccess) cannot obtain a handle to the notepad/WebView2
         # window the tests drive.
         exclude:
@@ -488,9 +488,9 @@ jobs:
             testSuite: symbols
           - runner: windows-2022
             testSuite: browseableMessage
-          - runner: windows-11-vs2026-arm
+          - runner: windows-11-arm
             testSuite: symbols
-          - runner: windows-11-vs2026-arm
+          - runner: windows-11-arm
             testSuite: browseableMessage
     env:
       uv-arch: ${{ matrix.arch == 'x64' && 'x86_64' || 'x86' }}
