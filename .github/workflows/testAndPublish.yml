@@ -495,9 +495,6 @@ jobs:
     env:
       uv-arch: ${{ matrix.arch == 'x64' && 'x86_64' || 'x86' }}
     steps:
-    - name: 'Workaround for missing zstd in windows-11-vs2026-arm'
-      if: matrix.runner == 'windows-11-vs2026-arm'
-      run: choco install -y zstandard
     - name: Checkout cached build
       uses: actions/cache/restore@v5
       with:
