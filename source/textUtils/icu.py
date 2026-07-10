@@ -14,9 +14,15 @@ from contextlib import contextmanager
 import winBindings.icu as icu
 from logHandler import log
 
+ICU_AVAILABLE: bool = icu.ICU_AVAILABLE
+"""True if the Windows built-in ICU library was loaded (re-exported from winBindings.icu
+so callers of this module have a single import for the sentence/word API surface)."""
+
 _ROOT_LOCALE: bytes = b""
 """ICU root locale. Word and character segmentation are script-driven, not
 locale-driven (see calculateWordOffsets), so the root locale is always used.
+Sentence segmentation is locale-sensitive only for abbreviation tailoring; the
+root locale is used there too (see calculateSentenceOffsets).
 """
 
 
@@ -42,6 +48,29 @@ def _breakIterator(kind: int, locale: bytes, buf: ctypes.Array[ctypes.c_wchar]):
 		yield bi
 	finally:
 		icu.ubrk_close(bi)
+
+
+def _containingSegment(bi, offset: int, textLength: int) -> tuple[int, int]:
+	"""Return the [start, end) ICU segment containing offset for an already-open iterator.
+
+	ICU offsets are UTF-16 code-unit indexed, so anchor on the boundary following offset
+	and take the boundary preceding that.  (ubrk_preceding(offset + 1) would snap back for
+	multi-unit segments.)  The iterator is left positioned at start; callers that need
+	further boundaries (e.g. word whitespace attachment) can keep using it.
+
+	:param bi: An open UBreakIterator handle.
+	:param offset: UTF-16 code unit offset within the analyzed text.
+	:param textLength: Number of UTF-16 code units in the analyzed text (used when the
+	    iterator reports UBRK_DONE past the end).
+	:return: (startOffset, endOffset) as UTF-16 code unit indices, endOffset exclusive.
+	"""
+	end = icu.ubrk_following(bi, offset)
+	if end == icu.UBRK_DONE:
+		end = textLength
+	start = icu.ubrk_preceding(bi, end)
+	if start == icu.UBRK_DONE:
+		start = 0
+	return (start, end)
 
 
 def calculateWordOffsets(
@@ -84,15 +113,7 @@ def calculateWordOffsets(
 	try:
 		with _breakIterator(icu.UBRK.WORD, _ROOT_LOCALE, buf) as bi:
 			# Find [start, end) — the ICU segment containing offset.
-			# ICU offsets are UTF-16 code-unit indexed, so anchor on the boundary following
-			# offset and take the boundary preceding that. (ubrk_preceding(offset + 1)
-			# would snap back for multi-unit segments.)
-			end = icu.ubrk_following(bi, offset)
-			if end == icu.UBRK_DONE:
-				end = textLength
-			start = icu.ubrk_preceding(bi, end)
-			if start == icu.UBRK_DONE:
-				start = 0
+			start, end = _containingSegment(bi, offset, textLength)
 
 			# ICU works in word boundaries, i.e. a word always starts and ends at a boundary.
 			# This means that whitespace runs also always start and end at a word boundary.
@@ -129,4 +150,36 @@ def calculateWordOffsets(
 			return (start, end)
 	except RuntimeError:
 		log.debugWarning("ICU word break iterator failed", exc_info=True)
+		return None
+
+
+def calculateSentenceOffsets(
+	text: str,
+	offset: int,
+) -> tuple[int, int] | None:
+	"""Calculate the UTF-16 start and end offsets of the sentence at the given offset.
+
+	Sentence boundaries follow Unicode Standard Annex #29 default rules, which are driven
+	by the language-neutral Sentence_Break property (STerm/ATerm terminators such as ".",
+	"!", "?" and the ideographic full stop "。").  These rules segment every script
+	correctly without a locale; a locale would only add abbreviation tailoring (e.g.
+	keeping "Dr." from ending a sentence), which is not applied here — the root locale is
+	used, matching calculateWordOffsets.  Trailing whitespace and punctuation are attached
+	to the sentence by UAX#29, so no extra post-processing is needed.
+
+	:param text: The paragraph text as a Python str.
+	:param offset: UTF-16 code unit offset within text at which to find the boundary.
+	:return: (startOffset, endOffset) as UTF-16 code unit indices (endOffset exclusive),
+	    or None if the ICU call failed.
+	"""
+	buf = ctypes.create_unicode_buffer(text)
+	textLength = len(buf) - 1
+	if offset >= textLength:
+		return (offset, offset + 1)
+
+	try:
+		with _breakIterator(icu.UBRK.SENTENCE, _ROOT_LOCALE, buf) as bi:
+			return _containingSegment(bi, offset, textLength)
+	except RuntimeError:
+		log.debugWarning("ICU sentence break iterator failed", exc_info=True)
 		return None
