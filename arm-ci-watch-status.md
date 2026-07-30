@@ -1,8 +1,11 @@
 ## 2026-07-30 07:35 — windows-11-arm 20260727.122
 - Previously tested image: 20260719.114
 - Branch update: merged leonard/try-testOnArm (prek auto-fix, kept full log) and origin/master (advanced)
-- CI run: <fill in after it starts>
-- Result: pending
+- CI run: https://github.com/LeonarddeR/nvda/actions/runs/30517046822
+- Result: failure (all 10 windows-11-arm suites failed)
+- NOTE: runners served image 20260719.114 — release 20260727.122 (published 2026-07-27) had NOT rolled out to the hosted win11-arm64 pool at run time. Effectively a re-test on the previous image.
+- Per-suite arm results: startupShutdown FAIL, installer FAIL, chrome_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL
+- Assessment: #14069 and #14264 STILL APPLY — both OPEN; same focus-theft signature: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA"
 ## 2026-07-24 12:05 — windows-11-arm 20260719.114
 - Previously tested image: 20260714.109
 - Branch update: merged origin/master (advanced)
