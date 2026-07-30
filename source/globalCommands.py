@@ -36,6 +36,7 @@ from speech import (
 	sayAll,
 	shortcutKeys,
 )
+from speech.speech import CHUNK_SEPARATOR
 from NVDAObjects import NVDAObject, NVDAObjectTextInfo
 import globalVars
 from logHandler import log, Logger
@@ -4818,20 +4819,28 @@ class GlobalCommands(ScriptableObject):
 	def script_interactWithMath(self, gesture):
 		import mathPres
 
-		mathMl = mathPres.getMathMlFromTextInfo(api.getReviewPosition())
+		reviewPosition = api.getReviewPosition()
+		mathMl = mathPres.getMathMlFromTextInfo(reviewPosition)
+		sourceObj = None
 		if not mathMl:
 			obj = api.getNavigatorObject()
 			if obj.role == controlTypes.Role.MATH:
 				try:
 					mathMl = obj.mathMl
+					sourceObj = obj
 				except (NotImplementedError, LookupError):
 					mathMl = None
+		else:
+			try:
+				sourceObj = reviewPosition.NVDAObjectAtStart
+			except (NotImplementedError, LookupError):
+				pass
 		if not mathMl:
 			# Translators: Reported when the user attempts math interaction
 			# with something that isn't math.
 			ui.message(_("Not math"))
 			return
-		mathPres.interactWithMathMl(mathMl)
+		mathPres.interactWithMathMl(mathMl, sourceObj=sourceObj)
 
 	@script(
 		# Translators: Describes a command.
@@ -5564,7 +5573,7 @@ class GlobalCommands(ScriptableObject):
 			return
 		lastSpeechSeq, symbolLevel = lastSpeech
 		repeats = getLastScriptRepeatCount()
-		lastSpeechText = "  ".join(i for i in lastSpeechSeq if isinstance(i, str))
+		lastSpeechText = CHUNK_SEPARATOR.join(i for i in lastSpeechSeq if isinstance(i, str))
 		if repeats == 0:
 			speech.speak(lastSpeechSeq, symbolLevel=symbolLevel)
 			braille.handler.message(lastSpeechText)
@@ -5572,6 +5581,23 @@ class GlobalCommands(ScriptableObject):
 			# Translators: title for report last spoken information dialog.
 			title = _("Last spoken information")
 			ui.browseableMessage(lastSpeechText, title, copyButton=True, closeButton=True)
+
+	@script(
+		description=_(
+			# Translators: Input help mode message for the command to copy the last spoken information.
+			"Copies the last spoken information to the clipboard.",
+		),
+		gesture="kb:NVDA+control+x",
+		category=SCRCAT_SPEECH,
+	)
+	def script_copyLastSpokenInformation(self, gesture: "inputCore.InputGesture") -> None:
+		lastSpeech = speech.speech._lastSpeech
+		if lastSpeech is None:
+			# Translators: Reported when there is no last spoken information to copy.
+			ui.message(_("Nothing to copy"))
+			return
+		lastSpeechText = CHUNK_SEPARATOR.join(item for item in lastSpeech[0] if isinstance(item, str))
+		api.copyToClip(lastSpeechText, notify=True)
 
 
 #: The single global commands instance.
