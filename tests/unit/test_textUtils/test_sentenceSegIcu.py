@@ -12,26 +12,23 @@ the ICU library is not present on the system.
 """
 
 import unittest
+from unittest.mock import patch
 
 import textInfos
+from textInfos import offsets as offsetsModule
 from textInfos.offsets import Offsets
 from textUtils import icu
-from winBindings.icu import ICU_AVAILABLE
 
 from ..textProvider import BasicTextInfo, BasicTextProvider
-
-
-skipIfNoICU = unittest.skipUnless(ICU_AVAILABLE, "ICU library not available on this system")
+from . import skipIfNoICU
 
 
 class _BlockParagraphTextInfo(BasicTextInfo):
 	"""A TextInfo whose paragraphs are blocks separated by a blank line ("\\n\\n").
 
-	The base BasicTextInfo splits paragraphs by line (any single newline), which would
-	produce an empty paragraph between blocks.  Browse mode's real
-	VirtualBufferTextInfo._getParagraphOffsets returns block-level bounds instead.  This
-	fixture mimics that so the iteration tests exercise block-paragraph crossing rather
-	than line splitting (test text is ASCII, so str offsets == UTF-16 offsets).
+	Mimics the block-level bounds VirtualBufferTextInfo._getParagraphOffsets returns,
+	rather than the line splitting BasicTextInfo does.  Test text is ASCII, so str
+	offsets equal UTF-16 offsets.
 	"""
 
 	def _getParagraphOffsets(self, offset):
@@ -67,11 +64,7 @@ class TestCalculateSentenceOffsets(unittest.TestCase):
 		self.assertEqual(icu.calculateSentenceOffsets(text, 9), (9, 15))
 
 	def test_abbreviation_splits_under_root_locale(self):
-		"""Documents the deliberate root-locale tradeoff: no abbreviation tailoring.
-
-		"Dr." ends a sentence under the root locale (a locale-aware follow-up could
-		suppress this).  Locking this in guards the documented v1 behaviour.
-		"""
+		"""Under the root locale, which has no abbreviation tailoring, "Dr." ends a sentence."""
 		text = "Dr. Smith went home."
 		self.assertEqual(icu.calculateSentenceOffsets(text, 0), (0, 4))
 		self.assertEqual(icu.calculateSentenceOffsets(text, 4), (4, 20))
@@ -104,12 +97,7 @@ class TestCalculateSentenceOffsets(unittest.TestCase):
 
 @skipIfNoICU
 class TestSentenceIterationTiling(unittest.TestCase):
-	"""The iteration invariant: move(UNIT_SENTENCE) walks sentences gap-free without stalling.
-
-	BasicTextInfo has no native paragraph support, so _getParagraphOffsets falls back to
-	line offsets (newline splitting); a text with no newline is a single paragraph, and a
-	text with a newline exercises the paragraph-boundary crossing.
-	"""
+	"""The iteration invariant: move(UNIT_SENTENCE) walks sentences gap-free without stalling."""
 
 	def _collectSentences(self, obj, length: int, direction: int) -> list[tuple[int, int]]:
 		"""Enumerate sentence spans by expanding then moving in ``direction`` until the walk stops.
@@ -123,7 +111,7 @@ class TestSentenceIterationTiling(unittest.TestCase):
 		info = obj.makeTextInfo(Offsets(startPos, startPos))
 		info.expand(textInfos.UNIT_SENTENCE)
 		spans = []
-		# Bound the loop defensively so a regression stalls the test rather than hangs it.
+		# The loop is bounded so that a stalled walk fails rather than hangs.
 		for _ in range(length + 2):
 			spans.append((info._startOffset, info._endOffset))
 			if info.move(textInfos.UNIT_SENTENCE, direction) == 0:
@@ -153,13 +141,7 @@ class TestSentenceIterationTiling(unittest.TestCase):
 		self.assertEqual(backward, forward)
 
 	def test_crosses_block_paragraph_boundary_both_directions(self):
-		"""With block-paragraph semantics, the walk must cross the blank-line boundary.
-
-		This mirrors browse mode, whose block-level paragraph offsets differ from the base
-		line splitting.  (move(UNIT_PARAGRAPH) already relies on the same boundary re-query
-		in browse mode today, so the production VBuf offsets are exercised there; here we
-		prove the sentence walk itself crosses correctly for both directions.)
-		"""
+		"""With block-paragraph semantics, the walk crosses the blank-line boundary."""
 		text = "One. Two.\n\nThree. Four."
 		length = len(text)
 		blockStart = text.index("\n\n") + 2  # start of the second block paragraph
@@ -173,15 +155,12 @@ class TestSentenceIterationTiling(unittest.TestCase):
 		self.assertIn(blockStart, [start for start, _ in backward])
 
 
-@skipIfNoICU
 class TestSentenceOffsetsWithoutIcu(unittest.TestCase):
 	"""When ICU is unavailable, _getSentenceOffsets degrades to NotImplementedError."""
 
 	def test_not_implemented_when_icu_unavailable(self):
-		from unittest.mock import patch
-
 		obj = BasicTextProvider(text="Hello world. Goodbye now.")
 		info = obj.makeTextInfo(Offsets(0, 0))
-		with patch.object(icu, "ICU_AVAILABLE", False):
+		with patch.object(offsetsModule, "ICU_AVAILABLE", False):
 			with self.assertRaises(NotImplementedError):
 				info._getSentenceOffsets(0)

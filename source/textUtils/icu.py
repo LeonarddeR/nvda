@@ -9,20 +9,17 @@ Requires Windows 10 version 1703 (Creators Update) or later.
 """
 
 import ctypes
+from collections.abc import Callable
 from contextlib import contextmanager
 
+import textUtils
 import winBindings.icu as icu
 from logHandler import log
 
-ICU_AVAILABLE: bool = icu.ICU_AVAILABLE
-"""True if the Windows built-in ICU library was loaded (re-exported from winBindings.icu
-so callers of this module have a single import for the sentence/word API surface)."""
-
 _ROOT_LOCALE: bytes = b""
-"""ICU root locale. Word and character segmentation are script-driven, not
-locale-driven (see calculateWordOffsets), so the root locale is always used.
-Sentence segmentation is locale-sensitive only for abbreviation tailoring; the
-root locale is used there too (see calculateSentenceOffsets).
+"""ICU root locale. Word, character and sentence segmentation are script-driven, not
+locale-driven (see calculateWordOffsets and calculateSentenceOffsets), so the root
+locale is always used.
 """
 
 
@@ -50,13 +47,11 @@ def _breakIterator(kind: int, locale: bytes, buf: ctypes.Array[ctypes.c_wchar]):
 		icu.ubrk_close(bi)
 
 
-def _containingSegment(bi, offset: int, textLength: int) -> tuple[int, int]:
+def _containingSegment(bi: int, offset: int, textLength: int) -> tuple[int, int]:
 	"""Return the [start, end) ICU segment containing offset for an already-open iterator.
 
-	ICU offsets are UTF-16 code-unit indexed, so anchor on the boundary following offset
-	and take the boundary preceding that.  (ubrk_preceding(offset + 1) would snap back for
-	multi-unit segments.)  The iterator is left positioned at start; callers that need
-	further boundaries (e.g. word whitespace attachment) can keep using it.
+	The iterator is left positioned at start, so callers can keep using it to walk
+	further boundaries.
 
 	:param bi: An open UBreakIterator handle.
 	:param offset: UTF-16 code unit offset within the analyzed text.
@@ -159,13 +154,12 @@ def calculateSentenceOffsets(
 ) -> tuple[int, int] | None:
 	"""Calculate the UTF-16 start and end offsets of the sentence at the given offset.
 
-	Sentence boundaries follow Unicode Standard Annex #29 default rules, which are driven
-	by the language-neutral Sentence_Break property (STerm/ATerm terminators such as ".",
-	"!", "?" and the ideographic full stop "。").  These rules segment every script
-	correctly without a locale; a locale would only add abbreviation tailoring (e.g.
-	keeping "Dr." from ending a sentence), which is not applied here — the root locale is
-	used, matching calculateWordOffsets.  Trailing whitespace and punctuation are attached
-	to the sentence by UAX#29, so no extra post-processing is needed.
+	Sentence boundaries follow Unicode Standard Annex #29 default rules, driven by the
+	language-neutral Sentence_Break property (STerm/ATerm terminators such as ".", "!",
+	"?" and the ideographic full stop "。"), so the root locale is used.  Abbreviation
+	tailoring, which would keep "Dr." from ending a sentence, is locale-specific and is
+	therefore not applied.  Trailing whitespace and punctuation are attached to the
+	preceding sentence.
 
 	:param text: The paragraph text as a Python str.
 	:param offset: UTF-16 code unit offset within text at which to find the boundary.
@@ -183,3 +177,31 @@ def calculateSentenceOffsets(
 	except RuntimeError:
 		log.debugWarning("ICU sentence break iterator failed", exc_info=True)
 		return None
+
+
+def calculateOffsetsForEncoding(
+	calculate: Callable[[str, int], tuple[int, int] | None],
+	text: str,
+	offset: int,
+	encoding: str | None,
+) -> tuple[int, int] | None:
+	"""Run one of this module's offset calculations against offsets in the given encoding.
+
+	The calculations are UTF-16 code unit indexed; for any other encoding the offset is
+	converted before the call and the result converted back.
+
+	:param calculate: The calculation to run, e.g. calculateWordOffsets.
+	:param text: The text to segment.
+	:param offset: Offset within text, indexed according to encoding.
+	:param encoding: The encoding offset is indexed by; textUtils.WCHAR_ENCODING for
+	    UTF-16 code units, anything else for str indices.
+	:return: (startOffset, endOffset) indexed according to encoding (endOffset
+	    exclusive), or None if the ICU call failed.
+	"""
+	if encoding == textUtils.WCHAR_ENCODING:
+		return calculate(text, offset)
+	offsetConverter = textUtils.WideStringOffsetConverter(text)
+	result = calculate(text, offsetConverter.strToEncodedOffsets(offset, offset)[0])
+	if result is None:
+		return None
+	return offsetConverter.encodedToStrOffsets(*result)

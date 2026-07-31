@@ -2036,15 +2036,12 @@ class BrowseModeDocumentTreeInterceptor(
 			self.passThrough = False
 		reportPassThrough(self)
 
-	#: States indicating that a control consumes alt+upArrow/alt+downArrow itself
-	#: (to expand/collapse or cycle through values), so those gestures should not be
-	#: repurposed for sentence navigation when such a control is at the caret.
+	#: States indicating that a control consumes alt+upArrow/alt+downArrow itself,
+	#: to expand/collapse or to cycle through values.
 	_EXPAND_OR_POPUP_STATES = frozenset(
 		{
 			controlTypes.State.COLLAPSED,
 			controlTypes.State.EXPANDED,
-			# An editable/autocomplete combo box carries AUTOCOMPLETE; HASPOPUP is stripped
-			# from such objects (see NVDAObjects.IAccessible), so key off AUTOCOMPLETE too.
 			controlTypes.State.AUTOCOMPLETE,
 			controlTypes.State.HASPOPUP,
 		},
@@ -2053,11 +2050,11 @@ class BrowseModeDocumentTreeInterceptor(
 	def _isExpandableControlAtCaret(self) -> bool:
 		"""Whether the focusable control at the caret should handle alt+up/down itself.
 
-		Used to decide whether alt+upArrow/alt+downArrow should collapse/expand a control
-		(e.g. a combo box) or navigate by sentence.  The object tested is the same one
-		:meth:`script_collapseOrExpandControl` acts on, so the decision and the action stay
-		consistent.  For plain document content the focusable-node lookup yields the root
-		object, so this returns C{False} and sentence navigation is used.
+		The object tested is the one :meth:`script_collapseOrExpandControl` acts on.  For
+		plain document content the focusable node is the root object, so this returns
+		``False``.
+
+		:return: ``True`` to collapse/expand the control, ``False`` to navigate by sentence.
 		"""
 		obj = self.currentFocusableNVDAObject
 		if obj is None or obj == self.rootNVDAObject:
@@ -2066,20 +2063,20 @@ class BrowseModeDocumentTreeInterceptor(
 			return True
 		return not obj.states.isdisjoint(self._EXPAND_OR_POPUP_STATES)
 
-	def _moveBySentence_scriptHelper(self, gesture: inputCore.InputGesture, superScript) -> None:
+	def _moveBySentence_scriptHelper(self, gesture: inputCore.InputGesture, direction: int) -> None:
 		"""Dispatch alt+up/down to either collapse/expand or sentence navigation.
 
+		Sentence navigation does nothing in documents whose TextInfo has no sentence support.
+
 		:param gesture: The triggering gesture.
-		:param superScript: The base cursor manager's sentence-navigation script (bound) to
-			fall back to when no expandable control is at the caret.
+		:param direction: 1 to move to the next sentence, -1 to move to the previous one.
 		"""
 		if self._isExpandableControlAtCaret():
 			self.script_collapseOrExpandControl(gesture)
 			return
 		try:
-			superScript(gesture)
+			self._caretMovementScriptHelper(gesture, textInfos.UNIT_SENTENCE, direction)
 		except NotImplementedError:
-			# ICU (and thus sentence segmentation) is unavailable; silently do nothing.
 			pass
 
 	@script(
@@ -2088,7 +2085,7 @@ class BrowseModeDocumentTreeInterceptor(
 		resumeSayAllMode=sayAll.CURSOR.CARET,
 	)
 	def script_moveBySentence_back(self, gesture):
-		self._moveBySentence_scriptHelper(gesture, super().script_moveBySentence_back)
+		self._moveBySentence_scriptHelper(gesture, -1)
 
 	@script(
 		# Translators: Input help mode message for a command in browse mode.
@@ -2096,7 +2093,7 @@ class BrowseModeDocumentTreeInterceptor(
 		resumeSayAllMode=sayAll.CURSOR.CARET,
 	)
 	def script_moveBySentence_forward(self, gesture):
-		self._moveBySentence_scriptHelper(gesture, super().script_moveBySentence_forward)
+		self._moveBySentence_scriptHelper(gesture, 1)
 
 	def _tabOverride(self, direction):
 		"""Override the tab order if the virtual  caret is not within the currently focused node.

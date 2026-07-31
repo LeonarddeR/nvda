@@ -7,8 +7,8 @@
 
 Covers ``BrowseModeDocumentTreeInterceptor._isExpandableControlAtCaret``, the discriminator
 that decides whether ``alt+upArrow``/``alt+downArrow`` should collapse/expand a control or
-navigate by sentence.  The method is exercised directly with a duck-typed ``self`` so the
-heavy tree interceptor construction (which needs a real virtual buffer) is not required.
+navigate by sentence.  The method is exercised against a duck-typed ``self``, which avoids
+constructing a tree interceptor and its virtual buffer.
 """
 
 import unittest
@@ -22,7 +22,7 @@ class _FakeObject:
 
 	def __init__(self, role=controlTypes.Role.UNKNOWN, states=frozenset()):
 		self.role = role
-		self.states = set(states)
+		self.states = states
 
 
 class _FakeInterceptor:
@@ -32,18 +32,15 @@ class _FakeInterceptor:
 		browseMode.BrowseModeDocumentTreeInterceptor.ALWAYS_SWITCH_TO_PASS_THROUGH_ROLES
 	)
 	_EXPAND_OR_POPUP_STATES = browseMode.BrowseModeDocumentTreeInterceptor._EXPAND_OR_POPUP_STATES
+	_isExpandableControlAtCaret = browseMode.BrowseModeDocumentTreeInterceptor._isExpandableControlAtCaret
 
 	def __init__(self, focusable, root):
 		self.currentFocusableNVDAObject = focusable
 		self.rootNVDAObject = root
 
 
-# The real method, unbound, invoked against the fake self above.
-_isExpandableControlAtCaret = browseMode.BrowseModeDocumentTreeInterceptor._isExpandableControlAtCaret
-
-
 def _check(focusable, root):
-	return _isExpandableControlAtCaret(_FakeInterceptor(focusable, root))
+	return _FakeInterceptor(focusable, root)._isExpandableControlAtCaret()
 
 
 class TestIsExpandableControlAtCaret(unittest.TestCase):

@@ -16,8 +16,10 @@ import textInfos
 import locationHelper
 from treeInterceptorHandler import TreeInterceptor
 import textUtils
+from textUtils import icu
 from textUtils.segFlag import CharSegFlag, WordSegFlag
 from textUtils._wordSeg.wordSegmenter import WordSegmenter
+from winBindings.icu import ICU_AVAILABLE
 from dataclasses import dataclass
 from typing import (
 	Any,
@@ -559,31 +561,24 @@ class OffsetsTextInfo(textInfos.TextInfo, metaclass=_OffsetsTextInfoMeta):
 		"""Gets the start and end offsets of the sentence containing the given offset.
 
 		Sentences are segmented over the containing paragraph (:meth:`_getParagraphOffsets`)
-		using the Windows built-in ICU BreakIterator (UAX#29).  Segmenting over the paragraph
-		rather than the line lets a sentence span multiple lines; segmentation depends only on
-		the paragraph text, so the result tiles consistently for :meth:`move`/:meth:`expand`.
+		using the Windows built-in ICU BreakIterator (UAX#29), so a sentence can span
+		multiple lines.
 
 		:param offset: The offset of the character within the sentence.
 		:return: A tuple of the start and end offsets of the sentence.
-		:raises NotImplementedError: If ICU is unavailable (e.g. Windows older than version
-		    1703) or the ICU call fails; callers then degrade as they did before ICU sentence
-		    support existed.
+		:raises NotImplementedError: If ICU is unavailable (Windows older than version 1703)
+		    or the ICU call fails.
 		"""
-		from textUtils import icu
-
-		if not icu.ICU_AVAILABLE:
+		if not ICU_AVAILABLE:
 			raise NotImplementedError
 		paragraphStart, paragraphEnd = self._getParagraphOffsets(offset)
 		paragraphText = self._getTextRange(paragraphStart, paragraphEnd)
-		relOffset = offset - paragraphStart
-		if self.encoding == textUtils.WCHAR_ENCODING:
-			result = icu.calculateSentenceOffsets(paragraphText, relOffset)
-		else:
-			# Convert the str offset to a UTF-16 offset for ICU, then convert the result back.
-			offsetConverter = textUtils.WideStringOffsetConverter(paragraphText)
-			wideOffset = offsetConverter.strToEncodedOffsets(relOffset, relOffset)[0]
-			icuResult = icu.calculateSentenceOffsets(paragraphText, wideOffset)
-			result = offsetConverter.encodedToStrOffsets(*icuResult) if icuResult is not None else None
+		result = icu.calculateOffsetsForEncoding(
+			icu.calculateSentenceOffsets,
+			paragraphText,
+			offset - paragraphStart,
+			self.encoding,
+		)
 		if result is None:
 			raise NotImplementedError
 		return (result[0] + paragraphStart, result[1] + paragraphStart)
