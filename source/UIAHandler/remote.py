@@ -7,6 +7,7 @@
 from typing import (
 	Any,
 	Generator,
+	Iterable,
 	cast,
 )
 from comtypes import GUID
@@ -25,6 +26,8 @@ from ._remoteOps.lowLevel import (
 	TextUnit,
 	TextPatternRangeEndpoint,
 	AttributeId,
+	PatternId,
+	PropertyId,
 	StyleId,
 )
 
@@ -298,6 +301,64 @@ def msWord_textRange_expandToEnclosingSentence(
 		ra.Return(remoteTextRange)
 
 	return op.execute()
+
+
+def getAncestorsWithCache(
+	element: UIA.IUIAutomationElement,
+	propertyIds: Iterable[int],
+	patternIds: Iterable[int] = (),
+	maxDepth: int = 30,
+) -> list[UIA.IUIAutomationElement] | None:
+	"""Walk the raw view parent chain of the given element in a single remote operation,
+	populating the cache of every ancestor with the given properties and patterns.
+
+	:param element: the UI Automation element whose ancestors to fetch.
+	:param propertyIds: the UI Automation property IDs to cache on every ancestor.
+	:param patternIds: the UI Automation pattern IDs to cache on every ancestor.
+	:param maxDepth: the maximum number of ancestors to fetch.
+	:return: the ancestors, nearest first, each carrying the populated cache.
+		The list may cover only part of the real ancestry, such as when the walk
+		reaches the edge of the element's process or the depth limit:
+		callers should continue walking classically from the last element.
+		None if remote operations are unsupported or no ancestor was retrieved.
+	"""
+	if not isSupported():
+		return None
+	op = operation.Operation()
+
+	@op.buildIterableFunction
+	def code(ra: remoteAPI.RemoteAPI):
+		current = ra.newElement(element)
+		parent = ra.newElement()
+		navigationSucceeded = ra.newBool()
+		cacheRequest = ra.newCacheRequest()
+		for propertyId in propertyIds:
+			cacheRequest.addProperty(PropertyId(propertyId))
+		for patternId in patternIds:
+			cacheRequest.addPattern(PatternId(patternId))
+		with ra.forEachNumInRange(0, maxDepth):
+			navigationSucceeded.set(False)
+			with ra.tryBlock():
+				parent.set(current.getParentElement())
+				navigationSucceeded.set(True)
+			with ra.catchBlock():
+				ra.logRuntimeMessage("Parent navigation failed, stopping the walk")
+			with ra.ifBlock(navigationSucceeded.inverse() | parent.isNull()):
+				ra.breakLoop()
+			parent.populateCache(cacheRequest)
+			ra.Yield(parent)
+			current.set(parent)
+
+	ancestors: list[UIA.IUIAutomationElement] = []
+	try:
+		for ancestor in op.iterExecute():
+			ancestors.append(ancestor)
+	except operation.OperationException:
+		log.debugWarning(
+			f"Batched ancestry walk failed after {len(ancestors)} ancestors",
+			exc_info=True,
+		)
+	return ancestors or None
 
 
 def collectAllHeadingsInTextRange(
