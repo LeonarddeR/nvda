@@ -1,7 +1,7 @@
 # A part of NonVisual Desktop Access (NVDA)
-# Copyright (C) 2015-2021 NV Access Limited, Bill Dengler
-# This file is covered by the GNU General Public License.
-# See the file COPYING for more details.
+# Copyright (C) 2015-2026 NV Access Limited, Bill Dengler, Leonard de Ruijter
+# This file may be used under the terms of the GNU General Public License, version 2 or later, as modified by the NVDA license.
+# For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
 import operator
 from comtypes import COMError
@@ -15,6 +15,24 @@ import winVersion
 from functools import lru_cache
 from logHandler import log
 from .constants import WinConsoleAPILevel
+
+
+def computeNearestWindowHandles(windowHandles: list[int]) -> list[int]:
+	"""Resolve the nearest window handle for every element in a nearest-first ancestor chain.
+
+	:param windowHandles: the native window handle of every ancestor, nearest first,
+		0 for ancestors without an own handle.
+	:return: for every ancestor its own handle when nonzero,
+		otherwise the first nonzero handle further up the chain, otherwise 0.
+	"""
+	resolved: list[int] = []
+	nearestFromAbove = 0
+	for handle in reversed(windowHandles):
+		if handle:
+			nearestFromAbove = handle
+		resolved.append(nearestFromAbove)
+	resolved.reverse()
+	return resolved
 
 
 def createUIAMultiPropertyCondition(*dicts):

@@ -1614,6 +1614,67 @@ class UIA(Window):
 			for ID in initialUIACachedPropertyIDs:
 				elementCache[ID] = self.UIAElement
 
+	_shouldPrefetchFocusAncestry: bool = False
+	"""Set by UIAHandler on objects created from focus events.
+	When set, the first parent access fetches the whole ancestry in one batched remote operation.
+	"""
+
+	_prefetchedAncestryChain: list[UIAHandler.IUIAutomationElement] | None = None
+	"""Remaining prefetched ancestor elements, nearest first, or None when no walk ran."""
+
+	def _prefetchFocusAncestry(self):
+		"""Fetch this object's ancestors in a single batched remote operation.
+		Every fetched ancestor element carries a cache with the properties in
+		UIAHandler.focusAncestryCachePropertyIDs, and its nearest window handle when known.
+		When the walk fails or returns nothing, the chain is left empty,
+		so parent fetching falls back to tree walking.
+		"""
+		chain = None
+		try:
+			chain = UIAHandler.remote.getAncestorsWithCache(
+				self.UIAElement,
+				UIAHandler.focusAncestryCachePropertyIDs,
+				patternIds=(UIAHandler.UIA_TextPatternId,),
+			)
+		except Exception:
+			log.debugWarning("Batched focus ancestry prefetch failed", exc_info=True)
+		if not chain:
+			self._prefetchedAncestryChain = []
+			return
+		if UIAHandler._isDebug():
+			log.debug(f"Prefetched {len(chain)} ancestors in one remote operation")
+		handles = []
+		for element in chain:
+			try:
+				handles.append(element.cachedNativeWindowHandle or 0)
+			except COMError:
+				handles.append(0)
+		resolvedHandles = UIAHandler.utils.computeNearestWindowHandles(handles)
+		for element, handle, resolved in zip(chain, handles, resolvedHandles):
+			if not handle and resolved:
+				element._nearestWindowHandle = resolved
+		self._prefetchedAncestryChain = chain
+
+	def _consumePrefetchedAncestor(self) -> "UIA | None":
+		"""Construct the next ancestor NVDAObject from the prefetched chain.
+		The remainder of the chain is handed to the returned object when it is a UIA object.
+		:return: the parent NVDAObject, or None when the chain cannot provide one.
+		"""
+		chain = self._prefetchedAncestryChain
+		self._prefetchedAncestryChain = []
+		parentElement = chain[0]
+		try:
+			parentObj = UIA(
+				UIAElement=parentElement,
+				initialUIACachedPropertyIDs=UIAHandler.focusAncestryCachePropertyIDs,
+			)
+		except InvalidNVDAObject:
+			return None
+		correctedObj = self.correctAPIForRelation(parentObj, relation="parent")
+		if isinstance(correctedObj, UIA):
+			correctedObj._prefetchedAncestryChain = chain[1:]
+		return correctedObj
+
 	def _isEqual(self, other):
 		if not isinstance(other, UIA):
 			return False
@@ -2135,6 +2196,13 @@ class UIA(Window):
 		return super(UIA, self).correctAPIForRelation(obj, relation)
 
 	def _get_parent(self):
+		if self._shouldPrefetchFocusAncestry and self._prefetchedAncestryChain is None:
+			self._shouldPrefetchFocusAncestry = False
+			self._prefetchFocusAncestry()
+		if self._prefetchedAncestryChain:
+			parentObj = self._consumePrefetchedAncestor()
+			if parentObj is not None:
+				return parentObj
 		try:
 			parentElement = UIAHandler.handler.baseTreeWalker.GetParentElementBuildCache(
 				self.UIAElement,

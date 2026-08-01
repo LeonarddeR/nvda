@@ -77,6 +77,39 @@ The base cache request is attached to all event handler registrations and to the
 so event senders and elements fetched through them carry these properties in their element cache.
 """
 
+focusAncestryCachePropertyIDs = baseCachePropertyIDs | {
+	UIA.UIA_NativeWindowHandlePropertyId,
+	UIA.UIA_HasKeyboardFocusPropertyId,
+	UIA.UIA_SelectionCanSelectMultiplePropertyId,
+	UIA.UIA_SelectionItemIsSelectedPropertyId,
+	UIA.UIA_IsRequiredForFormPropertyId,
+	UIA.UIA_ExpandCollapseExpandCollapseStatePropertyId,
+	UIA.UIA_IsKeyboardFocusablePropertyId,
+	UIA.UIA_IsPasswordPropertyId,
+	UIA.UIA_IsSelectionItemPatternAvailablePropertyId,
+	UIA.UIA_IsEnabledPropertyId,
+	UIA.UIA_IsOffscreenPropertyId,
+	UIA.UIA_AnnotationTypesPropertyId,
+	UIA.UIA_DragIsGrabbedPropertyId,
+	UIA.UIA_HelpTextPropertyId,
+	UIA.UIA_AccessKeyPropertyId,
+	UIA.UIA_AcceleratorKeyPropertyId,
+	UIA.UIA_FullDescriptionPropertyId,
+	UIA.UIA_PositionInSetPropertyId,
+	UIA.UIA_SizeOfSetPropertyId,
+	UIA.UIA_LevelPropertyId,
+	UIA.UIA_BoundingRectanglePropertyId,
+	UIA.UIA_IsDialogPropertyId,
+	UIA.UIA_LandmarkTypePropertyId,
+	UIA.UIA_AriaRolePropertyId,
+	UIA.UIA_AriaPropertiesPropertyId,
+}
+"""UIA property IDs cached remotely on every ancestor by the batched focus ancestry walk.
+A remotely populated cache stores default values for properties an element does not support,
+instead of the reserved "not supported" value.
+Properties may only be added when every consumer treats that default like the reserved value.
+"""
+
 #: The window class name for Microsoft Word documents.
 # Microsoft Word's UI Automation implementation
 # also exposes this value as the document UIA element's classname property.
@@ -955,6 +988,7 @@ class UIAHandler(COMObject):
 			log.debug(
 				f"handleFocusChangedEvent: Queuing NVDA gainFocus event for obj {obj} ",
 			)
+		obj._shouldPrefetchFocusAncestry = True
 		eventHandler.queueEvent("gainFocus", obj)
 
 	def IUIAutomationPropertyChangedEventHandler_HandlePropertyChangedEvent(

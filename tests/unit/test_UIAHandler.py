@@ -16,8 +16,14 @@ from unittest.mock import patch
 
 from comtypes import COMError
 
+from comInterfaces import UIAutomationClient as UIA
 import textInfos
-from UIAHandler import getUIAUnitFromNVDAUnit, NVDAUnitsToUIAUnits, utils
+from UIAHandler import (
+	focusAncestryCachePropertyIDs,
+	getUIAUnitFromNVDAUnit,
+	NVDAUnitsToUIAUnits,
+	utils,
+)
 import winUser
 
 
@@ -80,6 +86,23 @@ class Test_getCachedWindowHandleFromEvent(TestCase):
 		self.assertIsNone(utils._getCachedWindowHandleFromEvent(_FakeElement(raiseOnCached=True)))
 
 
+class Test_computeNearestWindowHandles(TestCase):
+	def test_ownHandlesAreKept(self):
+		self.assertEqual(utils.computeNearestWindowHandles([10, 20, 30]), [10, 20, 30])
+
+	def test_zeroInheritsFromNearestAncestor(self):
+		self.assertEqual(utils.computeNearestWindowHandles([0, 0, 30]), [30, 30, 30])
+
+	def test_zeroDoesNotInheritFromDescendants(self):
+		self.assertEqual(utils.computeNearestWindowHandles([10, 0, 0]), [10, 0, 0])
+
+	def test_mixedChain(self):
+		self.assertEqual(utils.computeNearestWindowHandles([0, 20, 0, 40]), [20, 20, 40, 40])
+
+	def test_emptyChain(self):
+		self.assertEqual(utils.computeNearestWindowHandles([]), [])
+
+
 class Test_shouldSkipEventForHungWindow(TestCase):
 	def test_noWindowHandleIsNotSkipped(self):
 		with patch.object(winUser, "isHungAppWindow", side_effect=AssertionError("must not be called")):
@@ -97,3 +120,18 @@ class Test_shouldSkipEventForHungWindow(TestCase):
 		with patch.object(winUser, "isHungAppWindow", side_effect=RuntimeError("boom")):
 			# A failure inside the guard itself must never escape into the COM handler.
 			self.assertFalse(utils._shouldSkipEventForHungWindow(_FakeElement(cachedHandle=1)))
+
+
+class Test_focusAncestryCachePropertyIDs(TestCase):
+	def test_excludesMarkerProbedPropertyIDs(self):
+		"""Property IDs whose consumers distinguish the reserved "not supported" value
+		from the property's default value must stay out of the set.
+		"""
+		markerProbedPropertyIDs = {
+			UIA.UIA_ToggleToggleStatePropertyId,
+			UIA.UIA_ValueIsReadOnlyPropertyId,
+			UIA.UIA_ValueValuePropertyId,
+			UIA.UIA_RangeValueValuePropertyId,
+			UIA.UIA_IsDataValidForFormPropertyId,
+		}
+		self.assertEqual(focusAncestryCachePropertyIDs & markerProbedPropertyIDs, set())
