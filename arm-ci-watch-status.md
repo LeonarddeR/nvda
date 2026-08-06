@@ -1,3 +1,8 @@
+## 2026-08-06 10:31 — windows-11-arm 20260804.129
+- Previously tested image: 20260727.122
+- Branch update: merged origin/master (advanced)
+- CI run: <url — fill in after it starts>
+- Result: pending
 ## 2026-07-31 18:37 — windows-11-arm 20260727.122 (retry 2 — rollout lag)
 - Previously tested image: 20260719.114 (both 2026-07-30 runs for 20260727.122 still got the old image; retrying again)
 - Branch update: merged origin/master (advanced); merged leonard/try-testOnArm (prek auto-fix, kept clean log)
