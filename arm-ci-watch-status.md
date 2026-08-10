@@ -1,3 +1,8 @@
+## 2026-08-10 08:51 — windows-11-arm 20260804.129
+- Previously tested image: 20260727.122
+- Branch update: merged origin/master (advanced); merged leonard/try-testOnArm (prek auto-fix, kept clean log)
+- CI run: <pending>
+- Result: pending
 ## 2026-08-06 10:31 — windows-11-arm 20260804.129
 - Previously tested image: 20260727.122
 - Branch update: merged origin/master (advanced); merged leonard/try-testOnArm (prek auto-fix, kept clean log)
