@@ -4533,6 +4533,22 @@ class AdvancedPanelControls(
 			["terminals", "keyboardSupportInLegacy"],
 		)
 		self.keyboardSupportInLegacyCheckBox.Enable(winVersion.getWinVer() >= winVersion.WIN10_1607)
+		# Translators: This is the label for a checkbox in the
+		# Advanced settings panel.
+		label = _("Beep for &skipped lines")
+		self.beepForSkippedLinesCheckBox = terminalsGroup.addItem(
+			wx.CheckBox(terminalsBox, label=label),
+		)
+		self.bindHelpEvent(
+			"BeepForSkippedLines",
+			self.beepForSkippedLinesCheckBox,
+		)
+		self.beepForSkippedLinesCheckBox.SetValue(
+			config.conf["terminals"]["beepForSkippedLines"],
+		)
+		self.beepForSkippedLinesCheckBox.defaultValue = self._getDefaultValue(
+			["terminals", "beepForSkippedLines"],
+		)
 
 		# Translators: This is the label for a combo box for selecting a
 		# method of detecting changed content in terminals in the advanced
@@ -4829,6 +4845,7 @@ class AdvancedPanelControls(
 			== self.keyboardSupportInLegacyCheckBox.defaultValue
 			and self.winConsoleSpeakPasswordsCheckBox.IsChecked()
 			== self.winConsoleSpeakPasswordsCheckBox.defaultValue
+			and self.beepForSkippedLinesCheckBox.IsChecked() == self.beepForSkippedLinesCheckBox.defaultValue
 			and self.diffAlgoCombo.GetSelection() == self.diffAlgoCombo.defaultValue
 			and self.wtStrategyCombo.isValueConfigSpecDefault()
 			and self.cancelExpiredFocusSpeechCombo.GetSelection()
@@ -4861,6 +4878,9 @@ class AdvancedPanelControls(
 		self.brailleLiveRegionsCombo.resetToConfigSpecDefault()
 		self.winConsoleSpeakPasswordsCheckBox.SetValue(self.winConsoleSpeakPasswordsCheckBox.defaultValue)
 		self.keyboardSupportInLegacyCheckBox.SetValue(self.keyboardSupportInLegacyCheckBox.defaultValue)
+		self.beepForSkippedLinesCheckBox.SetValue(
+			self.beepForSkippedLinesCheckBox.defaultValue,
+		)
 		self.diffAlgoCombo.SetSelection(self.diffAlgoCombo.defaultValue)
 		self.wtStrategyCombo.resetToConfigSpecDefault()
 		self.cancelExpiredFocusSpeechCombo.SetSelection(self.cancelExpiredFocusSpeechCombo.defaultValue)
@@ -4903,6 +4923,7 @@ class AdvancedPanelControls(
 		self.enhancedEventProcessingComboBox.saveCurrentValueToConf()
 		config.conf["terminals"]["speakPasswords"] = self.winConsoleSpeakPasswordsCheckBox.IsChecked()
 		config.conf["terminals"]["keyboardSupportInLegacy"] = self.keyboardSupportInLegacyCheckBox.IsChecked()
+		config.conf["terminals"]["beepForSkippedLines"] = self.beepForSkippedLinesCheckBox.IsChecked()
 		diffAlgoChoice = self.diffAlgoCombo.GetSelection()
 		config.conf["terminals"]["diffAlgo"] = self.diffAlgoVals[diffAlgoChoice]
 		self.wtStrategyCombo.saveCurrentValueToConf()
@@ -6277,17 +6298,8 @@ class MagnifierPanel(SettingsPanel):
 			checkBox.Bind(wx.EVT_CHECKBOX, self._onImmediateSettingChange)
 			self._trackingTypeCheckBoxes[trackingType] = checkBox
 
-		# Tracking GROUP
-		# Translators: This is the label for a group of tracking magnifier options in the
-		# magnifier settings panel
-		trackingGroupText = _("Tracking")
-		self.trackingGroupSizer = wx.StaticBoxSizer(wx.VERTICAL, self, label=trackingGroupText)
-		trackingGroupBox = self.trackingGroupSizer.GetStaticBox()
-		trackingGroup = guiHelper.BoxSizerHelper(trackingGroupBox, sizer=self.trackingGroupSizer)
-		sHelper.addItem(trackingGroup)
-
 		# Tracking MODE SETTINGS
-		# Translators: The label for a setting in magnifier settings to select the full-screen mode
+		# Translators: The label for a setting in magnifier settings to select the tracking mode
 		trackingModeLabelText = _("&Tracking mode:")
 		trackingModeChoices = [mode.displayString for mode in FullScreenMode]
 		self.trackingModeList = trackingGroup.addLabeledControl(
