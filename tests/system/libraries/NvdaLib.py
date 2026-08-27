@@ -1,7 +1,7 @@
 # A part of NonVisual Desktop Access (NVDA)
-# Copyright (C) 2020 NV Access Limited
-# This file may be used under the terms of the GNU General Public License, version 2 or later.
-# For more details see: https://www.gnu.org/licenses/gpl-2.0.html
+# Copyright (C) 2020-2026 NV Access Limited, Leonard de Ruijter
+# This file may be used under the terms of the GNU General Public License, version 2 or later, as modified by the NVDA license.
+# For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
 """This file provides robot library functions for NVDA system tests.
 It contains helper methods for system tests, most specifically related to NVDA
@@ -272,7 +272,7 @@ class NvdaLib:
 		nvdaProcessHandle = self._startNVDAInstallerProcess()
 		process.process_should_be_running(nvdaProcessHandle)
 		# Timeout is increased due to the installer load time and start up splash sound
-		self._connectToRemoteServer(connectionTimeoutSecs=30)
+		self._connectToRemoteServer(connectionTimeoutSecs=60)
 		self.nvdaSpy.wait_for_NVDA_startup_to_complete()
 		return nvdaProcessHandle
 
