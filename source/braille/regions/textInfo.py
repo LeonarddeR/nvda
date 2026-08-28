@@ -12,7 +12,7 @@ import api
 import config
 import controlTypes
 import languageHandler
-import louis
+import louisHelper
 import textInfos
 from config.configFlags import OutputMode
 from config.featureFlagEnums import FontFormattingBrailleModeFlag
@@ -22,7 +22,7 @@ from utils.security import objectBelowLockScreenAndWindowsIsLocked
 if TYPE_CHECKING:
 	from NVDAObjects import NVDAObject
 
-import braille
+import braille  # noqa: I001
 
 from .base import Region
 from ..constants import (
@@ -39,7 +39,7 @@ class TextInfoRegion(Region):
 	pendingCaretUpdate = False  #: True if the cursor should be updated for this region on the display
 	allowPageTurns = True  #: True if a page turn should be tried when a TextInfo cannot move anymore and the object supports page turns.
 
-	def __init__(self, obj: "NVDAObject"):
+	def __init__(self, obj: NVDAObject):
 		if objectBelowLockScreenAndWindowsIsLocked(obj):
 			raise RuntimeError("NVDA object is secure and should not be initialized as a braille region")
 		super().__init__()
@@ -79,7 +79,7 @@ class TextInfoRegion(Region):
 			log.debugWarning("", exc_info=True)
 
 	def _getTypeformFromFormatField(self, field, formatConfig):
-		typeform = louis.plain_text
+		typeform = louisHelper.Typeform.PLAIN_TEXT
 		if not (
 			(formatConfig["fontAttributeReporting"] & OutputMode.BRAILLE)
 			and (
@@ -89,11 +89,11 @@ class TextInfoRegion(Region):
 		):
 			return typeform
 		if field.get("bold", False):
-			typeform |= louis.bold
+			typeform |= louisHelper.Typeform.BOLD
 		if field.get("italic", False):
-			typeform |= louis.italic
+			typeform |= louisHelper.Typeform.ITALIC
 		if field.get("underline", False):
-			typeform |= louis.underline
+			typeform |= louisHelper.Typeform.UNDERLINE
 		return typeform
 
 	def _addFieldText(
@@ -114,13 +114,13 @@ class TextInfoRegion(Region):
 			self._languageIndexes[rawTextLen] = fieldLanguage
 			self._languageIndexes[rawTextLen + textLen] = lastLanguage
 		self.rawText += text
-		self.rawTextTypeforms.extend((louis.plain_text,) * textLen)
+		self.rawTextTypeforms.extend((louisHelper.Typeform.PLAIN_TEXT,) * textLen)
 		self._rawToContentPos.extend((contentPos,) * textLen)
 
 	def _addTextWithFields(self, info, formatConfig, isSelection=False):
 		shouldMoveCursorToFirstContent = not isSelection and self.cursorPos is not None
 		ctrlFields = []
-		typeform = louis.plain_text
+		typeform = louisHelper.Typeform.PLAIN_TEXT
 		formatFieldAttributesCache = getattr(info.obj, "_brailleFormatFieldAttributesCache", {})
 		# When true, we are inside a clickable field, and should therefore not report any more new clickable fields
 		inClickable = False
@@ -141,7 +141,7 @@ class TextInfoRegion(Region):
 					# The last item added was a field,
 					# so add a space before the content.
 					self.rawText += TEXT_SEPARATOR
-					self.rawTextTypeforms.append(louis.plain_text)
+					self.rawTextTypeforms.append(louisHelper.Typeform.PLAIN_TEXT)
 					self._rawToContentPos.append(self._currentContentPos)
 				if isSelection and self.selectionStart is None:
 					# This is where the content begins.
@@ -206,7 +206,7 @@ class TextInfoRegion(Region):
 					ctrlFields.append(field)
 					if not text:
 						continue
-					if getattr(field, "_presCat") == field.PRESCAT_MARKER:
+					if field._presCat == field.PRESCAT_MARKER:
 						# In this case, the field text is what the user cares about,
 						# not the actual content.
 						fieldStart = len(self.rawText)
@@ -325,7 +325,7 @@ class TextInfoRegion(Region):
 			# Add a space in case the cursor is at the end of the reading unit.
 			self.rawText += TEXT_SEPARATOR
 			rawTextLen += 1
-			self.rawTextTypeforms.append(louis.plain_text)
+			self.rawTextTypeforms.append(louisHelper.Typeform.PLAIN_TEXT)
 			self._rawToContentPos.append(self._currentContentPos)
 		if self.cursorPos is not None and self.cursorPos >= rawTextLen:
 			self.cursorPos = rawTextLen - 1
@@ -340,7 +340,7 @@ class TextInfoRegion(Region):
 		if not self.focusToHardLeft:
 			# If this is a multiline control, position it at the absolute left of the display when focused.
 			self.focusToHardLeft = self._isMultiline()
-		super(TextInfoRegion, self).update()
+		super().update()
 
 		if rawInputIndStart is not None:
 			assert rawInputIndEnd is not None, "rawInputIndStart set but rawInputIndEnd isn't"

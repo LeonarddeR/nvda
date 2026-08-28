@@ -11,7 +11,6 @@ import collections
 import brailleTables
 import config
 import languageHandler
-import louis
 import louisHelper
 from textUtils import OffsetConverter, UnicodeNormalizationOffsetConverter, isUnicodeNormalized
 from textUtils._braille import _applyOffsetConverter
@@ -27,7 +26,7 @@ from ..constants import (
 RegionWithPositions = collections.namedtuple("RegionWithPositions", ("region", "start", "end"))
 
 
-class Region(object):
+class Region:
 	"""A region of braille to be displayed.
 	Each portion of braille to be displayed is represented by a region.
 	The region is responsible for retrieving its text and the cursor and selection positions, translating it into braille cells and handling cursor routing requests relative to its braille cells.
@@ -43,8 +42,8 @@ class Region(object):
 	"""The start of the selection in :attr:`rawText` (inclusive), ``None`` if there is no selection in this region."""
 	selectionEnd: int | None = None
 	"""The end of the selection in :attr:`rawText` (exclusive), ``None`` if there is no selection in this region."""
-	rawTextTypeforms: list[int] | None = None
-	"""liblouis typeform flags for each character in :attr:`rawText`, ``None`` if no typeform info."""
+	rawTextTypeforms: list[louisHelper.Typeform] | None = None
+	""":class:`louisHelper.Typeform` flags for each character in :attr:`rawText`, ``None`` if no typeform info."""
 	brailleCursorPos: int | None = None
 	"""The position of the cursor in :attr:`brailleCells`, ``None`` if the cursor is not in this region."""
 	brailleSelectionStart: int | None = None
@@ -85,9 +84,9 @@ class Region(object):
 		L{brailleCursorPos}, L{brailleSelectionStart} and L{brailleSelectionEnd} are similarly updated based on L{cursorPos}, L{selectionStart} and L{selectionEnd}, respectively.
 		@postcondition: L{brailleCells}, L{brailleCursorPos}, L{brailleSelectionStart} and L{brailleSelectionEnd} are updated and ready for rendering.
 		"""
-		mode = louis.dotsIO
+		mode = louisHelper.TranslationMode.NONE
 		if config.conf["braille"]["expandAtCursor"] and self.cursorPos is not None:
-			mode |= louis.compbrlAtCursor
+			mode |= louisHelper.TranslationMode.COMPBRL_AT_CURSOR
 
 		converters: list[OffsetConverter] = []
 		textToTranslate = self.rawText
@@ -100,7 +99,11 @@ class Region(object):
 				brailleTables.TableType.OUTPUT,
 			).casefold()
 
-		if translationTable.startswith("zh"):
+		if (
+			translationTable.startswith("zh")
+			and translationTable != "zh-tw.ctb"
+			and config.conf["braille"]["useChineseWordSegmentation"]
+		):
 			converter = WordSegWithSeparatorOffsetConverter(textToTranslate)
 			textToTranslate, textToTranslateTypeforms, cursorPos = _applyOffsetConverter(
 				converter,
@@ -176,7 +179,7 @@ class TextRegion(Region):
 	"""A simple region containing a string of text."""
 
 	def __init__(self, text):
-		super(TextRegion, self).__init__()
+		super().__init__()
 		self.rawText = text
 
 
@@ -184,4 +187,4 @@ def rindex(seq, item, start, end):
 	for index in range(end - 1, start - 1, -1):
 		if seq[index] == item:
 			return index
-	raise ValueError("%r is not in sequence" % item)
+	raise ValueError("%r is not in sequence" % item)  # noqa: UP031

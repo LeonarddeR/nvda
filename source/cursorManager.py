@@ -9,7 +9,7 @@ Implementation of cursor managers.
 A cursor manager provides caret navigation and selection commands for a virtual text range.
 """
 
-import weakref
+import weakref  # noqa: I001
 
 import wx
 import core
@@ -193,7 +193,7 @@ class CursorManager(documentBase.TextContainerObject, baseObject.ScriptableObjec
 	_lastFindText = ""
 	_lastCaseSensitivity = False
 
-	_searchEntries: list[str] = []
+	_searchEntries: list[str] = []  # noqa: RUF012
 	"""In-memory history of search terms, most-recent first. Cleared on restart."""
 
 	@classmethod
@@ -216,7 +216,7 @@ class CursorManager(documentBase.TextContainerObject, baseObject.ScriptableObjec
 		del cls._searchEntries[_MAX_SEARCH_HISTORY_ENTRIES:]
 
 	def __init__(self, *args, **kwargs):
-		super(CursorManager, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 		self.initCursorManager()
 
 	def initOverlayClass(self):
@@ -651,6 +651,19 @@ class CursorManager(documentBase.TextContainerObject, baseObject.ScriptableObjec
 	_nativeAppSelectionMode: bool = False
 	"Whether native selection mode is turned on or off"
 
+	def _initialize_nativeAppSelectionModeSupport(self) -> None:
+		"""Initialize support for native application selection mode.
+
+		Called when a browse mode document gains focus for the first time,
+		when the nativeSelectionMode setting is enabled.
+		Subclasses may override this to set the following attributes:
+
+		- ``_nativeAppSelectionModeSupported``: whether native selection mode is supported.
+		- ``_nativeAppSelectionMode``: whether native selection mode is enabled.
+
+		The base implementation leaves the class level defaults untouched.
+		"""
+
 	def script_copyToClipboard(self, gesture: inputCore.InputGesture):
 		if self._nativeAppSelectionMode:
 			gesture.send()
@@ -667,7 +680,7 @@ class CursorManager(documentBase.TextContainerObject, baseObject.ScriptableObjec
 		speech.speakSelectionChange(oldTextInfo, newInfo)
 		braille.handler.handleCaretMove(self)
 
-	__gestures = {
+	__gestures = {  # noqa: RUF012
 		"kb:pageUp": "moveByPage_back",
 		"kb:pageDown": "moveByPage_forward",
 		"kb:upArrow": "moveByLine_back",
@@ -730,10 +743,10 @@ class ReviewCursorManager(CursorManager):
 	_focusEventMustUpdateCaretPosition = True
 
 	def initCursorManager(self):
-		super(ReviewCursorManager, self).initCursorManager()
+		super().initCursorManager()
 		realTI = self.TextInfo
 		self.TextInfo = type(
-			"ReviewCursorManager_%s" % realTI.__name__,
+			"ReviewCursorManager_%s" % realTI.__name__,  # noqa: UP031
 			(_ReviewCursorManagerTextInfo, realTI),
 			{},
 		)
@@ -746,4 +759,4 @@ class ReviewCursorManager(CursorManager):
 			sel = self._selection.copy()
 			sel.collapse()
 			return sel
-		return super(ReviewCursorManager, self).makeTextInfo(position)
+		return super().makeTextInfo(position)

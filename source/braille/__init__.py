@@ -3,9 +3,10 @@
 # This file may be used under the terms of the GNU General Public License, version 2 or later, as modified by the NVDA license.
 # For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
-from __future__ import annotations
+from __future__ import annotations  # noqa: I001
 
 import config
+import louisHelper
 from logHandler import log
 
 from . import brailleHandler as _brailleHandler
@@ -16,12 +17,11 @@ handler: _brailleHandler.BrailleHandler | None = None
 
 def initialize():
 	global handler
-	import louis
 
-	log.info("Using liblouis version %s" % louis.version())
+	log.info(f"Using liblouis version {louisHelper.getLouisVersion()}")
 	import serial
 
-	log.info("Using pySerial version %s" % serial.VERSION)
+	log.info("Using pySerial version %s" % serial.VERSION)  # noqa: UP031
 	handler = _brailleHandler.BrailleHandler()
 	handler.handlePostConfigProfileSwitch()
 	config.post_configProfileSwitch.register(handler.handlePostConfigProfileSwitch)
