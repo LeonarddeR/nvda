@@ -1,3 +1,9 @@
+## 2026-08-28 13:32 — windows-11-arm 20260823.149
+- Previously tested image: 20260809.134
+- Release status at trigger time: prerelease=False, published 2026-08-24 14:10:51 UTC (3.89 days old at detection)
+- Branch update: merged leonard/try-testOnArm (prek auto-fix, kept clean log); merged origin/master (advanced, 32 commits)
+- CI run: <url — fill in after it starts>
+- Result: pending
 ## 2026-08-15 13:11 — windows-11-arm 20260809.134 (manual override of rollout age guard)
 - Previously tested image: 20260727.122 / 20260804.129 (2026-08-10 pool was MIXED: 7 suites on 20260727.122, 3 on 20260804.129)
 - Rollout age: release 20260809.134 published 2026-08-11 10:48 UTC (3.3 days) — below the 4-day guard; run requested explicitly by the user
