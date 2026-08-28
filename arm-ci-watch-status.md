@@ -1,9 +1,12 @@
 ## 2026-08-28 13:32 — windows-11-arm 20260823.149
 - Previously tested image: 20260809.134
 - Release status at trigger time: prerelease=False, published 2026-08-24 14:10:51 UTC (3.89 days old at detection)
-- Branch update: merged leonard/try-testOnArm (prek auto-fix, kept clean log); merged origin/master (advanced, 32 commits)
-- CI run: <url — fill in after it starts>
-- Result: pending
+- Branch update: merged leonard/try-testOnArm (prek auto-fix, kept clean log); merged origin/master (advanced, 32 commits; brought in a new 11th arm suite: l10n)
+- CI run: https://github.com/LeonarddeR/nvda/actions/runs/33167538282
+- Result: failure (10 of 10 known windows-11-arm suites failed; new l10n suite added by the origin/master merge passed)
+- NOTE: all 11 windows-11-arm jobs SERVED image 20260823.149 (clean rollout, no mixed pool) — confirms the prerelease flag flipped to false around 2026-08-27/28, roughly 3.9 days after publication (2026-08-24), consistent with the 3.3-5 day rollout window observed previously.
+- Per-suite arm results: startupShutdown FAIL, installer FAIL, chrome_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL, l10n PASS
+- Assessment: #14069 and #14264 STILL APPLY — both OPEN; same focus-theft signature on the new image: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA" (e.g. startupShutdown job, 2026-08-28T11:53:05Z)
 ## 2026-08-15 13:11 — windows-11-arm 20260809.134 (manual override of rollout age guard)
 - Previously tested image: 20260727.122 / 20260804.129 (2026-08-10 pool was MIXED: 7 suites on 20260727.122, 3 on 20260804.129)
 - Rollout age: release 20260809.134 published 2026-08-11 10:48 UTC (3.3 days) — below the 4-day guard; run requested explicitly by the user
