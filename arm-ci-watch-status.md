@@ -1,83 +1,133 @@
 ## 2026-08-28 13:32 — windows-11-arm 20260823.149
-- Previously tested image: 20260809.134
-- Release status at trigger time: prerelease=False, published 2026-08-24 14:10:51 UTC (3.89 days old at detection)
-- Branch update: merged leonard/try-testOnArm (prek auto-fix, kept clean log); merged origin/master (advanced, 32 commits; brought in a new 11th arm suite: l10n)
-- CI run: https://github.com/LeonarddeR/nvda/actions/runs/33167538282
-- Result: failure (10 of 10 known windows-11-arm suites failed; new l10n suite added by the origin/master merge passed)
-- NOTE: all 11 windows-11-arm jobs SERVED image 20260823.149 (clean rollout, no mixed pool) — confirms the prerelease flag flipped to false around 2026-08-27/28, roughly 3.9 days after publication (2026-08-24), consistent with the 3.3-5 day rollout window observed previously.
-- Per-suite arm results: startupShutdown FAIL, installer FAIL, chrome_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL, l10n PASS
-- Assessment: #14069 and #14264 STILL APPLY — both OPEN; same focus-theft signature on the new image: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA" (e.g. startupShutdown job, 2026-08-28T11:53:05Z)
-## 2026-08-15 13:11 — windows-11-arm 20260809.134 (manual override of rollout age guard)
-- Previously tested image: 20260727.122 / 20260804.129 (2026-08-10 pool was MIXED: 7 suites on 20260727.122, 3 on 20260804.129)
-- Rollout age: release 20260809.134 published 2026-08-11 10:48 UTC (3.3 days) — below the 4-day guard; run requested explicitly by the user
-- Branch update: merged leonard/try-testOnArm (prek auto-fix, kept clean log); merged origin/master (advanced)
-- CI run: https://github.com/LeonarddeR/nvda/actions/runs/31881422116
-- Result: failure (all 10 windows-11-arm suites failed)
-- NOTE: all 10 runners SERVED image 20260809.134 — rollout completed in ~3.3 days, faster than the assumed 4-5 days. The 4-day age guard was too conservative here; this was a real test on the new image.
-- NOTE: the 2026-08-10 run (31363577205) ran on a MIXED pool (7 suites on 20260727.122, 3 on 20260804.129). Sampling a single arm job to determine "last tested image" is unreliable during rollout — sample all arm jobs.
-- Per-suite arm results: startupShutdown FAIL, installer FAIL, chrome_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL
-- Assessment: #14069 and #14264 STILL APPLY — both OPEN; same focus-theft signature on the new image: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA"
-## 2026-08-10 08:51 — windows-11-arm 20260804.129
-- Previously tested image: 20260727.122
-- Branch update: merged origin/master (advanced); merged leonard/try-testOnArm (prek auto-fix, kept clean log)
-- CI run: https://github.com/LeonarddeR/nvda/actions/runs/31363577205
-- Result: failure (all 10 windows-11-arm suites failed)
-- NOTE: runners SERVED image 20260804.129 — the new image HAS now rolled out (previous 2026-08-06 run still got 20260727.122). This is the first real test on 20260804.129.
-- Per-suite arm results: startupShutdown FAIL, installer FAIL, chrome_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL
-- Assessment: #14069 and #14264 STILL APPLY — both OPEN; same focus-theft signature on the new image: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA"
-## 2026-08-06 10:31 — windows-11-arm 20260804.129
-- Previously tested image: 20260727.122
-- Branch update: merged origin/master (advanced); merged leonard/try-testOnArm (prek auto-fix, kept clean log)
-- CI run: https://github.com/LeonarddeR/nvda/actions/runs/31085283637
-- Result: failure (all 10 windows-11-arm suites failed)
-- NOTE: runners STILL served image 20260727.122 — release 20260804.129 (published 2026-08-04) had not rolled out to the hosted win11-arm64 pool as of 2026-08-06. Effectively another re-test on the previous image.
-- Per-suite arm results: startupShutdown FAIL, installer FAIL, chrome_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL
-- Assessment: #14069 and #14264 STILL APPLY — both OPEN; same focus-theft signature: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA"
-## 2026-07-31 18:37 — windows-11-arm 20260727.122 (retry 2 — rollout lag)
-- Previously tested image: 20260719.114 (both 2026-07-30 runs for 20260727.122 still got the old image; retrying again)
-- Branch update: merged origin/master (advanced); merged leonard/try-testOnArm (prek auto-fix, kept clean log)
-- CI run: https://github.com/LeonarddeR/nvda/actions/runs/30647864308
-- Result: failure (all 10 windows-11-arm suites failed)
-- NOTE: runners served image 20260727.122 — the new image HAS rolled out; this is the first real test on it (both 2026-07-30 runs got 20260719.114 due to rollout lag).
-- Per-suite arm results: startupShutdown FAIL, installer FAIL, chrome_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL
-- Assessment: #14069 and #14264 STILL APPLY — both OPEN; same focus-theft signature on the new image: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA"
-## 2026-07-30 19:32 — windows-11-arm 20260727.122 (retry — rollout lag)
-- Previously tested image: 20260719.114 (runs on 2026-07-30 morning for 20260727.122 still got the old image; retrying now that rollout may have completed)
-- Branch update: no origin/master change; merged leonard/try-testOnArm (prek auto-fix), kept full log
-- CI run: https://github.com/LeonarddeR/nvda/actions/runs/30566465513
-- Result: failure (all 10 windows-11-arm suites failed)
-- NOTE: runners STILL served image 20260719.114 — release 20260727.122 (published 2026-07-27) had not rolled out to the hosted win11-arm64 pool as of 2026-07-30 evening. Effectively another re-test on the previous image.
-- Per-suite arm results: startupShutdown FAIL, installer FAIL, chrome_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL
-- Assessment: #14069 and #14264 STILL APPLY — both OPEN; same focus-theft signature: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA"
-## 2026-07-30 07:35 — windows-11-arm 20260727.122
-- Previously tested image: 20260719.114
-- Branch update: merged leonard/try-testOnArm (prek auto-fix, kept full log) and origin/master (advanced)
-- CI run: https://github.com/LeonarddeR/nvda/actions/runs/30517046822
-- Result: failure (all 10 windows-11-arm suites failed)
-- NOTE: runners served image 20260719.114 — release 20260727.122 (published 2026-07-27) had NOT rolled out to the hosted win11-arm64 pool at run time. Effectively a re-test on the previous image.
-- Per-suite arm results: startupShutdown FAIL, installer FAIL, chrome_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL
-- Assessment: #14069 and #14264 STILL APPLY — both OPEN; same focus-theft signature: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA"
-## 2026-07-24 12:05 — windows-11-arm 20260719.114
-- Previously tested image: 20260714.109
-- Branch update: merged origin/master (advanced)
-- CI run: https://github.com/LeonarddeR/nvda/actions/runs/30084982840
-- Result: failure (all 10 windows-11-arm suites failed)
-- NOTE: runners served image 20260719.114 — the new image HAS rolled out; this is the first real test on it (previous two runs got 20260714.109 due to rollout lag).
-- Per-suite arm results: startupShutdown FAIL, installer FAIL, chrome_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL
-- Assessment: #14069 and #14264 STILL APPLY — both OPEN; same focus-theft signature on the new image: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA"
-## 2026-07-22 21:58 — windows-11-arm 20260719.114 (retry — rollout lag)
-- Previously tested image: 20260714.109 (run on 2026-07-20 for 20260719.114 still got the old image; retrying now that rollout may have completed)
-- Branch update: merged leonard/try-testOnArm (prek auto-fix) and origin/master (advanced)
-- CI run: https://github.com/LeonarddeR/nvda/actions/runs/29953208083
-- Result: failure (6 arm suites failed, 4 cancelled by fail-fast)
-- NOTE: runners AGAIN served image 20260714.109 — release 20260719.114 (published 2026-07-19) still not rolled out to the hosted win11-arm64 pool as of 2026-07-22.
-- Per-suite arm results: startupShutdown FAIL, installer FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL; chrome_annotations/chrome_language/chrome_roleDescription/chrome_table CANCELLED
-- Assessment: #14069 and #14264 STILL APPLY — both OPEN; same focus-theft signature: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA"
-## 2026-07-20 19:58 — windows-11-arm 20260719.114
-- Previously tested image: 20260714.109
-- Branch update: merged origin/master (advanced)
-- CI run: https://github.com/LeonarddeR/nvda/actions/runs/29764022234
-- Result: failure (all 10 windows-11-arm suites failed)
-- NOTE: runners still served image 20260714.109 — release 20260719.114 exists in actions/runner-images but had not rolled out to the hosted pool at run time. Effectively a re-test on the old image.
-- Per-suite arm results: startupShutdown FAIL, installer FAIL, chrome_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL
-- Assessment: #14069 and #14264 STILL APPLY — both OPEN; failures show the known focus-theft signature: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA"
+
+*
+*
+
+*# 2026-08-15 13:11 — windows-11-arm 20260809.134 (manual override of rollout age guard)
+
+* Previous<https://github.com/LeonarddeR/nvda/actions/runs/31881422116>ol was MIXED: 7 suites on 20260727.122, 3 on 20260804.129)
+* NOTE: the 2026-08-10 run (31363577205) ran on a MIXED pool (7 suites on 20260727.122, 3 on 20260804.129). Sampling a single arm job to determine "last tested image" is unreliable during rollout — sample all arm jobs.
+*
+* Per-suite arm results: startupShutdown FAIL, installer FAIL, chrome_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL
+* Branch update: merged origin/master (advanced); merged leonard/try-testOnArm (prek auto-fix, kept clean log)
+* CI run: <https://github.com/LeonarddeR/nvda/actions/runs/31363577205>
+*
+* Result: <https://github.com/LeonarddeR/nvda/actions/runs/31085283637>
+
+* NOTE: runners SERVED image 20260804.129 — the new image HAS now rolled out (previous 2026-08-06 run still got 20260727.122). This is the first real test on 20260804.129.
+
+*
+
+<https://github.com/LeonarddeR/nvda/actions/runs/30647864308>>
+
+* Per-suit<https://github.com/LeonarddeR/nvda/actions/runs/31085283637>_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL
+
+* Assessment: #14069 and #14264 STILL APPLY — both OPEN; same focus-theft signature on the new image: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA"
+<<https://github.com/LeonarddeR/nvda/actions/runs/30647864308>>>
+
+*
+
+
+
+<<https://github.com/LeonarddeR/nvda/actions/runs/30647864308>>>
+*<https://g><https://github.com/LeonarddeR/nvda/actions/runs/31085283637>
+
+* Previously tested image: 20260727.122
+
+*<https://g>pdate: merged origin/master (advanced); merged leonard/try-testOnArm (prek auto-fix, kept clean log)
+
+
+
+
+* CI run: <https://github.com/LeonarddeR/nvda/actions/runs/31085283637>
+
+
+*<https://github.com/LeonarddeR/nvda/actions/runs/30647864308>>
+
+
+
+* NOTE: runners STILL served image 20260727.122 — release 20260804.129 (published 2026-08-04) had not rolled out to the hosted win11-arm64 pool as of 2026-08-06. Effectively another re-test on the previous image.
+
+
+* Assessment: #14069 and #14264 STILL APPLY — both OPEN; same focus-theft signature: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA"
+
+
+
+*<https://g><https://github.com/LeonarddeR/nvda/actions/runs/30566465513>
+*
+
+*# 2026-07-31 18:37 — windows-11-arm 20260727.122 (retry 2 — rollout lag)
+
+* Previously tested image: 20260719.114 (both 2026-07-30 runs for 20260727.122 still got the old image; retrying again)
+
+
+* Branch update: merged origin/master (advanced); merged leonard/try-testOnArm (prek auto-fix, kept clean log)
+
+* CI run: <https://github.com/LeonarddeR/nvda/actions/runs/30566465513>8>
+*
+* Result: failure (all 10 windows-11-arm suites failed)
+* NOTE: ru<https://github.com/LeonarddeR/nvda/actions/runs/30517046822>out; this is the first real test on it (both 2026-07-30 runs got 20260719.114 due to rollout lag).
+
+* Per-suite arm results: startupShutdown FAIL, installer FAIL, chrome_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL
+*
+* Assessme<https://github.com/LeonarddeR/nvda/actions/runs/30566465513>heft signature on the new image: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA"
+*
+
+*# 2026-07-30 19:32 — windows-11-arm 20260727.122 (retry — rollout lag)
+
+* Previous<https://github.com/LeonarddeR/nvda/actions/runs/30517046822>or 20260727.122 still got the old image; retrying now that rollout may have completed)
+* Branch update: no origin/master change; merged leonard/try-testOnArm (prek auto-fix), kept full log
+
+*<https://github.com/LeonarddeR/nvda/actions/runs/30084982840>
+
+* CI run: <https://github.com/LeonarddeR/nvda/actions/runs/30566465513>
+* Result: failure (all 10 windows-11-arm suites failed)
+*
+* NOTE: runners STILL served image 20260719.114 — release 20260727.122 (published 2026-07-27) had not rolled out to the hosted win11-arm64 pool as of 2026-07-30 evening. Effectively another re-test on the previous image.
+
+
+* Per-suit<https://github.com/LeonarddeR/nvda/actions/runs/30517046822>_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL
+
+* Assessment: #14069 and #14264 STILL APPLY — both OPEN; same focus-theft signature: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA"
+*<https://github.com/LeonarddeR/nvda/actions/runs/30084982840>
+*# 2026-07<https://github.com/LeonarddeR/nvda/actions/runs/29953208083>
+
+* Previously tested image: 20260719.114
+*
+
+* Branch update: merged leonard/try-testOnArm (prek auto-fix, kept full log) and origin/master (advanced)
+*
+
+* CI run: <https://github.com/LeonarddeR/nvda/actions/runs/30517046822>
+* Result: failure (all 10 windows-11-arm suites failed)
+* NOTE: ru<https://github.com/LeonarddeR/nvda/actions/runs/30084982840>lished 2026-07-27) had NOT rolled out to the hosted win11-arm64 pool at run time. Effectively a re-test on the previous image.
+* Per-suit<https://github.com/LeonarddeR/nvda/actions/runs/29764022234>3>_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL
+
+*
+
+*# 2026-07-24 12:05 — windows-11-arm 20260719.114
+*
+
+
+* CI run: <https://github.com/LeonarddeR/nvda/actions/runs/30084982840>
+* Result: <https://github.com/LeonarddeR/nvda/actions/runs/29764022234>3>
+* NOTE: runners served image 20260719.114 — the new image HAS rolled out; this is the first real test on it (previous two runs got 20260714.109 due to rollout lag).
+* Per-suite arm results: startupShutdown FAIL, installer FAIL, chrome_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL
+*
+
+
+* Previously tested image: 20260714.109 (run on 2026-07-20 for 20260719.114 still got the old image; retrying now that rollout may have completed)
+* Branch update: merged leonard/try-testOnArm (prek auto-fix) and origin/master (advanced)
+* CI run: <https://github.com/LeonarddeR/nvda/actions/runs/29764022234>3>
+* Result: failure (6 arm suites failed, 4 cancelled by fail-fast)
+* NOTE: runners AGAIN served image 20260714.109 — release 20260719.114 (published 2026-07-19) still not rolled out to the hosted win11-arm64 pool as of 2026-07-22.
+* Per-suite arm results: startupShutdown FAIL, installer FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL; chrome_annotations/chrome_language/chrome_roleDescription/chrome_table CANCELLED
+
+
+* Previously tested image: 20260714.109
+* Branch update: merged origin/master (advanced)
+* CI run: <https://github.com/LeonarddeR/nvda/actions/runs/29764022234>
+* Result: failure (all 10 windows-11-arm suites failed)
+* NOTE: runners still served image 20260714.109 — release 20260719.114 exists in actions/runner-images but had not rolled out to the hosted pool at run time. Effectively a re-test on the old image.
+* Per-suite arm results: startupShutdown FAIL, installer FAIL, chrome_annotations FAIL, chrome_language FAIL, chrome_link FAIL, chrome_list FAIL, chrome_misc FAIL, chrome_misc_aria FAIL, chrome_roleDescription FAIL, chrome_table FAIL
+* Assessment: #14069 and #14264 STILL APPLY — both OPEN; failures show the known focus-theft signature: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA"
