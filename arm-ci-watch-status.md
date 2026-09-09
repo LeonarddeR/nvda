@@ -1,9 +1,13 @@
 ## 2026-09-09 18:16 — windows-11-arm 20260830.155
 - Previously tested image: 20260823.149
-- Release status at trigger time: prerelease=False, published 2026-09-01 12:13:50 UTC (rolled out; a newer release 20260906.161 exists but is still prerelease=True, 1.3 days old, published 2026-09-08 - not yet deployed to the hosted pool, so skipped per rollout gate)
+- Release status at trigger time: prerelease=False, published 2026-09-01 12:13:50 UTC (rolled out; a newer release 20260906.161 also existed, still marked prerelease=True, 1.3 days old, published 2026-09-08 - skipped per rollout gate)
 - Branch update: merged leonard/try-testOnArm (prek auto-fix mangled the log again; restored clean version); merged origin/master (advanced, 28 commits)
-- CI run: <fill in>
-- Result: pending
+- CI run: https://github.com/LeonarddeR/nvda/actions/runs/34375777935
+- Result: failure (10 of 10 windows-11-arm suites failed; l10n cancelled)
+- NOTE: MIXED POOL despite the rollout gate — 7 of 10 suites actually served 20260906.161 (the release still flagged prerelease=True at trigger time and remained prerelease=True after the run), only 3 served the targeted 20260830.155. This is the first time the prerelease flag has visibly LAGGED actual pool rollout rather than leading it; treat prerelease=False as sufficient-but-not-necessary evidence of rollout going forward, not a strict gate — a still-prerelease image can already be partially live.
+- Per-suite arm results (image served): installer FAIL(20260906.161), startupShutdown FAIL(20260830.155), chrome_annotations FAIL(20260906.161), chrome_table FAIL(20260906.161), chrome_misc FAIL(20260830.155), chrome_misc_aria FAIL(20260830.155), chrome_roleDescription FAIL(20260906.161), chrome_list FAIL(20260906.161), chrome_language FAIL(20260906.161), chrome_link FAIL(20260906.161)
+- Assessment: #14069 and #14264 STILL APPLY — both OPEN; same focus-theft signature on BOTH served images: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA" (startupShutdown job, 20260830.155, 2026-09-09T16:35:24Z) and "Specific speech did not occur before timeout: NVDA Launcher" (installer job, 20260906.161, 2026-09-09T16:37:05Z)
+- UPCOMING: GitHub is switching the windows-11-arm label to the VS2026 arm64 image between 2026-09-21 and 2026-09-30 (actions/runner-images issue #14602) — that swap is the next likely point for behaviour to change.
 ## 2026-08-28 13:32 — windows-11-arm 20260823.149
 - Previously tested image: 20260809.134
 - Release status at trigger time: prerelease=False, published 2026-08-24 14:10:51 UTC (3.89 days old at detection)
