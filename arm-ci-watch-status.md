@@ -1,3 +1,9 @@
+## 2026-09-09 18:16 — windows-11-arm 20260830.155
+- Previously tested image: 20260823.149
+- Release status at trigger time: prerelease=False, published 2026-09-01 12:13:50 UTC (rolled out; a newer release 20260906.161 exists but is still prerelease=True, 1.3 days old, published 2026-09-08 - not yet deployed to the hosted pool, so skipped per rollout gate)
+- Branch update: merged leonard/try-testOnArm (prek auto-fix mangled the log again; restored clean version); merged origin/master (advanced, 28 commits)
+- CI run: <fill in>
+- Result: pending
 ## 2026-08-28 13:32 — windows-11-arm 20260823.149
 - Previously tested image: 20260809.134
 - Release status at trigger time: prerelease=False, published 2026-08-24 14:10:51 UTC (3.89 days old at detection)
