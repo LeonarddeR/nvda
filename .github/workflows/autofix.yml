@@ -33,11 +33,20 @@ jobs:
     # avoid a duplicate. Fork pushes still run for autofix.
     if: github.event_name != 'push' || github.repository != 'nvaccess/nvda'
     runs-on: windows-2025-vs2026
+    env:
+      # "true" for a pull request whose head branch lives in this repository.
+      SAME_REPO_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
     steps:
     - name: Checkout repository
       uses: actions/checkout@v7
       with:
         submodules: true
+        # A same-repo pull request checks out its head branch so fixes can be pushed to it.
+        # Any other event checks out its default ref.
+        ref: ${{ env.SAME_REPO_PR == 'true' && github.event.pull_request.head.ref || '' }}
+        # A push made with this PAT triggers a fresh pull_request run on the fixed head.
+        # The secret is empty outside nvaccess/nvda, so the default token is used there.
+        token: ${{ secrets.NVACCESSAUTO_PUSH_PAT || github.token }}
     - name: Set up python
       uses: actions/setup-python@v6
       with:
@@ -48,11 +57,13 @@ jobs:
       with:
         activate-environment: "false"
     # Autofix role: run the fixer hooks (the "autofix" group) and push the fixes.
+    # Runs on branch pushes and on same-repo pull requests. The fresh run triggered by the
+    # pushed fix commit finds nothing to fix and only gates, which ends the cycle.
     - name: Apply prek auto-fixes
-      if: github.event_name == 'push'
+      if: github.event_name == 'push' || env.SAME_REPO_PR == 'true'
       shell: bash
       env:
-        REF_NAME: ${{ github.ref_name }}
+        REF_NAME: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
       run: |
         # Fixers exit non-zero when they change files. Some fixers' output feeds
         # another fixer, so a single pass may not reach a stable tree.
@@ -63,8 +74,8 @@ jobs:
           fi
         done
         if ! git diff --quiet; then
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -m "Auto-fix: apply prek fixes"
           # Push via an explicit refspec so this works even if checkout left us
