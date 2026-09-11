@@ -192,3 +192,13 @@ repos:
       language: system
       types: [python]
       exclude: "(sconscript|sconstruct)$"
+
+- repo: local
+  hooks:
+    - id: smokeFail
+      name: smoke fail (throwaway)
+      groups: [autofix]
+      language: system
+      entry: python -c "raise SystemExit(1)"
+      always_run: true
+      pass_filenames: false
