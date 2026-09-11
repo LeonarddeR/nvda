@@ -31,7 +31,7 @@ jobs:
     name: Auto-fix and lint gate
     # On the base repo the pull_request run is the gate; skip its push run on non-Fork pushes to
     # avoid a duplicate. Fork pushes still run for autofix.
-    if: github.event_name != 'push' || github.repository != 'nvaccess/nvda'
+    if: github.event_name != 'push' || github.repository != 'LeonarddeR/nvda'
     runs-on: windows-2025-vs2026
     env:
       # "true" for a pull request whose head branch lives in this repository.
