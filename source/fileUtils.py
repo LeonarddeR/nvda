@@ -129,9 +129,9 @@ def isDirEmpty(dir: str) -> bool:
 		return not any(scanner)
 
 
-def _smokeTest( a,b ):
-	return a+b
+def _smokeTest(a, b):
+	return a + b
 
 
-def _smokeTest( a,b ):
-	return a+b
+def _smokeTest(a, b):
+	return a + b
