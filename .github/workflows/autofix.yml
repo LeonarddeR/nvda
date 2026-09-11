@@ -77,7 +77,7 @@ jobs:
     # The skipped hooks are the heavy/env-bound ones with dedicated jobs in
     # testAndPublish.yml.
     - name: Lint gate
-      if: github.event_name != 'push' || github.repository != 'nvaccess/nvda'
+      if: github.event_name != 'push' || github.repository != 'LeonarddeR/nvda'
       uses: j178/prek-action@v2
       with:
         extra-args: >-

@@ -127,3 +127,7 @@ def isDirEmpty(dir: str) -> bool:
 	"""
 	with os.scandir(dir) as scanner:
 		return not any(scanner)
+
+
+def _smokeTest( a,b ):
+	return a+b
