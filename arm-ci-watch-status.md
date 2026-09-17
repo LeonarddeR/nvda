@@ -1,3 +1,9 @@
+## 2026-09-17 11:46 -- windows-11-arm 20260914.169 (manual override -- prerelease flag known to lag rollout)
+- Previously tested image: 20260906.161 (confirmed prod as of this run; served 7/10 arm suites on 2026-09-09 while still flagged prerelease=True)
+- Release status at trigger time: prerelease=True, published 2026-09-15 15:22 UTC (1.75 days old at detection) -- normally gates, but OVERRIDDEN: last week proved the prerelease flag can lag actual hosted-pool rollout (20260906.161 was already serving 7/10 suites while still flagged prerelease=True), so a still-prerelease image this fresh is worth checking rather than assuming it is not live
+- Branch update: merged leonard/try-testOnArm (prek auto-fix mangled the log again; restored clean version); merged origin/master (advanced, 28 commits)
+- CI run: pending (pushing now)
+- Result: pending
 ## 2026-09-09 18:16 — windows-11-arm 20260830.155
 - Previously tested image: 20260823.149
 - Release status at trigger time: prerelease=False, published 2026-09-01 12:13:50 UTC (rolled out; a newer release 20260906.161 also existed, still marked prerelease=True, 1.3 days old, published 2026-09-08 - skipped per rollout gate)
