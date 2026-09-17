@@ -23,7 +23,7 @@ import config
 from . import NVDAObject, NVDAObjectTextInfo
 import textInfos
 import editableText
-from textUtils import clampWordToForcedSeparators, isForcedWordSeparator
+from textUtils import getLastTypedWord, isForcedWordSeparator
 from logHandler import log
 from scriptHandler import script
 import api
@@ -250,12 +250,6 @@ class EditableTextBase(editableText.EditableText, NVDAObject):
 
 	shouldFireCaretMovementFailedEvents = True
 
-	_cachedCaretBookmark: textInfos.Bookmark | None = None
-	"""A bookmark for the caret, cached just before a character is typed.
-
-	Cleared by :meth:`hasUnitBeenTyped` and whenever the caret moves via a caret script.
-	"""
-
 	def initOverlayClass(self):
 		# #4264: the caret_newLine script can only be bound for processes other than NVDA's process
 		# As Pressing enter on an edit field can cause modal dialogs to appear,
@@ -267,114 +261,50 @@ class EditableTextBase(editableText.EditableText, NVDAObject):
 	def _caretScriptPostMovedHelper(self, speakUnit, gesture, info=None):
 		if eventHandler.isPendingEvents("gainFocus"):
 			return
-		# Forget the cached caret bookmark used to announce typed text from real text,
-		# as the user has moved the caret somewhere else.
-		self._clearCachedCaretBookmark()
+		self._cachedCaretBookmark = None
 		super()._caretScriptPostMovedHelper(speakUnit, gesture, info)
 
 	def _useTextInfoForTypingEcho(self) -> bool:
-		"""Whether typed text should be announced from the real document text for this object.
-
-		Requires both the user preference (``TypingEchoModeFlag.REAL_TEXT``) and reliable caret
-		movement detection (:attr:`caretMovementDetectionUsesEvents`).
-		Controls such as consoles, where the caret lags and caret events are unreliable, are
-		excluded by the latter.
-		"""
-		if not self.caretMovementDetectionUsesEvents:
-			return False
-		return config.conf["keyboard"]["typingEchoMode"].calculated() == TypingEchoModeFlag.REAL_TEXT
+		"""Whether typed words should be announced from the real document text for this object."""
+		return (
+			config.conf["keyboard"]["speakTypedWords"] != TypingEcho.OFF.value
+			and config.conf["keyboard"]["typingEchoMode"].calculated() == TypingEchoModeFlag.REAL_TEXT
+			and self.caretMovementDetectionUsesEvents
+		)
 
 	def getScript(self, gesture: InputGesture):
 		script = super().getScript(gesture)
-		if script or not self._useTextInfoForTypingEcho():
-			return script
-		if getattr(gesture, "isCharacter", False):
-			# Cache the caret position before the character is typed,
-			# so the resulting word can be announced from the real document text.
-			return self.script_preTypedCharacter
-		return None
+		if (
+			not script
+			and gesture.isCharacter
+			and self._useTextInfoForTypingEcho()
+			and (character := gesture.character)
+			and isForcedWordSeparator(character[-1])
+		):
+			return self.script_preTypedWordSeparator
+		return script
 
-	def script_preTypedCharacter(self, gesture: InputGesture) -> None:
+	def script_preTypedWordSeparator(self, gesture: InputGesture) -> None:
 		try:
-			self._cachedCaretBookmark = self.caret.bookmark
-		except (LookupError, RuntimeError):
-			log.debug("Could not cache caret bookmark before typed character", exc_info=True)
+			self._cachedCaretBookmark = self.makeTextInfo(textInfos.POSITION_CARET).bookmark
+		except Exception:
+			log.debug("Could not cache caret bookmark before typed word separator", exc_info=True)
 		gesture.send()
 
-	def _clearCachedCaretBookmark(self) -> None:
-		"""Forgets the cached caret bookmark used to announce typed text from real text."""
-		self._cachedCaretBookmark = None
-
-	def script_caret_newLine(self, gesture):
-		if self._useTextInfoForTypingEcho():
-			# Cache the caret bookmark so the word before the new line can be announced
-			# from the real document text by speech.speakPreviousWord for the typed line separator.
-			try:
-				self._cachedCaretBookmark = self.caret.bookmark
-			except (LookupError, RuntimeError):
-				log.debug("Could not cache caret bookmark before new line", exc_info=True)
-		super().script_caret_newLine(gesture)
-
-	def hasUnitBeenTyped(
-		self,
-		unit: str,
-		separator: str,
-	) -> tuple[bool | None, str | None]:
-		"""Returns whether a new word has been typed during this core cycle.
-
-		It relies on :attr:`_cachedCaretBookmark`, which is cleared after every core cycle.
-
-		:param unit: The text unit to look for. Only :const:`textInfos.UNIT_WORD` is supported.
-		:param separator: The separator character that has just been typed.
-		:raises NotImplementedError: If ``unit`` is not :const:`textInfos.UNIT_WORD`.
-		:return: A tuple containing the following two values:
-
-			1. Whether a new word has been typed. This could be:
-
-				* ``False`` if a caret move has been detected, but no word has been typed.
-				* ``True`` if a caret move has been detected and a new word has been typed.
-				* ``None`` if no caret move could be detected.
-
-			2. If the caret has moved and a new word has been typed, the text of that word;
-				``None`` otherwise.
-		"""
-		if unit is not textInfos.UNIT_WORD:
-			raise NotImplementedError(f"Only UNIT_WORD is supported, got {unit!r}")
-		if not self._useTextInfoForTypingEcho():
-			return (None, None)
-		bookmark = self._cachedCaretBookmark
-		if not bookmark:
-			return (None, None)
-		self._clearCachedCaretBookmark()
+	def getTypedWord(self) -> str | None:
+		bookmark, self._cachedCaretBookmark = self._cachedCaretBookmark, None
+		if not bookmark or not self._useTextInfoForTypingEcho() or controlTypes.State.READONLY in self.states:
+			return None
 		caretMoved, caretInfo = self._hasCaretMoved(bookmark, timeout=self._useEvents_maxTimeoutSec)
 		if not caretMoved or not caretInfo or not caretInfo.obj:
-			return (None, None)
+			return None
 		wordInfo = self.makeTextInfo(bookmark)
-		# The bookmark is positioned after the end of the word.
-		# Therefore, we need to move it one character backwards.
+		# Move onto the last character of the word that ended at the bookmark.
 		wordInfo.move(textInfos.UNIT_CHARACTER, -1)
-		wordInfo.expand(unit)
-		diff = wordInfo.compareEndPoints(caretInfo, "endToStart")
-		if diff >= 0 and not isForcedWordSeparator(separator):
-			# This is no word boundary.
-			return (False, None)
-		if diff > 0:
-			# The application's word unit extends past the caret (e.g. it glues "foo.bar" into a
-			# single word while the caret sits after the just-typed dot). Trim it to the caret so
-			# only the text typed so far is considered.
+		wordInfo.expand(textInfos.UNIT_WORD)
+		if wordInfo.compareEndPoints(caretInfo, "endToStart") > 0:
 			wordInfo.setEndPoint(caretInfo, "endToStart")
-		# Clamp the word so it never spans a forced separator, even when the application glues
-		# it into a single word unit (e.g. Notepad's "foo.bar", or a trailing typed dot).
-		# The clamp works in code-point space, so return the slice as text rather than translating
-		# offsets back onto the TextInfo, whose character units are not code points.
-		text = wordInfo.text
-		start, end = clampWordToForcedSeparators(text)
-		if start == end:
-			# Only separators/spaces before the caret, which is not considered a word.
-			# For example, this can occur in Notepad++ when auto indentation is on.
-			log.debug("No word to announce before caret after clamping to forced separators")
-			return (None, None)
-		return (True, text[start:end])
+		return getLastTypedWord(wordInfo.text) or None
 
 	def _reportErrorInPreviousWord(self):
 		try:
@@ -423,10 +353,7 @@ class EditableTextBase(editableText.EditableText, NVDAObject):
 		if (
 			config.conf["documentFormatting"]["reportSpellingErrors2"] != ReportSpellingErrors.OFF.value
 			and config.conf["keyboard"]["alertForSpellingErrors"]
-			and (
-				# Not alpha, apostrophe or control.
-				ch.isspace() or (ch >= " " and ch not in "'\x7f" and not ch.isalpha())
-			)
+			and (ch.isspace() or (ch >= " " and ch != "\x7f" and isForcedWordSeparator(ch)))
 		):
 			# Reporting of spelling errors is enabled and this character ends a word.
 			self._reportErrorInPreviousWord()

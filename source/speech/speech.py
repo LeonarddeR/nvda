@@ -1433,6 +1433,16 @@ def isFocusEditable() -> bool:
 	) and controlTypes.STATE_READONLY not in obj.states
 
 
+def _typingEchoApplies(setting: int) -> bool:
+	"""Whether a typing echo setting applies to the focus.
+
+	:param setting: A :class:`TypingEcho` value.
+	"""
+	return setting == TypingEcho.ALWAYS.value or (
+		setting == TypingEcho.EDIT_CONTROLS.value and isFocusEditable()
+	)
+
+
 def speakTypedCharacters(ch: str):
 	typingIsProtected = api.isTypingProtected()
 	if typingIsProtected:
@@ -1448,7 +1458,7 @@ def speakTypedCharacters(ch: str):
 		# delete character produced in some apps with control+backspace
 		return
 	elif len(_curWordChars) > 0:
-		speakPreviousWord(realChar)
+		speakPreviousWord()
 	if _speechState._suppressSpeakTypedCharactersNumber > 0:
 		# We primarily suppress based on character count and still have characters to suppress.
 		# However, we time out after a short while just in case.
@@ -1461,62 +1471,31 @@ def speakTypedCharacters(ch: str):
 	else:
 		suppress = False
 
-	typingEchoMode = config.conf["keyboard"]["speakTypedCharacters"]
-	if not suppress and typingEchoMode != TypingEcho.OFF.value and ch >= FIRST_NONCONTROL_CHAR:  # noqa: SIM102
-		if typingEchoMode == TypingEcho.ALWAYS.value or (
-			typingEchoMode == TypingEcho.EDIT_CONTROLS.value and isFocusEditable()
-		):
-			speakSpelling(realChar)
+	if (
+		not suppress
+		and ch >= FIRST_NONCONTROL_CHAR
+		and _typingEchoApplies(config.conf["keyboard"]["speakTypedCharacters"])
+	):
+		speakSpelling(realChar)
 
 
-def speakPreviousWord(wordSeparator: str) -> None:
-	"""Speaks the word that was just completed by typing ``wordSeparator``.
+def speakPreviousWord() -> None:
+	"""Speaks the word that was just completed by typing a word separator.
 
-	When the typing echo mode is set to real text and the caret object supports it, the word is
-	announced based on the actual text present in the document
-	(see :meth:`NVDAObjects.behaviors.EditableTextBase.hasUnitBeenTyped`).
-	Otherwise, the word is announced from the predicted keystroke buffer (``_curWordChars``).
-
-	Spelling errors are not handled here; they are reported separately, with a delay, by
-	:meth:`NVDAObjects.behaviors.EditableTextBase._reportErrorInPreviousWord`.
-
-	:param wordSeparator: The word separator character that has just been typed.
+	The word is fetched from the caret object (see :meth:`documentBase.TextContainerObject.getTypedWord`),
+	falling back to the predicted keystroke buffer.
 	"""
-	typingIsProtected = api.isTypingProtected()
-	wordEchoMode = config.conf["keyboard"]["speakTypedWords"]
-	wantEcho = wordEchoMode != TypingEcho.OFF.value and not typingIsProtected
-	if not (log.isEnabledFor(log.IO) or wantEcho):
-		clearTypedWordBuffer()
-		return
 	predictedWord = "".join(_curWordChars)
-	word = predictedWord
-	# When configured, try to announce the word based on the real text present in the document
-	# rather than the predicted keystroke buffer.
-	# This is skipped while typing is protected, so that protected content is never fetched.
-	obj = None
-	if not typingIsProtected:
-		try:
-			obj = api.getCaretObject()
-		except Exception:
-			pass  # No caret object; fall back to the predicted buffer.
-	from NVDAObjects.behaviors import EditableTextBase
-
-	if isinstance(obj, EditableTextBase) and controlTypes.State.READONLY not in getattr(obj, "states", set()):
-		wordFound, typedWord = obj.hasUnitBeenTyped(textInfos.UNIT_WORD, wordSeparator)
-		if wordFound is False:
-			# The caret is still within a word (e.g. an apostrophe in "won't").
-			# Keep buffering so the whole word can be announced when it is actually completed.
-			_curWordChars.append(wordSeparator)
-			return
-		if wordFound is True and typedWord and not isBlank(typedWord):
-			word = typedWord
 	clearTypedWordBuffer()
+	shouldSpeak = not api.isTypingProtected() and _typingEchoApplies(
+		config.conf["keyboard"]["speakTypedWords"],
+	)
+	word = predictedWord
+	if shouldSpeak:
+		word = api.getCaretObject().getTypedWord() or predictedWord
 	if log.isEnabledFor(log.IO):
 		log.io(f"typed word: {word!r} (predicted: {predictedWord!r})")
-	if wantEcho and (
-		wordEchoMode == TypingEcho.ALWAYS.value
-		or (wordEchoMode == TypingEcho.EDIT_CONTROLS.value and isFocusEditable())
-	):
+	if shouldSpeak:
 		speakText(word)
 
 

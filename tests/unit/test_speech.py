@@ -33,36 +33,88 @@ from speech.commands import (
 from .extensionPointTestHelpers import actionTester
 
 
-class TestSpeakTypedCharacters(unittest.TestCase):
-	"""Tests for speech.speakTypedCharacters' word-character classification."""
+class _TypedWordTestCase(unittest.TestCase):
+	"""Base class for tests of the typed word buffer, with character echo off and word echo on."""
 
 	def setUp(self) -> None:
-		self._originalEcho = config.conf["keyboard"]["speakTypedCharacters"]
-		# Disable character echo so the test only exercises the word-buffer classification.
-		config.conf["keyboard"]["speakTypedCharacters"] = TypingEcho.OFF.value
+		keyboardConf = config.conf["keyboard"]
+		self._originalConf = {key: keyboardConf[key] for key in ("speakTypedCharacters", "speakTypedWords")}
+		keyboardConf["speakTypedCharacters"] = TypingEcho.OFF.value
+		keyboardConf["speakTypedWords"] = TypingEcho.ALWAYS.value
 		speechModule.clearTypedWordBuffer()
-		patch.object(speechModule.api, "isTypingProtected", return_value=False).start()
-		self._speakPreviousWord = patch.object(speechModule, "speakPreviousWord").start()
+		self._isTypingProtected = patch.object(
+			speechModule.api,
+			"isTypingProtected",
+			return_value=False,
+		).start()
 		self.addCleanup(patch.stopall)
 
 	def tearDown(self) -> None:
 		speechModule.clearTypedWordBuffer()
-		config.conf["keyboard"]["speakTypedCharacters"] = self._originalEcho
+		for key, value in self._originalConf.items():
+			config.conf["keyboard"][key] = value
+
+
+class TestSpeakTypedCharacters(_TypedWordTestCase):
+	"""Tests for speech.speakTypedCharacters' word-character classification."""
+
+	def setUp(self) -> None:
+		super().setUp()
+		self._speakPreviousWord = patch.object(speechModule, "speakPreviousWord").start()
 
 	def test_apostropheIsWordInternal(self):
-		"""An apostrophe is buffered as part of the word, not treated as a word separator."""
 		for ch in "won't":
 			speechModule.speakTypedCharacters(ch)
-		# The apostrophe never completes a word, so speakPreviousWord is not called.
 		self._speakPreviousWord.assert_not_called()
 		self.assertEqual(speechModule._curWordChars, list("won't"))
 
 	def test_dotCompletesWord(self):
-		"""A dot is a word separator, so it routes to speakPreviousWord."""
 		for ch in "foo":
 			speechModule.speakTypedCharacters(ch)
 		speechModule.speakTypedCharacters(".")
-		self._speakPreviousWord.assert_called_once_with(".")
+		self._speakPreviousWord.assert_called_once_with()
+
+
+class TestSpeakPreviousWord(_TypedWordTestCase):
+	"""Tests for speech.speakPreviousWord, which chooses between the predicted keystroke buffer
+	and the real document text when announcing a completed word."""
+
+	def setUp(self) -> None:
+		super().setUp()
+		self._speakText = patch.object(speechModule, "speakText").start()
+		self._getTypedWord = (
+			patch.object(speechModule.api, "getCaretObject").start().return_value.getTypedWord
+		)
+
+	def test_fallsBackToBufferWhenNoWordFromDocument(self):
+		speechModule._curWordChars.extend("hello")
+		self._getTypedWord.return_value = None
+		speechModule.speakPreviousWord()
+		self._speakText.assert_called_once_with("hello")
+		self.assertEqual(speechModule._curWordChars, [])
+
+	def test_speaksDocumentWordWhenFound(self):
+		speechModule._curWordChars.extend("helo")
+		self._getTypedWord.return_value = "hello"
+		speechModule.speakPreviousWord()
+		self._speakText.assert_called_once_with("hello")
+		self.assertEqual(speechModule._curWordChars, [])
+
+	def test_protectedTypingSkipsDocumentAndEcho(self):
+		self._isTypingProtected.return_value = True
+		speechModule._curWordChars.extend("****")
+		speechModule.speakPreviousWord()
+		self._getTypedWord.assert_not_called()
+		self._speakText.assert_not_called()
+		self.assertEqual(speechModule._curWordChars, [])
+
+	def test_wordEchoOffSkipsDocumentAndEcho(self):
+		config.conf["keyboard"]["speakTypedWords"] = TypingEcho.OFF.value
+		speechModule._curWordChars.extend("hello")
+		speechModule.speakPreviousWord()
+		self._getTypedWord.assert_not_called()
+		self._speakText.assert_not_called()
+		self.assertEqual(speechModule._curWordChars, [])
 
 
 class Test_getSpellingSpeechAddCharMode(unittest.TestCase):

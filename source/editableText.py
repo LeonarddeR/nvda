@@ -1,7 +1,7 @@
 # A part of NonVisual Desktop Access (NVDA)
-# This file is covered by the GNU General Public License.
-# See the file COPYING for more details.
-# Copyright (C) 2006-2025 NV Access Limited, Davy Kager, Julien Cochuyt, Rob Meredith, Leonard de Ruijter
+# Copyright (C) 2006-2026 NV Access Limited, Davy Kager, Julien Cochuyt, Rob Meredith, Leonard de Ruijter
+# This file may be used under the terms of the GNU General Public License, version 2 or later, as modified by the NVDA license.
+# For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
 """Common support for editable text.
 @note: If you want editable text functionality for an NVDAObject,
@@ -59,6 +59,9 @@ class EditableText(TextContainerObject, ScriptableObject):
 
 	_caretMovementTimeoutMultiplier: Real = 1
 	"""A multiplier to apply to the caret movement timeout to increase or decrease it in a subclass."""
+
+	_cachedCaretBookmark: textInfos.Bookmark | None = None
+	"""A bookmark for the caret, cached just before a word separator or new line is typed."""
 
 	_supportsSentenceNavigation: bool | None = None
 	"""Whether the editable text supports sentence navigation.
@@ -211,7 +214,7 @@ class EditableText(TextContainerObject, ScriptableObject):
 		except:  # noqa: E722
 			gesture.send()
 			return
-		bookmark = info.bookmark
+		bookmark = self._cachedCaretBookmark = info.bookmark
 		gesture.send()
 		caretMoved, newInfo = self._hasCaretMoved(bookmark)
 		if not caretMoved or not newInfo:

@@ -3178,9 +3178,8 @@ The available options are:
 * Predicted text: NVDA announces typed words based on the keys you pressed.
 This is the classic behaviour and is used by default.
 * Real text: In editable text where it is supported, NVDA announces typed words based on the actual text present in the document, rather than the keys you pressed.
-This makes the announcement match what the application itself considers a word.
-For example, words containing an apostrophe (such as "won't") are treated as a single word when the application does so, and typing over selected text no longer omits the first character of the announced word.
-Note that with this option, in some applications (such as Notepad or Firefox) pressing a dot or comma while typing may no longer announce the completed word, because these characters can be considered part of a word.
+For example, typing over selected text no longer omits the first character of the announced word.
+A character other than a letter, number or apostrophe, such as a full stop, always ends the typed word, even in applications (such as Notepad) that group it into a larger word.
 
 ##### Speech interrupt for typed characters {#KeyboardSettingsSpeechInteruptForCharacters}
 

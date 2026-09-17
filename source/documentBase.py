@@ -83,13 +83,12 @@ class TextContainerObject(AutoPropertyObject):
 	def _set_selection(self, info):
 		info.updateSelection()
 
-	caret: textInfos.TextInfo
+	def getTypedWord(self) -> str | None:
+		"""Fetches the word that was just completed by typing a word separator from the text of this object.
 
-	def _get_caret(self) -> textInfos.TextInfo:
-		return self.makeTextInfo(textInfos.POSITION_CARET)
-
-	def _set_caret(self, info: textInfos.TextInfo):
-		info.updateCaret()
+		:return: The typed word, or ``None`` if it can't be determined.
+		"""
+		return None
 
 
 class DocumentWithTableNavigation(TextContainerObject, ScriptableObject):
