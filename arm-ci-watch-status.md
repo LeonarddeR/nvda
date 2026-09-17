@@ -1,9 +1,13 @@
 ## 2026-09-17 11:46 -- windows-11-arm 20260914.169 (manual override -- prerelease flag known to lag rollout)
 - Previously tested image: 20260906.161 (confirmed prod as of this run; served 7/10 arm suites on 2026-09-09 while still flagged prerelease=True)
-- Release status at trigger time: prerelease=True, published 2026-09-15 15:22 UTC (1.75 days old at detection) -- normally gates, but OVERRIDDEN: last week proved the prerelease flag can lag actual hosted-pool rollout (20260906.161 was already serving 7/10 suites while still flagged prerelease=True), so a still-prerelease image this fresh is worth checking rather than assuming it is not live
+- Release status at trigger time: prerelease=True, published 2026-09-15 15:22 UTC (1.75 days old at detection) -- normally gates, but OVERRIDDEN per user direction: last week proved the prerelease flag can lag actual hosted-pool rollout (20260906.161 was already serving 7/10 suites while still flagged prerelease=True)
 - Branch update: merged leonard/try-testOnArm (prek auto-fix mangled the log again; restored clean version); merged origin/master (advanced, 28 commits)
-- CI run: pending (pushing now)
-- Result: pending
+- CI run: https://github.com/LeonarddeR/nvda/actions/runs/35206978828
+- Result: failure (10 of 10 windows-11-arm suites failed; l10n cancelled)
+- CONFIRMS THE OVERRIDE WAS RIGHT: pool was already MIXED at 1.75-2 days old and still prerelease=True -- 3 of 10 suites served the new 20260914.169, 7 of 10 still served 20260906.161. This is the second consecutive week the prerelease flag has visibly lagged actual pool rollout (also seen 2026-09-09). Treat prerelease as a soft signal only -- worth checking a fresh release even while still marked prerelease=True, not waiting for the flag to flip.
+- Per-suite arm results (image served): chrome_annotations FAIL(20260906.161), startupShutdown FAIL(20260906.161), chrome_table FAIL(20260914.169), chrome_misc_aria FAIL(20260914.169), chrome_roleDescription FAIL(20260906.161), installer FAIL(20260914.169), chrome_list FAIL(20260906.161), chrome_language FAIL(20260906.161), chrome_link FAIL(20260906.161), chrome_misc FAIL(20260906.161), l10n CANCELLED
+- Assessment: #14069 and #14264 STILL APPLY -- both OPEN; same focus-theft signature on BOTH served images: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA" (startupShutdown job, 20260906.161, 2026-09-17T10:03:45Z) and "Specific speech did not occur before timeout: NVDA Launcher" (installer job, 20260914.169, 2026-09-17T10:04:12Z)
+- UPCOMING: GitHub is switching the windows-11-arm label to the VS2026 arm64 image between 2026-09-21 and 2026-09-30 (actions/runner-images issue #14602) -- that swap is the next likely point for behaviour to change; it is close now, watch for it next run.
 ## 2026-09-09 18:16 — windows-11-arm 20260830.155
 - Previously tested image: 20260823.149
 - Release status at trigger time: prerelease=False, published 2026-09-01 12:13:50 UTC (rolled out; a newer release 20260906.161 also existed, still marked prerelease=True, 1.3 days old, published 2026-09-08 - skipped per rollout gate)
