@@ -74,6 +74,10 @@ class TestSpeakTypedCharacters(_TypedWordTestCase):
 		speechModule.speakTypedCharacters(".")
 		self._speakPreviousWord.assert_called_once_with()
 
+	def test_separatorWithEmptyBufferCompletesWord(self):
+		speechModule.speakTypedCharacters(" ")
+		self._speakPreviousWord.assert_called_once_with()
+
 
 class TestSpeakPreviousWord(_TypedWordTestCase):
 	"""Tests for speech.speakPreviousWord, which chooses between the predicted keystroke buffer
@@ -99,6 +103,16 @@ class TestSpeakPreviousWord(_TypedWordTestCase):
 		speechModule.speakPreviousWord()
 		self._speakText.assert_called_once_with("hello")
 		self.assertEqual(speechModule._curWordChars, [])
+
+	def test_speaksDocumentWordWhenBufferEmpty(self):
+		self._getTypedWord.return_value = "hello"
+		speechModule.speakPreviousWord()
+		self._speakText.assert_called_once_with("hello")
+
+	def test_silentWhenBufferEmptyAndNoWordFromDocument(self):
+		self._getTypedWord.return_value = None
+		speechModule.speakPreviousWord()
+		self._speakText.assert_not_called()
 
 	def test_protectedTypingSkipsDocumentAndEcho(self):
 		self._isTypingProtected.return_value = True

@@ -3176,9 +3176,10 @@ It only has an effect when [Speak typed words](#KeyboardSettingsSpeakTypedWords)
 The available options are:
 
 * Predicted text: NVDA announces typed words based on the keys you pressed.
-This is the classic behaviour and is used by default.
 * Real text: In editable text where it is supported, NVDA announces typed words based on the actual text present in the document, rather than the keys you pressed.
+This is used by default.
 For example, typing over selected text no longer omits the first character of the announced word.
+Typing a space or pressing enter directly after an existing word announces that word.
 A character other than a letter, number or apostrophe, such as a full stop, always ends the typed word, even in applications (such as Notepad) that group it into a larger word.
 
 ##### Speech interrupt for typed characters {#KeyboardSettingsSpeechInteruptForCharacters}

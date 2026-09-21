@@ -7,15 +7,16 @@
 ### New Features
 <!-- Note we are in a feature freeze, only features related to API breaking changes should be listed here -->
 
-* A new "Speak typing using" option in Keyboard settings allows NVDA to announce typed words based on the real text present in the document rather than the keys you pressed. (#8065, @LeonarddeR)
-  * When set to "Real text", a non-word character such as a full stop always ends the typed word, even in applications (such as Notepad) that group it into a larger word: typing "example.com" announces "example", then "com".
-  * This is disabled by default.
+* When speaking typed words, NVDA now announces the real text present in the document rather than the keys you pressed. (#8065, @LeonarddeR)
+  * Typing a space or pressing enter directly after an existing word announces that word.
+  * A non-word character such as a full stop always ends the typed word, even in applications (such as Notepad) that group it into a larger word: typing "example.com" announces "example", then "com".
+  * The new "Speak typing using" option in Keyboard settings can be set to "Predicted text" to announce typed words based on the keys you pressed.
 
 ### Changes
 
 ### Bug Fixes
 
-* When "Speak typing using" is set to "Real text" and typing overrides a selection, NVDA no longer omits the first character when announcing the first typed word. (#7812, @LeonarddeR)
+* When typing overrides a selection, NVDA no longer omits the first character when announcing the first typed word. (#7812, @LeonarddeR)
 * When speaking typed words, NVDA now treats words containing apostrophes (such as "won't" and "aren't") as one word. (#6215, @LeonarddeR)
 
 #### Performance

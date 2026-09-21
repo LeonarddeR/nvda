@@ -295,12 +295,17 @@ class EditableTextBase(editableText.EditableText, NVDAObject):
 		bookmark, self._cachedCaretBookmark = self._cachedCaretBookmark, None
 		if not bookmark or not self._useTextInfoForTypingEcho() or controlTypes.State.READONLY in self.states:
 			return None
+		wordInfo = self.makeTextInfo(bookmark)
+		# Move onto the last character of the word that ended at the bookmark.
+		if not wordInfo.move(textInfos.UNIT_CHARACTER, -1):
+			return None
+		wordInfo.expand(textInfos.UNIT_CHARACTER)
+		lastCharacter = wordInfo.text
+		if not lastCharacter or isForcedWordSeparator(lastCharacter[-1]):
+			return None
 		caretMoved, caretInfo = self._hasCaretMoved(bookmark, timeout=self._useEvents_maxTimeoutSec)
 		if not caretMoved or not caretInfo or not caretInfo.obj:
 			return None
-		wordInfo = self.makeTextInfo(bookmark)
-		# Move onto the last character of the word that ended at the bookmark.
-		wordInfo.move(textInfos.UNIT_CHARACTER, -1)
 		wordInfo.expand(textInfos.UNIT_WORD)
 		if wordInfo.compareEndPoints(caretInfo, "endToStart") > 0:
 			wordInfo.setEndPoint(caretInfo, "endToStart")

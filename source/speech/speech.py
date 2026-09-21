@@ -1457,7 +1457,7 @@ def speakTypedCharacters(ch: str):
 	elif ch == "\u007f":
 		# delete character produced in some apps with control+backspace
 		return
-	elif len(_curWordChars) > 0:
+	else:
 		speakPreviousWord()
 	if _speechState._suppressSpeakTypedCharactersNumber > 0:
 		# We primarily suppress based on character count and still have characters to suppress.
@@ -1493,6 +1493,8 @@ def speakPreviousWord() -> None:
 	word = predictedWord
 	if shouldSpeak:
 		word = api.getCaretObject().getTypedWord() or predictedWord
+	if not word:
+		return
 	if log.isEnabledFor(log.IO):
 		log.io(f"typed word: {word!r} (predicted: {predictedWord!r})")
 	if shouldSpeak:

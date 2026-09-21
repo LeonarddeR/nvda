@@ -73,7 +73,7 @@ class TestGetTypedWord(unittest.TestCase):
 	def _setTypingEchoMode(self, value: TypingEchoModeFlag) -> None:
 		config.conf["keyboard"]["typingEchoMode"] = FeatureFlag(
 			value,
-			behaviorOfDefault=TypingEchoModeFlag.PREDICTED_TEXT,
+			behaviorOfDefault=TypingEchoModeFlag.REAL_TEXT,
 		)
 
 	def _typed(
@@ -136,6 +136,13 @@ class TestGetTypedWord(unittest.TestCase):
 
 	def test_onlySeparatorsReturnsNone(self):
 		self.assertIsNone(self._typed("  ", 1, 2).getTypedWord())
+
+	def test_separatorBeforeBookmarkReturnsNone(self):
+		self.assertIsNone(self._typed("ab  ", 3, 4).getTypedWord())
+		self.assertIsNone(self._typed("foo. ", 4, 5).getTypedWord())
+
+	def test_bookmarkAtStartReturnsNone(self):
+		self.assertIsNone(self._typed(" ab", 0, 1).getTypedWord())
 
 	def test_cachedBookmarkIsConsumed(self):
 		obj = self._typed("ab cd", 2, 3)
