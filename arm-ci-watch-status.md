@@ -2,8 +2,10 @@
 - Previously tested image: 20260906.161 (confirmed prod, majority of last run); 20260914.169 partially served (3/10) under manual override, not yet confirmed as prod on its own
 - Release status at trigger time: prerelease=False, published 2026-09-21 12:51:45 UTC (3.95 days old at detection)
 - Branch update: merged leonard/try-testOnArm (prek auto-fix mangled the log again; restored clean version); merged origin/master (advanced, security.md change)
-- CI run: (fill in after start)
-- Result: pending
+- CI run: https://github.com/LeonarddeR/nvda/actions/runs/36131144605
+- Result: failure (10 of 10 windows-11-arm suites failed; l10n cancelled)
+- Per-suite arm results (image served: win11-vs2026-arm64/20260920.164 for all): installer FAIL, chrome_annotations FAIL, startupShutdown FAIL, chrome_list FAIL, chrome_misc_aria FAIL, chrome_link FAIL, chrome_language FAIL, chrome_misc FAIL, chrome_table FAIL, chrome_roleDescription FAIL, l10n CANCELLED
+- Assessment: #14069 and #14264 STILL APPLY -- both OPEN; same focus-theft signature persists even on the new VS2026 arm64 image: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA" (startupShutdown job, 2026-09-25T12:15:28Z). The image family swap did not fix the underlying focus-theft problem.
 - NOTE: this run falls inside the announced windows-11-arm -> VS2026 arm64 label swap window (2026-09-21 to 2026-09-30, actions/runner-images #14602). Watch the served image string closely -- it may report a win11-vs2026-arm64 release instead of win11-arm64 if the swap has already landed.
 ## 2026-09-17 11:46 -- windows-11-arm 20260914.169 (manual override -- prerelease flag known to lag rollout)
 - Previously tested image: 20260906.161 (confirmed prod as of this run; served 7/10 arm suites on 2026-09-09 while still flagged prerelease=True)
