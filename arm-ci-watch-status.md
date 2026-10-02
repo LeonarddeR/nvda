@@ -1,3 +1,9 @@
+## 2026-10-02 21:10 (auto) -- windows-11-arm 20260924.168 (win11-vs2026-arm64 family, post label-swap)
+- Previously tested image: 20260920.164 (win11-vs2026-arm64; confirmed prod, served all 10 arm suites in the 2026-09-25 run)
+- Release status at trigger time: prerelease=False, published 2026-09-29 10:20:37 UTC (3.37 days old at detection)
+- Branch update: merged leonard/try-testOnArm (prek auto-fix mangled the log again; restored clean version); merged origin/master (advanced, large commit batch incl. word comment reporting fix)
+- CI run: <url -- fill in after it starts>
+- Result: pending
 ## 2026-09-25 (auto) -- windows-11-arm 20260920.174
 - Previously tested image: 20260906.161 (confirmed prod, majority of last run); 20260914.169 partially served (3/10) under manual override, not yet confirmed as prod on its own
 - Release status at trigger time: prerelease=False, published 2026-09-21 12:51:45 UTC (3.95 days old at detection)
