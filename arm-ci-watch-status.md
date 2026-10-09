@@ -1,3 +1,10 @@
+## 2026-10-09 (auto, manual override -- prerelease flag historically lags rollout) -- windows-11-arm 20261004.176
+- Previously tested image: 20260924.168 (confirmed prod, served all 11 jobs cleanly on 2026-10-02 run 37052401873)
+- Release status at trigger time: prerelease=True, published 2026-10-05 16:18:37 UTC (3.81 days old at detection) -- normally gates per the age/prerelease heuristic, but OVERRIDDEN: this log has now recorded the prerelease flag lagging actual hosted-pool rollout on at least two prior occasions (2026-09-09: new image already serving 7/10 suites while still prerelease=True; 2026-09-17: new image already serving 3/10 suites at only 1.75 days old, still prerelease=True) against a fastest-observed full rollout of 3.3 days. At 3.81 days old, 20261004.176 is already past that fastest-case mark, so waiting on the flag risked sitting on stale data another week. User confirmed this override live in chat on 2026-10-09.
+- Also noted: win11-arm64/20261004.186 (plain arm64 family) published same day, also still prerelease=True -- not the family the windows-11-arm label has actually been serving since the 2026-09-25 VS2026 swap, so not targeted here.
+- Branch update: merged leonard/try-testOnArm (prek auto-fix mangled the log again; restored clean version); merged origin/master (advanced, 19 commits incl. brlapi bindings update, CLI loglevel fix)
+- CI run: <url -- fill in after it starts>
+- Result: pending
 ## 2026-10-02 21:10 (auto) -- windows-11-arm 20260924.168 (win11-vs2026-arm64 family, post label-swap)
 - Previously tested image: 20260920.164 (win11-vs2026-arm64; confirmed prod, served all 10 arm suites in the 2026-09-25 run)
 - Release status at trigger time: prerelease=False, published 2026-09-29 10:20:37 UTC (3.37 days old at detection)
