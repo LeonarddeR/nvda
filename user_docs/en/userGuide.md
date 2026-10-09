@@ -2684,8 +2684,6 @@ While the automatic scroll option is enabled, you can still use the scroll back 
 
 Automatic scrolling will be disabled if a routing key is pressed, if a message is presented in braille, if a new object is displayed, when entering a secure screen, when the session is locked, or when the end of the window is reached.
 
-Commands can be assigned to toggle the automatic scroll option, and to increase or decrease the scroll rate, from the "Braille" section of the [Input Gestures dialog](#InputGestures).
-
 ##### Text wrap {#BrailleSettingsWordWrap}
 
 This combo box allows you to configure how NVDA handles text that is too long to fit on the braille display.
@@ -6589,8 +6587,8 @@ Following are the command line options for NVDA:
 |`-m` |`--minimal` |No sounds, no interface, no start message, etc.|
 |`-s` |`--secure` |Starts NVDA in [Secure Mode](#SecureMode)|
 |`-d` |`--disable-addons` |Add-ons will have no effect|
-|None |`--debug-logging` |Enable debug level logging just for this run. This setting will override any other log level ( `--loglevel`, `-l`) argument given, including no logging option.|
-|None |`--no-logging` |Disable logging altogether while using NVDA. This setting can be overridden if a log level (`--loglevel`, `-l`) is specified from command line or if debug logging is turned on.|
+|None |`--debug-logging` |Enable debug level logging just for this run. This setting will override any other log level ( `--log-level`, `-l`) argument given, including no logging option.|
+|None |`--no-logging` |Disable logging altogether while using NVDA. This setting can be overridden if a log level (`--log-level`, `-l`) is specified from command line or if debug logging is turned on.|
 |None |`--no-sr-flag` |Don't change the global system screen reader flag|
 |None |`--install` |Installs NVDA (starting the newly installed copy)|
 |None |`--install-silent` |Silently installs NVDA (does not start the newly installed copy)|
