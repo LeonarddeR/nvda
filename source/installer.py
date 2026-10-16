@@ -1,14 +1,16 @@
 # A part of NonVisual Desktop Access (NVDA)
-# Copyright (C) 2011-2026 NV Access Limited, Joseph Lee, Babbage B.V., Łukasz Golonka, Cyrille Bougot
+# Copyright (C) 2011-2026 NV Access Limited, Joseph Lee, Babbage B.V., Łukasz Golonka, Cyrille Bougot,
+# Leonard de Ruijter
 # This file may be used under the terms of the GNU General Public License, version 2 or later, as modified by the NVDA license.
 # For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
-from collections.abc import Iterable  # noqa: I001
+from collections.abc import Callable, Iterable, Iterator  # noqa: I001
 import json
 import comtypes.client
 import ctypes
 from enum import auto, Enum
 import pathlib
+from typing import Self
 import winreg
 import time
 import os
@@ -32,6 +34,8 @@ import NVDAState
 from NVDAState import WritePaths
 from utils.tempFile import _createEmptyTempFileForDeletingFile
 from utils._deprecate import handleDeprecations, MovedSymbol, RemovedSymbol
+from utils._progress import ProgressTracker
+from utils.displayString import DisplayStringIntEnum
 
 _wsh = None
 
@@ -200,8 +204,14 @@ def getDocFilePath(fileName: str, installDir: str):
 			return tryPath
 
 
-def copyProgramFiles(destPath: str):
-	sourcePath = globalVars.appDir
+def _walkProgramFiles(sourcePath: str, destPath: str) -> Iterator[tuple[str, list[tuple[str, str]]]]:
+	"""Walk the program files to copy from one NVDA directory to another.
+
+	:param sourcePath: The NVDA directory to copy from.
+	:param destPath: The NVDA directory to copy to.
+	:return: For each source directory, the destination directory
+		and the source and destination path of each file to copy into it.
+	"""
 	detectUserConfig = True
 	for curSourceDir, subDirs, files in os.walk(sourcePath):
 		if detectUserConfig:
@@ -210,15 +220,34 @@ def copyProgramFiles(destPath: str):
 				x for x in subDirs if os.path.basename(x).lower() not in ("userconfig", "systemconfig")
 			]
 		curDestDir = os.path.join(destPath, os.path.relpath(curSourceDir, sourcePath))
-		if not os.path.isdir(curDestDir):
-			os.makedirs(curDestDir)
+		filePaths: list[tuple[str, str]] = []
 		for f in files:
 			# Never copy nvda.exe as one of the other executables will be renamed later
 			if sourcePath == curSourceDir and f.lower() == "nvda.exe":
 				continue
 			sourceFilePath = os.path.join(curSourceDir, f)
 			destFilePath = os.path.join(destPath, os.path.relpath(sourceFilePath, sourcePath))
+			filePaths.append((sourceFilePath, destFilePath))
+		yield curDestDir, filePaths
+
+
+def copyProgramFiles(destPath: str, onFileCopied: Callable[[int, int], None] | None = None):
+	"""Copy the program files of the running copy of NVDA.
+
+	:param destPath: The directory to copy to.
+	:param onFileCopied: Called after each copied file with the number of files copied so far and the total number of files.
+	"""
+	directories = list(_walkProgramFiles(globalVars.appDir, destPath))
+	total = sum(len(filePaths) for _curDestDir, filePaths in directories)
+	copied = 0
+	for curDestDir, filePaths in directories:
+		if not os.path.isdir(curDestDir):
+			os.makedirs(curDestDir)
+		for sourceFilePath, destFilePath in filePaths:
 			tryCopyFile(sourceFilePath, destFilePath)
+			copied += 1
+			if onFileCopied is not None:
+				onFileCopied(copied, total)
 
 
 def copyUserConfig(destPath: str):
@@ -919,7 +948,56 @@ def _deleteFileGroupOrFail(
 			log.debugWarning(f"Failed to remove temp directory {tempDir}", exc_info=True)
 
 
-def install(shouldCreateDesktopShortcut: bool = True, shouldRunAtLogon: bool = True) -> None:
+class _InstallStep(DisplayStringIntEnum):
+	"""The steps of installing NVDA, as reported while installing."""
+
+	REMOVE_PREVIOUS = 1
+	COPY_FILES = 2
+	REMOVE_OLD_FILES = 3
+	REGISTER = 4
+	FINISH = 5
+
+	@property
+	def _displayStringLabels(self) -> dict[Self, str]:
+		return {
+			# Translators: Reported while installing NVDA, when the previous installation is being removed.
+			_InstallStep.REMOVE_PREVIOUS: _("Removing previous version"),
+			# Translators: Reported while installing NVDA, when the program files are being copied.
+			_InstallStep.COPY_FILES: _("Copying files"),
+			# Translators: Reported while installing NVDA, when files of the previous version are being removed.
+			_InstallStep.REMOVE_OLD_FILES: _("Removing old files"),
+			# Translators: Reported while installing NVDA, when NVDA is being registered with Windows.
+			_InstallStep.REGISTER: _("Registering NVDA"),
+			# Translators: Reported while installing NVDA, when the installation is being finished.
+			_InstallStep.FINISH: _("Finishing"),
+		}
+
+
+_INSTALL_STEP_SHARES: dict[_InstallStep, int] = {
+	_InstallStep.REMOVE_PREVIOUS: 10,
+	_InstallStep.COPY_FILES: 60,
+	_InstallStep.REMOVE_OLD_FILES: 10,
+	_InstallStep.REGISTER: 10,
+	_InstallStep.FINISH: 10,
+}
+"""The share of the overall installation progress for each step."""
+
+
+def install(
+	shouldCreateDesktopShortcut: bool = True,
+	shouldRunAtLogon: bool = True,
+	*,
+	progressCallback: Callable[[int, int], None] | None = None,
+) -> None:
+	"""Install the running copy of NVDA.
+
+	:param shouldCreateDesktopShortcut: Whether to create a desktop shortcut.
+	:param shouldRunAtLogon: Whether NVDA should start on the Windows sign-in screen.
+	:param progressCallback: Called with the current :class:`_InstallStep` and the overall percentage
+		whenever one of them changes.
+	"""
+	progress = ProgressTracker(_INSTALL_STEP_SHARES, progressCallback)
+	progress.startStep(_InstallStep.REMOVE_PREVIOUS)
 	prevInstallPath = WritePaths.installDir
 	installDir = WritePaths.defaultInstallDir
 	installDirX86 = WritePaths._installDirX86 or WritePaths._defaultInstallDirX86
@@ -959,7 +1037,8 @@ def install(shouldCreateDesktopShortcut: bool = True, shouldRunAtLogon: bool = T
 	removeOldProgramFiles(installDir)
 	if shouldCleanX86:
 		removeOldProgramFiles(installDirX86)
-	copyProgramFiles(installDir)
+	progress.startStep(_InstallStep.COPY_FILES)
+	copyProgramFiles(installDir, progress.stepProgress)
 	for f in ("nvda_UIAccess.exe", "nvda_noUIAccess.exe"):
 		f = os.path.join(installDir, f)
 		if os.path.isfile(f):
@@ -967,9 +1046,11 @@ def install(shouldCreateDesktopShortcut: bool = True, shouldRunAtLogon: bool = T
 			break
 	else:
 		raise RuntimeError("No available executable to use as nvda.exe")
+	progress.startStep(_InstallStep.REMOVE_OLD_FILES)
 	removeOldLibFiles(installDir, rebootOK=True)
 	if shouldCleanX86:
 		removeOldLibFiles(installDirX86, rebootOK=True)
+	progress.startStep(_InstallStep.REGISTER)
 	registerInstallation(
 		installDir,
 		startMenuFolder,
@@ -977,6 +1058,7 @@ def install(shouldCreateDesktopShortcut: bool = True, shouldRunAtLogon: bool = T
 		shouldRunAtLogon,
 		NVDAState._configInLocalAppDataEnabled(),
 	)
+	progress.startStep(_InstallStep.FINISH)
 	if shouldCleanX86:
 		oldSystemConfigPath = os.path.join(installDirX86, "systemConfig")
 		if os.path.isdir(oldSystemConfigPath):

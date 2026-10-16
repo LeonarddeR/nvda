@@ -1,6 +1,6 @@
 # A part of NonVisual Desktop Access (NVDA)
 # Copyright (C) 2011-2026 NV Access Limited, Babbage B.v., Cyrille Bougot, Julien Cochuyt, Accessolutions,
-# Bill Dengler, Joseph Lee, Takuya Nishimoto
+# Bill Dengler, Joseph Lee, Takuya Nishimoto, Leonard de Ruijter
 # This file may be used under the terms of the GNU General Public License, version 2 or later, as modified by the NVDA license.
 # For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
@@ -206,7 +206,7 @@ def doInstall(
 	silent: bool = False,
 	startAfterInstall: bool = True,
 ):
-	progressDialog = gui.IndeterminateProgressDialog(
+	progressDialog = gui._DeterminateProgressDialog(
 		gui.mainFrame,
 		# Translators: The title of the dialog presented while NVDA is being updated.
 		_("Updating NVDA")
@@ -220,12 +220,13 @@ def doInstall(
 		else _("Please wait while NVDA is being installed"),
 	)
 	try:
-		res = systemUtils.execElevated(
-			config.SLAVE_FILENAME,
-			["install", str(int(createDesktopShortcut)), str(int(startOnLogon))],
-			wait=True,
-			handleAlreadyElevated=True,
-		)
+		with progressDialog.receiveRemoteProgress(installer._InstallStep):
+			res = systemUtils.execElevated(
+				config.SLAVE_FILENAME,
+				["install", str(int(createDesktopShortcut)), str(int(startOnLogon))],
+				wait=True,
+				handleAlreadyElevated=True,
+			)
 		if res == 2:
 			raise installer.RetriableFailure
 		if copyPortableConfig:

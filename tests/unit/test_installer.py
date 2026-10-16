@@ -1,11 +1,12 @@
 # A part of NonVisual Desktop Access (NVDA)
-# This file is covered by the GNU General Public License.
-# See the file COPYING for more details.
-# Copyright (C) 2024-2025 NV Access Limited
+# Copyright (C) 2024-2026 NV Access Limited, Leonard de Ruijter
+# This file may be used under the terms of the GNU General Public License, version 2 or later, as modified by the NVDA license.
+# For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
 """Unit tests for the installer module."""
 
-import pathlib  # noqa: I001
+import os  # noqa: I001
+import pathlib
 import tempfile
 from typing import NamedTuple
 import unittest
@@ -482,3 +483,45 @@ class Test_comparePreviousInstall(unittest.TestCase):
 			),
 		):
 			self.assertEqual(installer._comparePreviousInstall(), installer.ComparisonState.UPGRADE)
+
+
+class Test_walkProgramFiles(unittest.TestCase):
+	def setUp(self) -> None:
+		self._tempDir = tempfile.TemporaryDirectory()
+		self._source = pathlib.Path(self._tempDir.name, "source")
+		self._dest = pathlib.Path(self._tempDir.name, "dest")
+		for relPath in (
+			"nvda.exe",
+			"nvda_slave.exe",
+			"userConfig/nvda.ini",
+			"systemConfig/nvda.ini",
+			"lib/nvda.exe",
+			"lib/userConfig/file.txt",
+		):
+			path = self._source / relPath
+			path.parent.mkdir(parents=True, exist_ok=True)
+			path.touch()
+		(self._source / "emptyDir").mkdir()
+
+	def tearDown(self) -> None:
+		self._tempDir.cleanup()
+
+	def _walk(self) -> dict[str, set[tuple[str, str]]]:
+		return {
+			destDir: set(filePaths)
+			for destDir, filePaths in installer._walkProgramFiles(str(self._source), str(self._dest))
+		}
+
+	def _expectedFile(self, relPath: str) -> tuple[str, str]:
+		return (str(self._source / relPath), str(self._dest / relPath))
+
+	def test_skipsConfigDirectoriesAndNvdaExeOnlyAtTopLevel(self):
+		self.assertEqual(
+			self._walk(),
+			{
+				os.path.join(self._dest, "."): {self._expectedFile("nvda_slave.exe")},
+				str(self._dest / "lib"): {self._expectedFile("lib/nvda.exe")},
+				str(self._dest / "lib" / "userConfig"): {self._expectedFile("lib/userConfig/file.txt")},
+				str(self._dest / "emptyDir"): set(),
+			},
+		)
