@@ -34,8 +34,7 @@ import NVDAState
 from NVDAState import WritePaths
 from utils.tempFile import _createEmptyTempFileForDeletingFile
 from utils._deprecate import handleDeprecations, MovedSymbol, RemovedSymbol
-from utils._progress import ProgressTracker
-from utils.displayString import DisplayStringIntEnum
+from utils._progress import ProgressStep, ProgressTracker
 
 _wsh = None
 
@@ -938,7 +937,7 @@ def _deleteFileGroupOrFail(
 			log.debugWarning(f"Failed to remove temp directory {tempDir}", exc_info=True)
 
 
-class _InstallStep(DisplayStringIntEnum):
+class _InstallStep(ProgressStep):
 	"""The steps of installing NVDA, as reported while installing."""
 
 	REMOVE_PREVIOUS = 1
@@ -962,15 +961,15 @@ class _InstallStep(DisplayStringIntEnum):
 			_InstallStep.FINISH: _("Finishing"),
 		}
 
-
-_INSTALL_STEP_SHARES: dict[_InstallStep, int] = {
-	_InstallStep.REMOVE_PREVIOUS: 10,
-	_InstallStep.COPY_FILES: 60,
-	_InstallStep.REMOVE_OLD_FILES: 10,
-	_InstallStep.REGISTER: 10,
-	_InstallStep.FINISH: 10,
-}
-"""The share of the overall installation progress for each step."""
+	@property
+	def _startPercentages(self) -> dict[Self, int]:
+		return {
+			_InstallStep.REMOVE_PREVIOUS: 0,
+			_InstallStep.COPY_FILES: 20,
+			_InstallStep.REMOVE_OLD_FILES: 70,
+			_InstallStep.REGISTER: 75,
+			_InstallStep.FINISH: 80,
+		}
 
 
 def install(
@@ -986,7 +985,7 @@ def install(
 	:param progressCallback: Called with the current :class:`_InstallStep` and the overall percentage
 		whenever one of them changes.
 	"""
-	progress = ProgressTracker(_INSTALL_STEP_SHARES, progressCallback)
+	progress = ProgressTracker(_InstallStep, progressCallback)
 	progress.startStep(_InstallStep.REMOVE_PREVIOUS)
 	prevInstallPath = WritePaths.installDir
 	installDir = WritePaths.defaultInstallDir

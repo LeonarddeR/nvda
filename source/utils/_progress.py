@@ -5,7 +5,30 @@
 
 """Progress reporting for operations that consist of several steps."""
 
-from collections.abc import Callable, Mapping
+from abc import abstractmethod
+from collections.abc import Callable
+from typing import Self
+
+from utils.displayString import DisplayStringIntEnum
+
+
+class ProgressStep(DisplayStringIntEnum):
+	"""A step of an operation that consists of several steps.
+
+	Subclasses define their members in the order the steps run.
+	"""
+
+	@property
+	@abstractmethod
+	def _startPercentages(self) -> dict[Self, int]:
+		"""The overall percentage at which each step starts."""
+
+	@property
+	def startPercentage(self) -> int:
+		"""The overall percentage at which this step starts.
+		The step ends where the next step starts, or at 100 for the last step.
+		"""
+		return self._startPercentages[self]
 
 
 class ProgressTracker:
@@ -18,24 +41,23 @@ class ProgressTracker:
 
 	def __init__(
 		self,
-		shares: Mapping[int, int],
-		callback: Callable[[int, int], None] | None,
+		steps: type[ProgressStep],
+		callback: Callable[[ProgressStep, int], None] | None,
 	):
 		"""
-		:param shares: The share of the overall progress for each step, in the order the steps run.
+		:param steps: The steps of the operation.
 		:param callback: Called with the current step and the overall percentage, or ``None`` to report nothing.
 		"""
-		total = sum(shares.values())
 		self._callback = callback
-		self._ranges: dict[int, tuple[float, float]] = {}
-		start = 0
-		for step, share in shares.items():
-			self._ranges[step] = (start * 100 / total, (start + share) * 100 / total)
-			start += share
-		self._step: int
-		self._lastReport: tuple[int | None, int] = (None, 0)
+		members = list(steps)
+		self._ranges: dict[ProgressStep, tuple[int, int]] = {
+			step: (step.startPercentage, nextStep.startPercentage if nextStep is not None else 100)
+			for step, nextStep in zip(members, [*members[1:], None])
+		}
+		self._step: ProgressStep
+		self._lastReport: tuple[ProgressStep | None, int] = (None, 0)
 
-	def startStep(self, step: int) -> None:
+	def startStep(self, step: ProgressStep) -> None:
 		"""Report that the given step has started.
 
 		:param step: One of the steps given to the constructor.

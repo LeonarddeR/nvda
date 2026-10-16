@@ -6,62 +6,77 @@
 """Unit tests for the utils._progress module."""
 
 import unittest
+from typing import Self
 
-from utils._progress import ProgressTracker
+from utils._progress import ProgressStep, ProgressTracker
+
+
+class _Steps(ProgressStep):
+	FIRST = 1
+	SECOND = 2
+
+	@property
+	def _displayStringLabels(self) -> dict[Self, str]:
+		return {_Steps.FIRST: "First", _Steps.SECOND: "Second"}
+
+	@property
+	def _startPercentages(self) -> dict[Self, int]:
+		return {_Steps.FIRST: 0, _Steps.SECOND: 20}
+
+
+class Test_ProgressStep(unittest.TestCase):
+	def test_startPercentage(self):
+		self.assertEqual(_Steps.SECOND.startPercentage, 20)
 
 
 class Test_ProgressTracker(unittest.TestCase):
-	def _createTracker(self, shares: dict[int, int]) -> tuple[ProgressTracker, list[tuple[int, int]]]:
-		reports: list[tuple[int, int]] = []
-		tracker = ProgressTracker(shares, lambda step, percentage: reports.append((step, percentage)))
-		return tracker, reports
+	def setUp(self) -> None:
+		self._reports: list[tuple[ProgressStep, int]] = []
+		self._tracker = ProgressTracker(
+			_Steps,
+			lambda step, percentage: self._reports.append((step, percentage)),
+		)
 
 	def test_startStep_reportsStartOfStep(self):
-		tracker, reports = self._createTracker({1: 20, 2: 80})
-		tracker.startStep(1)
-		tracker.startStep(2)
-		self.assertEqual(reports, [(1, 0), (2, 20)])
+		self._tracker.startStep(_Steps.FIRST)
+		self._tracker.startStep(_Steps.SECOND)
+		self.assertEqual(self._reports, [(_Steps.FIRST, 0), (_Steps.SECOND, 20)])
 
-	def test_stepProgress_scalesWithinShareOfStep(self):
-		tracker, reports = self._createTracker({1: 20, 2: 80})
-		tracker.startStep(2)
-		tracker.stepProgress(1, 2)
-		tracker.stepProgress(2, 2)
-		self.assertEqual(reports, [(2, 20), (2, 60), (2, 100)])
+	def test_stepProgress_endsAtStartOfNextStep(self):
+		self._tracker.startStep(_Steps.FIRST)
+		self._tracker.stepProgress(1, 2)
+		self._tracker.stepProgress(2, 2)
+		self.assertEqual(self._reports, [(_Steps.FIRST, 0), (_Steps.FIRST, 10), (_Steps.FIRST, 20)])
 
-	def test_shares_areScaledToHundred(self):
-		tracker, reports = self._createTracker({1: 1, 2: 3})
-		tracker.startStep(2)
-		tracker.stepProgress(1, 3)
-		self.assertEqual(reports, [(2, 25), (2, 50)])
+	def test_stepProgress_ofLastStep_endsAtHundred(self):
+		self._tracker.startStep(_Steps.SECOND)
+		self._tracker.stepProgress(1, 2)
+		self._tracker.stepProgress(2, 2)
+		self.assertEqual(self._reports, [(_Steps.SECOND, 20), (_Steps.SECOND, 60), (_Steps.SECOND, 100)])
 
 	def test_unchangedReports_areSkipped(self):
-		tracker, reports = self._createTracker({1: 100})
-		tracker.startStep(1)
+		self._tracker.startStep(_Steps.SECOND)
 		for done in range(1, 6):
-			tracker.stepProgress(done, 1000)
-		self.assertEqual(reports, [(1, 0)])
+			self._tracker.stepProgress(done, 1000)
+		self.assertEqual(self._reports, [(_Steps.SECOND, 20)])
 
 	def test_percentage_neverDecreases(self):
-		tracker, reports = self._createTracker({1: 50, 2: 50})
-		tracker.startStep(2)
-		tracker.stepProgress(1, 2)
-		tracker.startStep(1)
-		self.assertEqual(reports, [(2, 50), (2, 75), (1, 75)])
+		self._tracker.startStep(_Steps.SECOND)
+		self._tracker.stepProgress(1, 2)
+		self._tracker.startStep(_Steps.FIRST)
+		self.assertEqual(self._reports, [(_Steps.SECOND, 20), (_Steps.SECOND, 60), (_Steps.FIRST, 60)])
 
 	def test_stepProgress_withoutTotal_completesStep(self):
-		tracker, reports = self._createTracker({1: 50, 2: 50})
-		tracker.startStep(1)
-		tracker.stepProgress(0, 0)
-		self.assertEqual(reports, [(1, 0), (1, 50)])
+		self._tracker.startStep(_Steps.FIRST)
+		self._tracker.stepProgress(0, 0)
+		self.assertEqual(self._reports, [(_Steps.FIRST, 0), (_Steps.FIRST, 20)])
 
 	def test_stepProgress_beyondTotal_staysWithinStep(self):
-		tracker, reports = self._createTracker({1: 50, 2: 50})
-		tracker.startStep(1)
-		tracker.stepProgress(3, 2)
-		self.assertEqual(reports, [(1, 0), (1, 50)])
+		self._tracker.startStep(_Steps.FIRST)
+		self._tracker.stepProgress(3, 2)
+		self.assertEqual(self._reports, [(_Steps.FIRST, 0), (_Steps.FIRST, 20)])
 
 	def test_withoutCallback_reportsNothing(self):
-		tracker = ProgressTracker({1: 100}, None)
-		tracker.startStep(1)
+		tracker = ProgressTracker(_Steps, None)
+		tracker.startStep(_Steps.FIRST)
 		tracker.stepProgress(1, 1)
