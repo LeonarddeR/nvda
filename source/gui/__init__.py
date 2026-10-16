@@ -1,11 +1,13 @@
 # A part of NonVisual Desktop Access (NVDA)
 # Copyright (C) 2006-2026 NV Access Limited, Peter Vágner, Aleksey Sadovoy, Mesar Hameed, Joseph Lee,
-# Thomas Stivers, Babbage B.V., Accessolutions, Julien Cochuyt, Cyrille Bougot, Luke Davis
-# This file is covered by the GNU General Public License.
-# See the file COPYING for more details.
+# Thomas Stivers, Babbage B.V., Accessolutions, Julien Cochuyt, Cyrille Bougot, Luke Davis, Leonard de Ruijter
+# This file may be used under the terms of the GNU General Public License, version 2 or later, as modified by the NVDA license.
+# For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
-from collections.abc import Callable  # noqa: I001
+from collections.abc import Callable, Generator  # noqa: I001
+from contextlib import contextmanager
 import os
+import threading
 import warnings
 import wx
 import wx.adv
@@ -25,6 +27,7 @@ import queueHandler
 import core
 from typing import Any
 import systemUtils
+from utils.displayString import DisplayStringIntEnum
 from .message import (
 	Button,
 	Payload,
@@ -1001,6 +1004,118 @@ class IndeterminateProgressDialog(wx.ProgressDialog):
 			pbConf["reportBackgroundProgressBars"] or self.IsActive()
 		):
 			tones.beep(1760, 40)
+		self.Hide()
+		self.Destroy()
+
+
+class _DeterminateProgressDialog(wx.ProgressDialog):
+	"""A progress dialog that shows how far an operation has progressed, with the elapsed and remaining time.
+
+	Progress can be set from any thread with :meth:`setProgress`.
+	While :meth:`receiveRemoteProgress` is active, another process can report progress
+	through ``nvdaControllerInternal_progressNotify``.
+	"""
+
+	_remoteProgressReceiver: "tuple[_DeterminateProgressDialog, type[DisplayStringIntEnum]] | None" = None
+	"""The dialog that receives progress from another process, with the enum of the steps that process reports."""
+
+	def __init__(self, parent: wx.Window, title: str, message: str):
+		"""
+		:param parent: The parent window.
+		:param title: The title of the dialog.
+		:param message: The initial message of the dialog.
+		"""
+		super().__init__(
+			title,
+			message,
+			maximum=100,
+			parent=parent,
+			style=wx.PD_APP_MODAL | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME | wx.PD_AUTO_HIDE,
+		)
+		self._message = message
+		self._pendingLock = threading.Lock()
+		self._pending: tuple[int, str | None] | None = None
+		self._timer = NonReEntrantTimer(self._applyPending)
+		self._timer.Start(100)
+		self.CentreOnScreen()
+		self.Raise()
+
+	def setProgress(self, percentage: int, message: str | None = None) -> None:
+		"""Set the progress shown in the dialog.
+		This can be called from any thread.
+
+		:param percentage: The overall progress, from 0 to 100.
+			The dialog shows at most 99 until :meth:`done` is called.
+		:param message: The new message of the dialog, or ``None`` to keep the current message.
+		"""
+		percentage = min(max(percentage, 0), 99)
+		with self._pendingLock:
+			if message is None and self._pending is not None:
+				message = self._pending[1]
+			self._pending = (percentage, message)
+
+	def _applyPending(self) -> None:
+		with self._pendingLock:
+			pending, self._pending = self._pending, None
+		if pending is None:
+			return
+		percentage, message = pending
+		if message is not None and message != self._message:
+			self._message = message
+			self._reportMessage(message)
+		else:
+			message = ""
+		self.Update(percentage, message)
+
+	def _reportMessage(self, message: str) -> None:
+		pbConf = config.conf["presentation"]["progressBarUpdates"]
+		if pbConf["progressBarOutputMode"] == "off":
+			return
+		if not pbConf["reportBackgroundProgressBars"] and not self.IsActive():
+			return
+		ui.message(message)
+
+	def IsActive(self) -> bool:
+		# 4714: In wxPython 3, ProgressDialog.IsActive always seems to return False.
+		return winUser.isDescendantWindow(winUser.getForegroundWindow(), self.Handle)
+
+	@contextmanager
+	def receiveRemoteProgress(self, steps: type[DisplayStringIntEnum]) -> Generator[None]:
+		"""Show the progress that another process reports through ``nvdaControllerInternal_progressNotify``.
+
+		:param steps: The enum of the steps the other process reports.
+			The dialog message shows the display string of the current step.
+		"""
+		_DeterminateProgressDialog._remoteProgressReceiver = (self, steps)
+		try:
+			yield
+		finally:
+			_DeterminateProgressDialog._remoteProgressReceiver = None
+
+	@classmethod
+	def _handleRemoteProgress(cls, step: int, percentage: int) -> None:
+		"""Show progress reported by another process.
+		This is called from an RPC thread.
+
+		:param step: The value of the step the other process is in.
+		:param percentage: The overall progress of the other process.
+		"""
+		receiver = cls._remoteProgressReceiver
+		if receiver is None:
+			log.debugWarning(f"No dialog receives remote progress, ignoring {step=}, {percentage=}")
+			return
+		dialog, steps = receiver
+		try:
+			stepMember = steps(step)
+		except ValueError:
+			log.debugWarning(f"Unknown step {step} for {steps.__qualname__}")
+			return
+		dialog.setProgress(percentage, stepMember.displayString)
+
+	def done(self) -> None:
+		"""Show that the operation has finished and close the dialog."""
+		self._timer.Stop()
+		self.Update(100)
 		self.Hide()
 		self.Destroy()
 
