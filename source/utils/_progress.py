@@ -26,18 +26,14 @@ class ProgressTracker:
 		:param callback: Called with the current step and the overall percentage, or ``None`` to report nothing.
 		"""
 		total = sum(shares.values())
-		if total <= 0:
-			raise ValueError(f"Shares must add up to more than 0, got {total}")
 		self._callback = callback
-		self._starts: dict[int, float] = {}
-		self._shares: dict[int, float] = {}
+		self._ranges: dict[int, tuple[float, float]] = {}
 		start = 0
 		for step, share in shares.items():
-			self._starts[step] = start * 100 / total
-			self._shares[step] = share * 100 / total
+			self._ranges[step] = (start * 100 / total, (start + share) * 100 / total)
 			start += share
-		self._step: int | None = None
-		self._lastReport: tuple[int, int] | None = None
+		self._step: int
+		self._lastReport: tuple[int | None, int] = (None, 0)
 
 	def startStep(self, step: int) -> None:
 		"""Report that the given step has started.
@@ -45,7 +41,7 @@ class ProgressTracker:
 		:param step: One of the steps given to the constructor.
 		"""
 		self._step = step
-		self._report(self._starts[step])
+		self._report(self._ranges[step][0])
 
 	def stepProgress(self, done: int, total: int) -> None:
 		"""Report progress within the current step.
@@ -53,16 +49,12 @@ class ProgressTracker:
 		:param done: The number of units of work done in the current step.
 		:param total: The total number of units of work in the current step.
 		"""
-		if self._step is None:
-			raise RuntimeError("No step has been started")
+		start, end = self._ranges[self._step]
 		fraction = min(done / total, 1.0) if total > 0 else 1.0
-		self._report(self._starts[self._step] + self._shares[self._step] * fraction)
+		self._report(start + (end - start) * fraction)
 
 	def _report(self, percentage: float) -> None:
-		percentage = int(percentage)
-		if self._lastReport is not None:
-			percentage = max(percentage, self._lastReport[1])
-		report = (self._step, percentage)
+		report = (self._step, max(int(percentage), self._lastReport[1]))
 		if report == self._lastReport:
 			return
 		self._lastReport = report

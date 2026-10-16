@@ -9,7 +9,7 @@ import threading
 import types
 import unittest
 from typing import Self
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import gui
 from utils.displayString import DisplayStringIntEnum
@@ -60,23 +60,56 @@ class Test_remoteProgress(unittest.TestCase):
 
 class Test_setProgress(unittest.TestCase):
 	def setUp(self) -> None:
-		self._dialog = types.SimpleNamespace(_pendingLock=threading.Lock(), _pending=None)
+		self._dialog = types.SimpleNamespace(_latestLock=threading.Lock(), _latest=(0, "Initial"))
 
 	def _setProgress(self, percentage: int, message: str | None = None) -> None:
 		gui._DeterminateProgressDialog.setProgress(self._dialog, percentage, message)
 
 	def test_percentage_isClampedBelowHundred(self):
 		self._setProgress(150)
-		self.assertEqual(self._dialog._pending, (99, None))
+		self.assertEqual(self._dialog._latest, (99, "Initial"))
 		self._setProgress(-5)
-		self.assertEqual(self._dialog._pending, (0, None))
+		self.assertEqual(self._dialog._latest, (0, "Initial"))
 
-	def test_pendingMessage_isKeptWhenNoNewMessage(self):
+	def test_message_isKeptWhenNoNewMessage(self):
 		self._setProgress(10, "Copying")
 		self._setProgress(11)
-		self.assertEqual(self._dialog._pending, (11, "Copying"))
+		self.assertEqual(self._dialog._latest, (11, "Copying"))
 
-	def test_newMessage_replacesPendingMessage(self):
-		self._setProgress(10, "Copying")
-		self._setProgress(11, "Registering")
-		self.assertEqual(self._dialog._pending, (11, "Registering"))
+
+class Test_applyLatest(unittest.TestCase):
+	def setUp(self) -> None:
+		self._dialog = types.SimpleNamespace(
+			_latestLock=threading.Lock(),
+			_latest=(0, "Initial"),
+			_shown=(0, "Initial"),
+			_shouldReportProgress=Mock(return_value=True),
+			Update=Mock(),
+		)
+
+	def _applyLatest(self, latest: tuple[int, str]) -> None:
+		self._dialog._latest = latest
+		with patch("gui.ui.message") as self._uiMessage:
+			gui._DeterminateProgressDialog._applyLatest(self._dialog)
+
+	def test_unchanged_updatesNothing(self):
+		self._applyLatest((0, "Initial"))
+		self._dialog.Update.assert_not_called()
+		self._uiMessage.assert_not_called()
+
+	def test_newPercentage_updatesOnlyPercentage(self):
+		self._applyLatest((10, "Initial"))
+		self._dialog.Update.assert_called_once_with(10)
+		self._uiMessage.assert_not_called()
+		self.assertEqual(self._dialog._shown, (10, "Initial"))
+
+	def test_newMessage_isShownAndReported(self):
+		self._applyLatest((10, "Copying"))
+		self._dialog.Update.assert_called_once_with(10, "Copying")
+		self._uiMessage.assert_called_once_with("Copying")
+
+	def test_newMessage_isNotReportedWhenProgressIsNotReported(self):
+		self._dialog._shouldReportProgress.return_value = False
+		self._applyLatest((10, "Copying"))
+		self._dialog.Update.assert_called_once_with(10, "Copying")
+		self._uiMessage.assert_not_called()

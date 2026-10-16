@@ -61,16 +61,7 @@ class Test_ProgressTracker(unittest.TestCase):
 		tracker.stepProgress(3, 2)
 		self.assertEqual(reports, [(1, 0), (1, 50)])
 
-	def test_stepProgress_withoutStartedStep_raises(self):
-		tracker, _reports = self._createTracker({1: 100})
-		with self.assertRaises(RuntimeError):
-			tracker.stepProgress(1, 2)
-
 	def test_withoutCallback_reportsNothing(self):
 		tracker = ProgressTracker({1: 100}, None)
 		tracker.startStep(1)
 		tracker.stepProgress(1, 1)
-
-	def test_withoutShares_raises(self):
-		with self.assertRaises(ValueError):
-			ProgressTracker({}, None)

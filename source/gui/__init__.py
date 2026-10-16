@@ -968,47 +968,61 @@ def runScriptModalDialog(dialog: wx.Dialog, callback: Callable[[int], Any] | Non
 	wx.CallAfter(run)
 
 
-class IndeterminateProgressDialog(wx.ProgressDialog):
+class _ProgressDialog(wx.ProgressDialog):
+	"""Base class for NVDA's progress dialogs."""
+
+	def __init__(self, parent: wx.Window, title: str, message: str, **kwargs):
+		super().__init__(title, message, parent=parent, **kwargs)
+		self.CentreOnScreen()
+		self.Raise()
+
+	def IsActive(self):
+		# 4714: In wxPython 3, ProgressDialog.IsActive always seems to return False.
+		return winUser.isDescendantWindow(winUser.getForegroundWindow(), self.Handle)
+
+	def _shouldReportProgress(self) -> bool:
+		"""Whether progress should be reported according to the progress bar output settings."""
+		pbConf = config.conf["presentation"]["progressBarUpdates"]
+		if pbConf["progressBarOutputMode"] == "off":
+			return False
+		return pbConf["reportBackgroundProgressBars"] or self.IsActive()
+
+	def done(self):
+		"""Close the dialog, beeping when progress is reported with beeps."""
+		pbConf = config.conf["presentation"]["progressBarUpdates"]
+		if pbConf["progressBarOutputMode"] in ("beep", "both") and self._shouldReportProgress():
+			tones.beep(1760, 40)
+		self.Hide()
+		self.Destroy()
+
+
+class IndeterminateProgressDialog(_ProgressDialog):
 	def __init__(self, parent: wx.Window, title: str, message: str):
-		super().__init__(title, message, parent=parent)
+		super().__init__(parent, title, message)
 		self._speechCounter = -1
 		self.timer = wx.PyTimer(self.Pulse)
 		self.timer.Start(1000)
-		self.CentreOnScreen()
-		self.Raise()
 
 	def Pulse(self):
 		super().Pulse()
 		# We want progress to be spoken on the first pulse and every 10 pulses thereafter.
 		# Therefore, cycle from 0 to 9 inclusive.
 		self._speechCounter = (self._speechCounter + 1) % 10
+		if not self._shouldReportProgress():
+			return
 		pbConf = config.conf["presentation"]["progressBarUpdates"]
-		if pbConf["progressBarOutputMode"] == "off":
-			return
-		if not pbConf["reportBackgroundProgressBars"] and not self.IsActive():
-			return
 		if pbConf["progressBarOutputMode"] in ("beep", "both"):
 			tones.beep(440, 40)
 		if pbConf["progressBarOutputMode"] in ("speak", "both") and self._speechCounter == 0:
 			# Translators: Announced periodically to indicate progress for an indeterminate progress bar.
 			speech.speakMessage(_("Please wait"))
 
-	def IsActive(self):
-		# 4714: In wxPython 3, ProgressDialog.IsActive always seems to return False.
-		return winUser.isDescendantWindow(winUser.getForegroundWindow(), self.Handle)
-
 	def done(self):
 		self.timer.Stop()
-		pbConf = config.conf["presentation"]["progressBarUpdates"]
-		if pbConf["progressBarOutputMode"] in ("beep", "both") and (
-			pbConf["reportBackgroundProgressBars"] or self.IsActive()
-		):
-			tones.beep(1760, 40)
-		self.Hide()
-		self.Destroy()
+		super().done()
 
 
-class _DeterminateProgressDialog(wx.ProgressDialog):
+class _DeterminateProgressDialog(_ProgressDialog):
 	"""A progress dialog that shows how far an operation has progressed, with the elapsed and remaining time.
 
 	Progress can be set from any thread with :meth:`setProgress`.
@@ -1026,58 +1040,41 @@ class _DeterminateProgressDialog(wx.ProgressDialog):
 		:param message: The initial message of the dialog.
 		"""
 		super().__init__(
+			parent,
 			title,
 			message,
-			maximum=100,
-			parent=parent,
-			style=wx.PD_APP_MODAL | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME | wx.PD_AUTO_HIDE,
+			style=wx.PD_APP_MODAL | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME,
 		)
-		self._message = message
-		self._pendingLock = threading.Lock()
-		self._pending: tuple[int, str | None] | None = None
-		self._timer = NonReEntrantTimer(self._applyPending)
+		self._latestLock = threading.Lock()
+		self._latest = self._shown = (0, message)
+		self._timer = NonReEntrantTimer(self._applyLatest)
 		self._timer.Start(100)
-		self.CentreOnScreen()
-		self.Raise()
 
 	def setProgress(self, percentage: int, message: str | None = None) -> None:
 		"""Set the progress shown in the dialog.
 		This can be called from any thread.
 
 		:param percentage: The overall progress, from 0 to 100.
-			The dialog shows at most 99 until :meth:`done` is called.
+			The dialog shows at most 99.
 		:param message: The new message of the dialog, or ``None`` to keep the current message.
 		"""
 		percentage = min(max(percentage, 0), 99)
-		with self._pendingLock:
-			if message is None and self._pending is not None:
-				message = self._pending[1]
-			self._pending = (percentage, message)
+		with self._latestLock:
+			self._latest = (percentage, self._latest[1] if message is None else message)
 
-	def _applyPending(self) -> None:
-		with self._pendingLock:
-			pending, self._pending = self._pending, None
-		if pending is None:
+	def _applyLatest(self) -> None:
+		with self._latestLock:
+			latest = self._latest
+		if latest == self._shown:
 			return
-		percentage, message = pending
-		if message is not None and message != self._message:
-			self._message = message
-			self._reportMessage(message)
+		percentage, message = latest
+		if message != self._shown[1]:
+			if self._shouldReportProgress():
+				ui.message(message)
+			self.Update(percentage, message)
 		else:
-			message = ""
-		self.Update(percentage, message)
-
-	def _reportMessage(self, message: str) -> None:
-		pbConf = config.conf["presentation"]["progressBarUpdates"]
-		if pbConf["progressBarOutputMode"] == "off":
-			return
-		if not pbConf["reportBackgroundProgressBars"] and not self.IsActive():
-			return
-		ui.message(message)
-
-	def IsActive(self) -> bool:
-		# 4714: In wxPython 3, ProgressDialog.IsActive always seems to return False.
-		return winUser.isDescendantWindow(winUser.getForegroundWindow(), self.Handle)
+			self.Update(percentage)
+		self._shown = latest
 
 	@contextmanager
 	def receiveRemoteProgress(self, steps: type[DisplayStringIntEnum]) -> Generator[None]:
@@ -1112,12 +1109,9 @@ class _DeterminateProgressDialog(wx.ProgressDialog):
 			return
 		dialog.setProgress(percentage, stepMember.displayString)
 
-	def done(self) -> None:
-		"""Show that the operation has finished and close the dialog."""
+	def done(self):
 		self._timer.Stop()
-		self.Update(100)
-		self.Hide()
-		self.Destroy()
+		super().done()
 
 
 def shouldConfigProfileTriggersBeSuspended():

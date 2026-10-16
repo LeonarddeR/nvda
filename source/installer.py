@@ -204,31 +204,18 @@ def getDocFilePath(fileName: str, installDir: str):
 			return tryPath
 
 
-def _walkProgramFiles(sourcePath: str, destPath: str) -> Iterator[tuple[str, list[tuple[str, str]]]]:
-	"""Walk the program files to copy from one NVDA directory to another.
+def _walkProgramFiles(sourcePath: str) -> Iterator[tuple[str, list[str]]]:
+	"""Walk the program files of an NVDA directory.
 
-	:param sourcePath: The NVDA directory to copy from.
-	:param destPath: The NVDA directory to copy to.
-	:return: For each source directory, the destination directory
-		and the source and destination path of each file to copy into it.
+	:param sourcePath: The NVDA directory.
+	:return: For each directory, its path relative to ``sourcePath`` and the names of the files to copy from it.
 	"""
-	detectUserConfig = True
 	for curSourceDir, subDirs, files in os.walk(sourcePath):
-		if detectUserConfig:
-			detectUserConfig = False
-			subDirs[:] = [
-				x for x in subDirs if os.path.basename(x).lower() not in ("userconfig", "systemconfig")
-			]
-		curDestDir = os.path.join(destPath, os.path.relpath(curSourceDir, sourcePath))
-		filePaths: list[tuple[str, str]] = []
-		for f in files:
+		if curSourceDir == sourcePath:
+			subDirs[:] = [x for x in subDirs if x.lower() not in ("userconfig", "systemconfig")]
 			# Never copy nvda.exe as one of the other executables will be renamed later
-			if sourcePath == curSourceDir and f.lower() == "nvda.exe":
-				continue
-			sourceFilePath = os.path.join(curSourceDir, f)
-			destFilePath = os.path.join(destPath, os.path.relpath(sourceFilePath, sourcePath))
-			filePaths.append((sourceFilePath, destFilePath))
-		yield curDestDir, filePaths
+			files = [f for f in files if f.lower() != "nvda.exe"]
+		yield os.path.relpath(curSourceDir, sourcePath), files
 
 
 def copyProgramFiles(destPath: str, onFileCopied: Callable[[int, int], None] | None = None):
@@ -237,14 +224,17 @@ def copyProgramFiles(destPath: str, onFileCopied: Callable[[int, int], None] | N
 	:param destPath: The directory to copy to.
 	:param onFileCopied: Called after each copied file with the number of files copied so far and the total number of files.
 	"""
-	directories = list(_walkProgramFiles(globalVars.appDir, destPath))
-	total = sum(len(filePaths) for _curDestDir, filePaths in directories)
+	sourcePath = globalVars.appDir
+	directories = list(_walkProgramFiles(sourcePath))
+	total = sum(len(fileNames) for _relDir, fileNames in directories)
 	copied = 0
-	for curDestDir, filePaths in directories:
+	for relDir, fileNames in directories:
+		curSourceDir = os.path.normpath(os.path.join(sourcePath, relDir))
+		curDestDir = os.path.normpath(os.path.join(destPath, relDir))
 		if not os.path.isdir(curDestDir):
 			os.makedirs(curDestDir)
-		for sourceFilePath, destFilePath in filePaths:
-			tryCopyFile(sourceFilePath, destFilePath)
+		for f in fileNames:
+			tryCopyFile(os.path.join(curSourceDir, f), os.path.join(curDestDir, f))
 			copied += 1
 			if onFileCopied is not None:
 				onFileCopied(copied, total)

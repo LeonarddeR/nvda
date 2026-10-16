@@ -488,8 +488,6 @@ class Test_comparePreviousInstall(unittest.TestCase):
 class Test_walkProgramFiles(unittest.TestCase):
 	def setUp(self) -> None:
 		self._tempDir = tempfile.TemporaryDirectory()
-		self._source = pathlib.Path(self._tempDir.name, "source")
-		self._dest = pathlib.Path(self._tempDir.name, "dest")
 		for relPath in (
 			"nvda.exe",
 			"nvda_slave.exe",
@@ -498,30 +496,21 @@ class Test_walkProgramFiles(unittest.TestCase):
 			"lib/nvda.exe",
 			"lib/userConfig/file.txt",
 		):
-			path = self._source / relPath
+			path = pathlib.Path(self._tempDir.name, relPath)
 			path.parent.mkdir(parents=True, exist_ok=True)
 			path.touch()
-		(self._source / "emptyDir").mkdir()
+		pathlib.Path(self._tempDir.name, "emptyDir").mkdir()
 
 	def tearDown(self) -> None:
 		self._tempDir.cleanup()
 
-	def _walk(self) -> dict[str, set[tuple[str, str]]]:
-		return {
-			destDir: set(filePaths)
-			for destDir, filePaths in installer._walkProgramFiles(str(self._source), str(self._dest))
-		}
-
-	def _expectedFile(self, relPath: str) -> tuple[str, str]:
-		return (str(self._source / relPath), str(self._dest / relPath))
-
 	def test_skipsConfigDirectoriesAndNvdaExeOnlyAtTopLevel(self):
 		self.assertEqual(
-			self._walk(),
+			{relDir: set(fileNames) for relDir, fileNames in installer._walkProgramFiles(self._tempDir.name)},
 			{
-				os.path.join(self._dest, "."): {self._expectedFile("nvda_slave.exe")},
-				str(self._dest / "lib"): {self._expectedFile("lib/nvda.exe")},
-				str(self._dest / "lib" / "userConfig"): {self._expectedFile("lib/userConfig/file.txt")},
-				str(self._dest / "emptyDir"): set(),
+				".": {"nvda_slave.exe"},
+				"lib": {"nvda.exe"},
+				os.path.join("lib", "userConfig"): {"file.txt"},
+				"emptyDir": set(),
 			},
 		)

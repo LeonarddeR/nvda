@@ -50,15 +50,6 @@ def getNvdaHelperRemote():
 	return remoteLib
 
 
-def _progressNotify(step: int, percentage: int) -> None:
-	"""Report the progress of the current action to the running copy of NVDA.
-
-	:param step: The step the action is in.
-	:param percentage: The overall progress of the action, from 0 to 100.
-	"""
-	getNvdaHelperRemote().nvdaControllerInternal_progressNotify(step, percentage)
-
-
 def main():
 	import installer
 
@@ -70,7 +61,11 @@ def main():
 
 	try:
 		if action == "install":
-			installer.install(bool(int(args[0])), bool(int(args[1])), progressCallback=_progressNotify)
+			installer.install(
+				bool(int(args[0])),
+				bool(int(args[1])),
+				progressCallback=getNvdaHelperRemote().nvdaControllerInternal_progressNotify,
+			)
 		elif action == "unregisterInstall":
 			import installer
 
