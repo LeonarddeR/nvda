@@ -965,10 +965,10 @@ class _InstallStep(ProgressStep):
 	def _startPercentages(self) -> dict[Self, int]:
 		return {
 			_InstallStep.REMOVE_PREVIOUS: 0,
-			_InstallStep.COPY_FILES: 20,
+			_InstallStep.COPY_FILES: 30,
 			_InstallStep.REMOVE_OLD_FILES: 70,
 			_InstallStep.REGISTER: 75,
-			_InstallStep.FINISH: 80,
+			_InstallStep.FINISH: 85,
 		}
 
 
