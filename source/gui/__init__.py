@@ -27,7 +27,7 @@ import queueHandler
 import core
 from typing import Any
 import systemUtils
-from utils.displayString import DisplayStringIntEnum
+from utils._progress import ProgressStep
 from .message import (
 	Button,
 	Payload,
@@ -1030,7 +1030,7 @@ class _DeterminateProgressDialog(_ProgressDialog):
 	through ``nvdaControllerInternal_progressNotify``.
 	"""
 
-	_remoteProgressReceiver: "tuple[_DeterminateProgressDialog, type[DisplayStringIntEnum]] | None" = None
+	_remoteProgressReceiver: "tuple[_DeterminateProgressDialog, type[ProgressStep]] | None" = None
 	"""The dialog that receives progress from another process, with the enum of the steps that process reports."""
 
 	def __init__(self, parent: wx.Window, title: str, message: str):
@@ -1077,7 +1077,7 @@ class _DeterminateProgressDialog(_ProgressDialog):
 		self._shown = latest
 
 	@contextmanager
-	def receiveRemoteProgress(self, steps: type[DisplayStringIntEnum]) -> Generator[None]:
+	def receiveRemoteProgress(self, steps: type[ProgressStep]) -> Generator[None]:
 		"""Show the progress that another process reports through ``nvdaControllerInternal_progressNotify``.
 
 		:param steps: The enum of the steps the other process reports.

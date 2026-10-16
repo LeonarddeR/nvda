@@ -12,15 +12,19 @@ from typing import Self
 from unittest.mock import Mock, patch
 
 import gui
-from utils.displayString import DisplayStringIntEnum
+from utils._progress import ProgressStep
 
 
-class _Steps(DisplayStringIntEnum):
+class _Steps(ProgressStep):
 	FIRST = 1
 
 	@property
 	def _displayStringLabels(self) -> dict[Self, str]:
 		return {_Steps.FIRST: "First step"}
+
+	@property
+	def _startPercentages(self) -> dict[Self, int]:
+		return {_Steps.FIRST: 0}
 
 
 class Test_remoteProgress(unittest.TestCase):
