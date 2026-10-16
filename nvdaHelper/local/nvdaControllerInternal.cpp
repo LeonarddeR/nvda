@@ -1,7 +1,7 @@
 /*
 This file is a part of the NVDA project.
 URL: http://www.nvda-project.org/
-Copyright 2006-2025 NV Access Limited, rui Batista, Google LLC, Christopher Toth.
+Copyright 2006-2026 NV Access Limited, rui Batista, Google LLC, Christopher Toth, Leonard de Ruijter.
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License version 2.0, as published by
     the Free Software Foundation.
@@ -88,4 +88,9 @@ error_status_t __stdcall nvdaControllerInternal_reportLiveRegion(const wchar_t* 
 error_status_t(__stdcall *_nvdaControllerInternal_openConfigDirectory)();
 error_status_t __stdcall nvdaControllerInternal_openConfigDirectory() {
 	return _nvdaControllerInternal_openConfigDirectory();
+}
+
+error_status_t(__stdcall *_nvdaControllerInternal_progressNotify)(const long, const long);
+error_status_t __stdcall nvdaControllerInternal_progressNotify(const long step, const long percentage) {
+	return _nvdaControllerInternal_progressNotify(step, percentage);
 }

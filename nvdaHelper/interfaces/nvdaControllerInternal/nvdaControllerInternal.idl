@@ -1,7 +1,7 @@
 /*
 This file is a part of the NVDA project.
 URL: http://www.nvda-project.org/
-Copyright 2006-2025 NV Access Limited, rui Batista, Google LLC, Christopher Toth.
+Copyright 2006-2026 NV Access Limited, rui Batista, Google LLC, Christopher Toth, Leonard de Ruijter.
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License version 2.0, as published by
     the Free Software Foundation.
@@ -15,7 +15,7 @@ http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 cpp_quote("/*")
 cpp_quote("This file is a part of the NVDA project.")
 cpp_quote("URL: http://www.nvda-project.org/")
-cpp_quote("Copyright 2006-2018 NV Access Limited, rui Batista, Google LLC.")
+cpp_quote("Copyright 2006-2026 NV Access Limited, rui Batista, Google LLC, Christopher Toth, Leonard de Ruijter.")
 cpp_quote("This program is free software: you can redistribute it and/or modify")
 cpp_quote("it under the terms of the GNU General Public License version 2.0, as published by")
 cpp_quote("the Free Software Foundation.")
@@ -108,4 +108,11 @@ interface NvdaControllerInternal {
  * @param url The nvdaremote:// URL to process.
  */
 	error_status_t __stdcall handleRemoteURL([in,string] const wchar_t* url);
+
+/**
+ * Notifies NVDA of the progress of an operation that NVDA started in another process, such as the elevated installer.
+ * @param step The step the operation is in. Its meaning depends on the operation.
+ * @param percentage The overall progress of the operation, from 0 to 100.
+ */
+	error_status_t __stdcall progressNotify([in] const long step, [in] const long percentage);
 };
