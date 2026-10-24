@@ -1,3 +1,10 @@
+## 2026-10-24 (auto, manual override -- user requested this run live despite image still prerelease) -- windows-11-arm 20261022.194
+- Previously tested image: 20261013.183 (confirmed prod, served all 11 jobs cleanly on 2026-10-16 run 38900233524)
+- Release status at trigger time: prerelease=True, published 2026-10-23 15:44:44 UTC (0.68 days old at detection) -- far below the ~3.3-day mark this log has used to justify overriding the prerelease flag before; normally this would gate (skip). OVERRIDDEN ANYWAY: user explicitly asked live in chat to run now rather than wait for rollout. Risk flagged: at well under a day old this image is very likely still deploying, so the hosted pool may still serve the old 20261013.183 image instead -- watch the served-image sample closely.
+- Also noted: 20261021.192 (published 2026-10-22, ~1.9 days old) also still prerelease=True and skipped in favor of testing the newest release.
+- Branch update: merged leonard/try-testOnArm (prek auto-fix mangled the log again; restored clean version); merged origin/master (advanced, incl. installer "ask to end running copies" changes, NVDAHelper UTF-8 compile flag, MathCAT speech fix, voice settings panel tests)
+- CI run: pending
+- Result: pending
 ## 2026-10-16 (auto) -- windows-11-arm 20261013.183 (win11-vs2026-arm64 family)
 - Previously tested image: 20261004.176 (confirmed prod, served all 11 jobs cleanly on 2026-10-09 run 37959306044)
 - Release status at trigger time: prerelease=False, published 2026-10-14 10:24:42 UTC (2.08 days old at detection) -- flag already flipped to rolled-out; no override needed. Flipped faster than the previously observed 3.3-5 day range (worth noting, not blocking, since a False flag has never been observed to lag rollout -- only True has lagged).
