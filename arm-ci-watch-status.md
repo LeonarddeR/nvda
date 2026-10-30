@@ -2,7 +2,7 @@
 - Previously tested image: 20261021.192 / 20261022.194 (mixed pool, confirmed on 2026-10-24 run 40076803794: 8 of 10 suites + l10n served 20261021.192, 2 of 10 served 20261022.194; both now prerelease=False)
 - Release status at trigger time: prerelease=False, published 2026-10-27 08:31:56 UTC (3.18 days old at detection) -- already flagged as rolled out, no override needed
 - Branch update: merged leonard/try-testOnArm (prek auto-fix mangled the log again; restored clean version); merged origin/master (advanced, 19 commits)
-- CI run: PENDING
+- CI run: https://github.com/LeonarddeR/nvda/actions/runs/41058653164
 - Result: pending
 ## 2026-10-24 (auto, manual override -- user requested this run live despite image still prerelease) -- windows-11-arm 20261022.194
 - Previously tested image: 20261013.183 (confirmed prod, served all 11 jobs cleanly on 2026-10-16 run 38900233524)
