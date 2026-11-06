@@ -1,3 +1,9 @@
+## 2026-11-06 16:03 (auto) -- windows-11-arm 20261101.203 (win11-vs2026-arm64 family)
+- Previously tested image: 20261025.196 (unreleased/unpublished build; served ALL 10 arm jobs cleanly, l10n cancelled, on 2026-10-30 run 41058653164 -- that run had targeted 20261026.197)
+- Release status at trigger time: prerelease=False, published 2026-11-02 16:33:38 UTC (3.98 days old at detection) -- already flagged as rolled out, no override needed
+- Branch update: merged leonard/try-testOnArm (prek auto-fix mangled the log again; restored clean version); merged origin/master (advanced, 12 commits)
+- CI run: <url -- fill in after it starts>
+- Result: pending
 ## 2026-10-30 13:52 (auto) -- windows-11-arm 20261026.197 (win11-vs2026-arm64 family)
 - Previously tested image: 20261021.192 / 20261022.194 (mixed pool, confirmed on 2026-10-24 run 40076803794: 8 of 10 suites + l10n served 20261021.192, 2 of 10 served 20261022.194; both now prerelease=False)
 - Release status at trigger time: prerelease=False, published 2026-10-27 08:31:56 UTC (3.18 days old at detection) -- already flagged as rolled out, no override needed
