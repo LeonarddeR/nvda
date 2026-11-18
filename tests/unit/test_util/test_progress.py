@@ -24,6 +24,26 @@ class _Steps(ProgressStep):
 		return {_Steps.FIRST: 0, _Steps.SECOND: 20}
 
 
+class _FourSteps(ProgressStep):
+	FIRST = 1
+	SECOND = 2
+	THIRD = 3
+	FOURTH = 4
+
+	@property
+	def _displayStringLabels(self) -> dict[Self, str]:
+		return {
+			_FourSteps.FIRST: "First",
+			_FourSteps.SECOND: "Second",
+			_FourSteps.THIRD: "Third",
+			_FourSteps.FOURTH: "Fourth",
+		}
+
+	@property
+	def _startPercentages(self) -> dict[Self, int]:
+		return {_FourSteps.FIRST: 0, _FourSteps.SECOND: 10, _FourSteps.THIRD: 50, _FourSteps.FOURTH: 90}
+
+
 class Test_ProgressStep(unittest.TestCase):
 	def test_startPercentage(self):
 		self.assertEqual(_Steps.SECOND.startPercentage, 20)
@@ -80,3 +100,41 @@ class Test_ProgressTracker(unittest.TestCase):
 		tracker = ProgressTracker(_Steps, None)
 		tracker.startStep(_Steps.FIRST)
 		tracker.stepProgress(1, 1)
+
+
+class Test_ProgressTracker_sizes(unittest.TestCase):
+	def setUp(self) -> None:
+		self._reports: list[tuple[ProgressStep, int]] = []
+
+	def _track(self, sizes: dict[ProgressStep, int]) -> ProgressTracker:
+		return ProgressTracker(
+			_FourSteps,
+			lambda step, percentage: self._reports.append((step, percentage)),
+			sizes=sizes,
+		)
+
+	def test_sizes_shareRangeInProportion(self):
+		tracker = self._track({_FourSteps.SECOND: 1, _FourSteps.THIRD: 3})
+		tracker.startStep(_FourSteps.THIRD)
+		self.assertEqual(self._reports, [(_FourSteps.THIRD, 30)])
+
+	def test_sizes_zeroSizeStepGetsEmptyRange(self):
+		tracker = self._track({_FourSteps.SECOND: 4, _FourSteps.THIRD: 0})
+		tracker.startStep(_FourSteps.SECOND)
+		tracker.stepProgress(4, 4)
+		tracker.startStep(_FourSteps.FOURTH)
+		self.assertEqual(
+			self._reports,
+			[(_FourSteps.SECOND, 10), (_FourSteps.SECOND, 90), (_FourSteps.FOURTH, 90)],
+		)
+
+	def test_sizes_unsizedStepsBetweenKeepTheirWidth(self):
+		tracker = self._track({_FourSteps.SECOND: 1, _FourSteps.FOURTH: 1})
+		tracker.startStep(_FourSteps.THIRD)
+		tracker.startStep(_FourSteps.FOURTH)
+		self.assertEqual(self._reports, [(_FourSteps.THIRD, 35), (_FourSteps.FOURTH, 75)])
+
+	def test_sizes_allZero_keepStaticRanges(self):
+		tracker = self._track({_FourSteps.SECOND: 0, _FourSteps.THIRD: 0})
+		tracker.startStep(_FourSteps.THIRD)
+		self.assertEqual(self._reports, [(_FourSteps.THIRD, 50)])

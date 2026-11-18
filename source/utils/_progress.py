@@ -6,7 +6,7 @@
 """Progress reporting for operations that consist of several steps."""
 
 from abc import abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Self
 
 from utils.displayString import DisplayStringIntEnum
@@ -43,17 +43,33 @@ class ProgressTracker:
 		self,
 		steps: type[ProgressStep],
 		callback: Callable[[ProgressStep, int], None] | None,
+		sizes: Mapping[ProgressStep, int] | None = None,
 	):
 		"""
 		:param steps: The steps of the operation.
 		:param callback: Called with the current step and the overall percentage, or ``None`` to report nothing.
+		:param sizes: The amount of work in some steps, or ``None`` to use the start percentages only.
+			These steps share the range from the start of the first to the end of the last of them,
+			in proportion to their sizes.
+			Steps between them keep the width of their range.
+			A step of size 0 gets an empty range.
 		"""
 		self._callback = callback
 		members = list(steps)
-		self._ranges: dict[ProgressStep, tuple[int, int]] = {
+		self._ranges: dict[ProgressStep, tuple[float, float]] = {
 			step: (step.startPercentage, nextStep.startPercentage if nextStep is not None else 100)
 			for step, nextStep in zip(members, [*members[1:], None])
 		}
+		totalSize = sum(sizes.values()) if sizes else 0
+		if totalSize > 0:
+			sizedSteps = [step for step in members if step in sizes]
+			sharedWidth = sum(self._ranges[step][1] - self._ranges[step][0] for step in sizedSteps)
+			position = self._ranges[sizedSteps[0]][0]
+			for step in members[members.index(sizedSteps[0]) : members.index(sizedSteps[-1]) + 1]:
+				start, end = self._ranges[step]
+				width = sharedWidth * sizes[step] / totalSize if step in sizes else end - start
+				self._ranges[step] = (position, position + width)
+				position += width
 		self._step: ProgressStep
 		self._lastReport: tuple[ProgressStep | None, int] = (None, 0)
 
