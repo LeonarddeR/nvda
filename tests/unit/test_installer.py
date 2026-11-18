@@ -290,7 +290,7 @@ class Test_doInstallTerminateRunningNVDA(unittest.TestCase):
 			installerGui.doInstall(isUpdate=True)
 		self.execElevatedMock.assert_called_once_with(
 			installerGui.config.SLAVE_FILENAME,
-			["install", "1", "0", expected],
+			["install", "1", "0", expected, "0"],
 			wait=True,
 			handleAlreadyElevated=True,
 		)
@@ -927,6 +927,58 @@ class Test_createPortableCopy(unittest.TestCase):
 			[Step.REMOVE_PREVIOUS, Step.COPY_FILES, Step.REMOVE_OLD_FILES],
 		)
 		self.assertIn((Step.COPY_FILES, Step.REMOVE_OLD_FILES.startPercentage), self._reports)
+
+
+class Test_createInstallProgressTracker(unittest.TestCase):
+	def _stepStart(self, step: installer._InstallStep, userConfigSize: int) -> int:
+		"""Start a step on a new install tracker with 300 bytes of program files, returning its percentage."""
+		reports: list[tuple[installer._InstallStep, int]] = []
+		tracker = installer._createInstallProgressTracker(
+			lambda step, percentage: reports.append((step, percentage)),
+			programFilesSize=300,
+			userConfigSize=userConfigSize,
+		)
+		tracker.startStep(step)
+		return reports[-1][1]
+
+	def test_withoutUserConfig_keepsStaticRanges(self):
+		for step in installer._InstallStep:
+			with self.subTest(step=step):
+				self.assertEqual(self._stepStart(step, userConfigSize=0), step.startPercentage)
+
+	def test_userConfigSize_sharesCopyRange(self):
+		Step = installer._InstallStep
+		sharedWidth = (
+			Step.REMOVE_OLD_FILES.startPercentage
+			- Step.COPY_FILES.startPercentage
+			+ 100
+			- Step.COPY_USER_CONFIG.startPercentage
+		)
+		# The steps between copying files and copying the configuration keep their widths.
+		betweenWidth = Step.COPY_USER_CONFIG.startPercentage - Step.REMOVE_OLD_FILES.startPercentage
+		self.assertEqual(
+			self._stepStart(Step.COPY_USER_CONFIG, userConfigSize=600),
+			int(Step.COPY_FILES.startPercentage + sharedWidth * 300 / 900 + betweenWidth),
+		)
+
+
+class Test_doInstallCopyConfig(unittest.TestCase):
+	def test_passesConfigSizeAndReportsConfigStep(self):
+		with (
+			patch("gui.installerGui._DeterminateProgressDialog") as dialogMock,
+			patch("gui.installerGui.shell32.IsUserAnAdmin", return_value=True),
+			patch("gui.installerGui.systemUtils.execElevated", return_value=0) as execElevatedMock,
+			patch("gui.installerGui._canPortableConfigBeCopied", return_value=True),
+			patch("gui.installerGui.config.getInstalledUserConfigPath", return_value="C:\\config"),
+			patch("installer._getUserConfigSize", return_value=600),
+			patch("installer._getProgramFilesSize", return_value=300),
+			patch("gui.installerGui.systemUtils.ExecAndPump") as execAndPumpMock,
+			patch("gui.installerGui._showPostInstallDialog"),
+		):
+			installerGui.doInstall(copyPortableConfig=True)
+		self.assertEqual(execElevatedMock.call_args.args[1][4], "600")
+		dialogMock.return_value.setStep.assert_called_once_with(installer._InstallStep.COPY_USER_CONFIG, ANY)
+		execAndPumpMock.assert_called_once_with(installer.copyUserConfig, "C:\\config", ANY)
 
 
 class Test_doCreatePortable(unittest.TestCase):

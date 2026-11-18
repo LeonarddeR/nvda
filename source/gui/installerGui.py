@@ -282,6 +282,9 @@ def doInstall(
 	if not shell32.IsUserAnAdmin():
 		progressDialog.setStep(installer._InstallStep.ELEVATE)
 	try:
+		userConfigSize = 0
+		if copyPortableConfig and _canPortableConfigBeCopied():
+			userConfigSize = installer._getUserConfigSize()
 		with progressDialog.receiveRemoteProgress(installer._InstallStep):
 			res = systemUtils.execElevated(
 				config.SLAVE_FILENAME,
@@ -290,6 +293,7 @@ def doInstall(
 					str(int(createDesktopShortcut)),
 					str(int(startOnLogon)),
 					str(int(shouldTerminateRunningNVDA)),
+					str(userConfigSize),
 				],
 				wait=True,
 				handleAlreadyElevated=True,
@@ -300,7 +304,17 @@ def doInstall(
 			installedUserConfigPath = config.getInstalledUserConfigPath()
 			if installedUserConfigPath:  # noqa: SIM102
 				if _canPortableConfigBeCopied():
-					systemUtils.ExecAndPump(installer.copyUserConfig, installedUserConfigPath)
+					progress = installer._createInstallProgressTracker(
+						progressDialog.setStep,
+						installer._getProgramFilesSize(),
+						userConfigSize,
+					)
+					progress.startStep(installer._InstallStep.COPY_USER_CONFIG)
+					systemUtils.ExecAndPump(
+						installer.copyUserConfig,
+						installedUserConfigPath,
+						progress.stepProgress,
+					)
 	except Exception as e:
 		res = e
 		log.error("Failed to execute installer", exc_info=True)  # noqa: G201

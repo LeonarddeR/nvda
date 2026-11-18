@@ -1144,6 +1144,7 @@ class _InstallStep(ProgressStep):
 	REMOVE_OLD_FILES = auto()
 	REGISTER = auto()
 	FINISH = auto()
+	COPY_USER_CONFIG = auto()
 
 	@property
 	def _displayStringLabels(self) -> dict[Self, str]:
@@ -1162,6 +1163,8 @@ class _InstallStep(ProgressStep):
 			_InstallStep.REGISTER: _("Registering NVDA"),
 			# Translators: Reported while installing NVDA, when the installation is being finished.
 			_InstallStep.FINISH: _("Finishing"),
+			# Translators: Reported after installing NVDA, when the configuration is being copied.
+			_InstallStep.COPY_USER_CONFIG: _("Copying configuration"),
 		}
 
 	@property
@@ -1170,11 +1173,30 @@ class _InstallStep(ProgressStep):
 			_InstallStep.WAIT_FOR_RUNNING_COPIES: 0,
 			_InstallStep.ELEVATE: 1,
 			_InstallStep.REMOVE_PREVIOUS: 5,
-			_InstallStep.COPY_FILES: 30,
-			_InstallStep.REMOVE_OLD_FILES: 70,
-			_InstallStep.REGISTER: 75,
-			_InstallStep.FINISH: 85,
+			_InstallStep.COPY_FILES: 12,
+			_InstallStep.REMOVE_OLD_FILES: 95,
+			_InstallStep.REGISTER: 95,
+			_InstallStep.FINISH: 97,
+			_InstallStep.COPY_USER_CONFIG: 100,
 		}
+
+
+def _createInstallProgressTracker(
+	callback: Callable[[ProgressStep, int], None] | None,
+	programFilesSize: int,
+	userConfigSize: int,
+) -> ProgressTracker:
+	"""Create the tracker of the progress of installing NVDA.
+
+	:param callback: Called with the current :class:`_InstallStep` and the overall percentage.
+	:param programFilesSize: The size in bytes of the program files to copy.
+	:param userConfigSize: The size in bytes of the user configuration copied after installing, or 0.
+	"""
+	return ProgressTracker(
+		_InstallStep,
+		callback,
+		sizes={_InstallStep.COPY_FILES: programFilesSize, _InstallStep.COPY_USER_CONFIG: userConfigSize},
+	)
 
 
 def install(
@@ -1183,6 +1205,7 @@ def install(
 	shouldTerminateRunningNVDA: bool = False,
 	*,
 	progressCallback: Callable[[int, int], None] | None = None,
+	userConfigSize: int = 0,
 ) -> None:
 	"""Install NVDA.
 
@@ -1192,8 +1215,10 @@ def install(
 		before their executables are deleted.
 	:param progressCallback: Called with the current :class:`_InstallStep` and the overall percentage
 		whenever one of them changes.
+	:param userConfigSize: The size in bytes of the user configuration copied after installing, or 0.
+		The progress leaves room for copying it.
 	"""
-	progress = ProgressTracker(_InstallStep, progressCallback)
+	progress = _createInstallProgressTracker(progressCallback, _getProgramFilesSize(), userConfigSize)
 	prevInstallPath = WritePaths.installDir
 	installDirs = _getInstallDirs()
 	installDir = installDirs[0]

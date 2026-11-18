@@ -67,6 +67,7 @@ def main():
 				bool(int(args[1])),
 				bool(int(args[2])),
 				progressCallback=getNvdaHelperRemote().nvdaControllerInternal_progressNotify,
+				userConfigSize=int(args[3]),
 			)
 		elif action == "unregisterInstall":
 			import installer
