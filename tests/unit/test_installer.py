@@ -807,30 +807,64 @@ def _createFiles(root: str, sizes: dict[str, int]) -> None:
 
 class Test_walkProgramFiles(unittest.TestCase):
 	def setUp(self) -> None:
-		self._tempDir = tempfile.TemporaryDirectory()
-		for relPath in (
-			"nvda.exe",
-			"nvda_slave.exe",
-			"userConfig/nvda.ini",
-			"systemConfig/nvda.ini",
-			"lib/nvda.exe",
-			"lib/userConfig/file.txt",
-		):
-			path = pathlib.Path(self._tempDir.name, relPath)
-			path.parent.mkdir(parents=True, exist_ok=True)
-			path.touch()
-		pathlib.Path(self._tempDir.name, "emptyDir").mkdir()
-
-	def tearDown(self) -> None:
-		self._tempDir.cleanup()
+		self._tempDir = self.enterContext(tempfile.TemporaryDirectory())
+		_createFiles(
+			self._tempDir,
+			{
+				"nvda.exe": 1,
+				"nvda_slave.exe": 2,
+				"userConfig/nvda.ini": 3,
+				"systemConfig/nvda.ini": 4,
+				"lib/nvda.exe": 5,
+				"lib/userConfig/file.txt": 6,
+			},
+		)
+		pathlib.Path(self._tempDir, "emptyDir").mkdir()
 
 	def test_skipsConfigDirectoriesAndNvdaExeOnlyAtTopLevel(self):
 		self.assertEqual(
-			{relDir: set(fileNames) for relDir, fileNames in installer._walkProgramFiles(self._tempDir.name)},
+			dict(installer._walkProgramFiles(self._tempDir)),
 			{
-				".": {"nvda_slave.exe"},
-				"lib": {"nvda.exe"},
-				os.path.join("lib", "userConfig"): {"file.txt"},
-				"emptyDir": set(),
+				".": {"nvda_slave.exe": 2},
+				"lib": {"nvda.exe": 5},
+				os.path.join("lib", "userConfig"): {"file.txt": 6},
+				"emptyDir": {},
 			},
 		)
+
+
+class Test_copyFiles(unittest.TestCase):
+	"""Tests for the byte progress of copying the program files and the user configuration."""
+
+	def setUp(self) -> None:
+		self._sourceDir = self.enterContext(tempfile.TemporaryDirectory())
+		self._destDir = self.enterContext(tempfile.TemporaryDirectory())
+		self._onProgress = MagicMock()
+
+	def _assertByteProgress(self, total: int) -> None:
+		"""Assert that progress was reported in bytes, never going down, up to the given total."""
+		reports = [c.args for c in self._onProgress.call_args_list]
+		self.assertTrue(reports)
+		self.assertEqual({reportTotal for _done, reportTotal in reports}, {total})
+		done = [d for d, _total in reports]
+		self.assertEqual(done, sorted(done))
+		self.assertEqual(done[-1], total)
+
+	def test_copyProgramFiles_reportsBytes(self):
+		_createFiles(self._sourceDir, {"nvda.exe": 7, "nvda_slave.exe": 3, "lib/nvdaHelperRemote.dll": 5})
+		with patch("installer.globalVars.appDir", self._sourceDir):
+			installer.copyProgramFiles(self._destDir, self._onProgress)
+		self._assertByteProgress(8)
+		self.assertTrue(os.path.isfile(os.path.join(self._destDir, "lib", "nvdaHelperRemote.dll")))
+
+	def test_copyUserConfig_reportsBytes(self):
+		_createFiles(self._sourceDir, {"nvda.ini": 3, "profiles/profile.ini": 5})
+		with patch.object(
+			installer.WritePaths.__class__,
+			"configDir",
+			new_callable=PropertyMock,
+			return_value=self._sourceDir,
+		):
+			installer.copyUserConfig(self._destDir, self._onProgress)
+		self._assertByteProgress(8)
+		self.assertTrue(os.path.isfile(os.path.join(self._destDir, "profiles", "profile.ini")))

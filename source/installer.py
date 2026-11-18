@@ -205,52 +205,113 @@ def getDocFilePath(fileName: str, installDir: str):
 			return tryPath
 
 
-def _walkProgramFiles(sourcePath: str) -> Iterator[tuple[str, list[str]]]:
+def _fileSizes(directory: str, names: Iterable[str]) -> dict[str, int]:
+	"""Get the sizes of files in a directory from one listing of that directory.
+
+	:param directory: The directory.
+	:param names: The names of the files in the directory.
+	:return: The size in bytes of each file, by name.
+	"""
+	names = set(names)
+	with os.scandir(directory) as entries:
+		return {entry.name: entry.stat().st_size for entry in entries if entry.name in names}
+
+
+def _walkProgramFiles(sourcePath: str) -> Iterator[tuple[str, dict[str, int]]]:
 	"""Walk the program files of an NVDA directory.
 
 	:param sourcePath: The NVDA directory.
-	:return: For each directory, its path relative to ``sourcePath`` and the names of the files to copy from it.
+	:return: For each directory, its path relative to ``sourcePath``
+		and the size of each file to copy from it, by name.
 	"""
 	for curSourceDir, subDirs, files in os.walk(sourcePath):
 		if curSourceDir == sourcePath:
 			subDirs[:] = [x for x in subDirs if x.lower() not in ("userconfig", "systemconfig")]
 			# Never copy nvda.exe as one of the other executables will be renamed later
 			files = [f for f in files if f.lower() != "nvda.exe"]
-		yield os.path.relpath(curSourceDir, sourcePath), files
+		yield os.path.relpath(curSourceDir, sourcePath), _fileSizes(curSourceDir, files)
 
 
-def copyProgramFiles(destPath: str, onFileCopied: Callable[[int, int], None] | None = None):
-	"""Copy the program files of the running copy of NVDA.
+def _walkFiles(sourcePath: str) -> Iterator[tuple[str, dict[str, int]]]:
+	"""Walk all files in a directory.
 
-	:param destPath: The directory to copy to.
-	:param onFileCopied: Called after each copied file with the number of files copied so far and the total number of files.
+	:param sourcePath: The directory.
+	:return: For each directory, its path relative to ``sourcePath``
+		and the size of each file in it, by name.
 	"""
-	sourcePath = globalVars.appDir
-	directories = list(_walkProgramFiles(sourcePath))
-	total = sum(len(fileNames) for _relDir, fileNames in directories)
+	for curSourceDir, _subDirs, files in os.walk(sourcePath):
+		yield os.path.relpath(curSourceDir, sourcePath), _fileSizes(curSourceDir, files)
+
+
+def _totalSize(directories: Iterable[tuple[str, dict[str, int]]]) -> int:
+	"""The total size in bytes of the files in a walk."""
+	return sum(sum(sizes.values()) for _relDir, sizes in directories)
+
+
+def _reportCopiedBytes(onProgress: Callable[[int, int], None], before: int, total: int, done: int) -> None:
+	"""Report the progress within one file as the progress of copying several files.
+
+	:param onProgress: Called with the number of bytes copied so far and the total number of bytes.
+	:param before: The number of bytes copied before this file.
+	:param total: The total number of bytes to copy.
+	:param done: The number of bytes of this file copied so far.
+	"""
+	onProgress(before + done, total)
+
+
+def _copyFiles(
+	sourcePath: str,
+	destPath: str,
+	walk: Callable[[str], Iterable[tuple[str, dict[str, int]]]],
+	onProgress: Callable[[int, int], None] | None,
+) -> None:
+	"""Copy files from one directory to another.
+
+	:param sourcePath: The directory to copy from.
+	:param destPath: The directory to copy to.
+	:param walk: Walks ``sourcePath``, yielding for each directory its relative path
+		and the size of each file to copy from it, by name.
+	:param onProgress: Called during the copy,
+		with the number of bytes copied so far and the total number of bytes.
+	"""
+	directories = list(walk(sourcePath))
+	total = _totalSize(directories)
 	copied = 0
-	for relDir, fileNames in directories:
+	for relDir, sizes in directories:
 		curSourceDir = os.path.normpath(os.path.join(sourcePath, relDir))
 		curDestDir = os.path.normpath(os.path.join(destPath, relDir))
 		if not os.path.isdir(curDestDir):
 			os.makedirs(curDestDir)
-		for f in fileNames:
-			tryCopyFile(os.path.join(curSourceDir, f), os.path.join(curDestDir, f))
-			copied += 1
-			if onFileCopied is not None:
-				onFileCopied(copied, total)
+		for name, size in sizes.items():
+			fileProgress = None
+			if onProgress is not None:
+				fileProgress = partial(_reportCopiedBytes, onProgress, copied, total)
+			tryCopyFile(
+				os.path.join(curSourceDir, name),
+				os.path.join(curDestDir, name),
+				onProgress=fileProgress,
+			)
+			copied += size
 
 
-def copyUserConfig(destPath: str):
-	sourcePath = WritePaths.configDir
-	for curSourceDir, subDirs, files in os.walk(sourcePath):
-		curDestDir = os.path.join(destPath, os.path.relpath(curSourceDir, sourcePath))
-		if not os.path.isdir(curDestDir):
-			os.makedirs(curDestDir)
-		for f in files:
-			sourceFilePath = os.path.join(curSourceDir, f)
-			destFilePath = os.path.join(destPath, os.path.relpath(sourceFilePath, sourcePath))
-			tryCopyFile(sourceFilePath, destFilePath)
+def copyProgramFiles(destPath: str, onProgress: Callable[[int, int], None] | None = None):
+	"""Copy the program files of the running copy of NVDA.
+
+	:param destPath: The directory to copy to.
+	:param onProgress: Called during the copy,
+		with the number of bytes copied so far and the total number of bytes.
+	"""
+	_copyFiles(globalVars.appDir, destPath, _walkProgramFiles, onProgress)
+
+
+def copyUserConfig(destPath: str, onProgress: Callable[[int, int], None] | None = None):
+	"""Copy the user configuration of the running copy of NVDA.
+
+	:param destPath: The directory to copy to.
+	:param onProgress: Called during the copy,
+		with the number of bytes copied so far and the total number of bytes.
+	"""
+	_copyFiles(WritePaths.configDir, destPath, _walkFiles, onProgress)
 
 
 def removeOldLibFiles(destPath: str, rebootOK: bool = False):
