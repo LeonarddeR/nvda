@@ -915,7 +915,7 @@ def doCreatePortable(
 		# Translators: The message displayed when the user cancels the creation of a portable copy of NVDA.
 		ui.message(_("Portable copy creation cancelled."))
 		return
-	d = gui.IndeterminateProgressDialog(
+	d = _DeterminateProgressDialog(
 		gui.mainFrame,
 		# Translators: The title of the dialog presented while a portable copy of NVDA is being created.
 		_("Creating Portable Copy"),
@@ -923,7 +923,12 @@ def doCreatePortable(
 		_("Please wait while a portable copy of NVDA is created."),
 	)
 	try:
-		systemUtils.ExecAndPump(installer.createPortableCopy, portableDirectory, copyUserConfig)
+		systemUtils.ExecAndPump(
+			installer.createPortableCopy,
+			portableDirectory,
+			copyUserConfig,
+			progressCallback=d.setStep,
+		)
 	except Exception as e:
 		log.error("Failed to create portable copy", exc_info=True)  # noqa: G201
 		d.done()

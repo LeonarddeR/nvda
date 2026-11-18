@@ -868,3 +868,79 @@ class Test_copyFiles(unittest.TestCase):
 			installer.copyUserConfig(self._destDir, self._onProgress)
 		self._assertByteProgress(8)
 		self.assertTrue(os.path.isfile(os.path.join(self._destDir, "profiles", "profile.ini")))
+
+
+class Test_createPortableCopy(unittest.TestCase):
+	"""Tests for the progress reported while creating a portable copy."""
+
+	def setUp(self) -> None:
+		sourceDir = self.enterContext(tempfile.TemporaryDirectory())
+		configDir = self.enterContext(tempfile.TemporaryDirectory())
+		self._destDir = self.enterContext(tempfile.TemporaryDirectory())
+		_createFiles(
+			sourceDir,
+			{"nvda_noUIAccess.exe": 10, "nvda_slave.exe": 10, "lib/nvdaHelperRemote.dll": 10},
+		)
+		_createFiles(configDir, {"nvda.ini": 90})
+		self.enterContext(patch("installer.globalVars.appDir", sourceDir))
+		self.enterContext(
+			patch.object(
+				installer.WritePaths.__class__,
+				"configDir",
+				new_callable=PropertyMock,
+				return_value=configDir,
+			),
+		)
+		self._reports: list[tuple[installer._PortableCopyStep, int]] = []
+
+	def _createPortableCopy(self, shouldCopyUserConfig: bool) -> dict[installer._PortableCopyStep, int]:
+		"""Create a portable copy and return the percentage at which each reported step started, in order."""
+		installer.createPortableCopy(
+			self._destDir,
+			shouldCopyUserConfig,
+			progressCallback=lambda step, percentage: self._reports.append((step, percentage)),
+		)
+		stepStarts: dict[installer._PortableCopyStep, int] = {}
+		for step, percentage in self._reports:
+			stepStarts.setdefault(step, percentage)
+		return stepStarts
+
+	def test_reportsStepsWithCopyRangeSharedByBytes(self):
+		Step = installer._PortableCopyStep
+		copyStart = Step.COPY_FILES.startPercentage
+		copyEnd = Step.REMOVE_OLD_FILES.startPercentage
+		self.assertEqual(
+			list(self._createPortableCopy(shouldCopyUserConfig=True).items()),
+			[
+				(Step.REMOVE_PREVIOUS, Step.REMOVE_PREVIOUS.startPercentage),
+				(Step.COPY_FILES, copyStart),
+				# 30 bytes of program files and 90 bytes of configuration share the copy range.
+				(Step.COPY_USER_CONFIG, int(copyStart + (copyEnd - copyStart) * 30 / 120)),
+				(Step.REMOVE_OLD_FILES, copyEnd),
+			],
+		)
+
+	def test_withoutUserConfig_skipsConfigStep(self):
+		Step = installer._PortableCopyStep
+		self.assertEqual(
+			list(self._createPortableCopy(shouldCopyUserConfig=False)),
+			[Step.REMOVE_PREVIOUS, Step.COPY_FILES, Step.REMOVE_OLD_FILES],
+		)
+		self.assertIn((Step.COPY_FILES, Step.REMOVE_OLD_FILES.startPercentage), self._reports)
+
+
+class Test_doCreatePortable(unittest.TestCase):
+	def test_passesDialogSetStepAsProgressCallback(self):
+		with (
+			patch("gui.installerGui._DeterminateProgressDialog") as dialogMock,
+			patch("gui.installerGui.systemUtils.ExecAndPump") as execAndPumpMock,
+			patch("gui.installerGui.gui.messageBox"),
+		):
+			installerGui.doCreatePortable("D:\\portable\\NVDA", warnForNonEmptyDirectory=False)
+		execAndPumpMock.assert_called_once_with(
+			installer.createPortableCopy,
+			"D:\\portable\\NVDA",
+			False,
+			progressCallback=dialogMock.return_value.setStep,
+		)
+		dialogMock.return_value.done.assert_called_once_with()

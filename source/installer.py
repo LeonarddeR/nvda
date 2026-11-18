@@ -248,6 +248,16 @@ def _totalSize(directories: Iterable[tuple[str, dict[str, int]]]) -> int:
 	return sum(sum(sizes.values()) for _relDir, sizes in directories)
 
 
+def _getProgramFilesSize() -> int:
+	"""The size in bytes of the program files of the running copy of NVDA."""
+	return _totalSize(_walkProgramFiles(globalVars.appDir))
+
+
+def _getUserConfigSize() -> int:
+	"""The size in bytes of the user configuration of the running copy of NVDA."""
+	return _totalSize(_walkFiles(WritePaths.configDir))
+
+
 def _reportCopiedBytes(onProgress: Callable[[int, int], None], before: int, total: int, done: int) -> None:
 	"""Report the progress within one file as the progress of copying several files.
 
@@ -1302,15 +1312,71 @@ def _migratePickledAddonsStateToJson(configPath: str) -> None:
 			log.error("Failed to back up pickled add-ons state.", exc_info=True)  # noqa: G201
 
 
-def createPortableCopy(destPath: str, shouldCopyUserConfig: bool = True):
+class _PortableCopyStep(ProgressStep):
+	"""The steps of creating a portable copy of NVDA, as reported while creating it."""
+
+	REMOVE_PREVIOUS = auto()
+	COPY_FILES = auto()
+	COPY_USER_CONFIG = auto()
+	REMOVE_OLD_FILES = auto()
+
+	@property
+	def _displayStringLabels(self) -> dict[Self, str]:
+		return {
+			# Translators: Reported while creating a portable copy, when the previous copy is being removed.
+			_PortableCopyStep.REMOVE_PREVIOUS: _("Removing previous version"),
+			# Translators: Reported while creating a portable copy, when the program files are being copied.
+			_PortableCopyStep.COPY_FILES: _("Copying files"),
+			# Translators: Reported while creating a portable copy, when the configuration is being copied.
+			_PortableCopyStep.COPY_USER_CONFIG: _("Copying configuration"),
+			# Translators: Reported while creating a portable copy, when old files are being removed.
+			_PortableCopyStep.REMOVE_OLD_FILES: _("Removing old files"),
+		}
+
+	@property
+	def _startPercentages(self) -> dict[Self, int]:
+		return {
+			_PortableCopyStep.REMOVE_PREVIOUS: 0,
+			_PortableCopyStep.COPY_FILES: 2,
+			_PortableCopyStep.COPY_USER_CONFIG: 50,
+			_PortableCopyStep.REMOVE_OLD_FILES: 99,
+		}
+
+
+def createPortableCopy(
+	destPath: str,
+	shouldCopyUserConfig: bool = True,
+	*,
+	progressCallback: Callable[[ProgressStep, int], None] | None = None,
+) -> None:
+	"""Create or update a portable copy of NVDA.
+
+	:param destPath: The absolute path of the portable copy.
+	:param shouldCopyUserConfig: Whether to copy the user configuration of the running copy.
+	:param progressCallback: Called with the current :class:`_PortableCopyStep` and the overall percentage
+		whenever one of them changes.
+		The copy steps share their range in proportion to the number of bytes they copy.
+	"""
 	assert os.path.isabs(destPath), f"Destination path {destPath} is not absolute"
+	progress = ProgressTracker(
+		_PortableCopyStep,
+		progressCallback,
+		sizes={
+			_PortableCopyStep.COPY_FILES: _getProgramFilesSize(),
+			_PortableCopyStep.COPY_USER_CONFIG: _getUserConfigSize() if shouldCopyUserConfig else 0,
+		},
+	)
+	progress.startStep(_PortableCopyStep.REMOVE_PREVIOUS)
 	# Remove all the main executables always
 	_deleteFileGroupOrFail(destPath, {"nvda.exe", "nvda_noUIAccess.exe", "nvda_UIAccess.exe"})
 	removeOldProgramFiles(destPath)
-	copyProgramFiles(destPath)
+	progress.startStep(_PortableCopyStep.COPY_FILES)
+	copyProgramFiles(destPath, progress.stepProgress)
 	tryCopyFile(os.path.join(destPath, "nvda_noUIAccess.exe"), os.path.join(destPath, "nvda.exe"))
 	if shouldCopyUserConfig:
-		copyUserConfig(os.path.join(destPath, "userConfig"))
+		progress.startStep(_PortableCopyStep.COPY_USER_CONFIG)
+		copyUserConfig(os.path.join(destPath, "userConfig"), progress.stepProgress)
+	progress.startStep(_PortableCopyStep.REMOVE_OLD_FILES)
 	removeOldLibFiles(destPath, rebootOK=True)
 
 
