@@ -13,6 +13,7 @@ import time
 import winreg
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from enum import Enum, auto
+from functools import partial
 from typing import Self
 
 import addonHandler
@@ -840,11 +841,29 @@ def tryRemoveFile(
 	raise RetriableFailure("File %s could not be removed" % path)  # noqa: UP031
 
 
+def _copyProgressRoutine(
+	onProgress: Callable[[int], None],
+	_totalFileSize: int,
+	totalBytesTransferred: int,
+	*_args,
+) -> int:
+	"""Report the progress of ``CopyFileEx``, and continue the copy.
+
+	:param onProgress: Called with the number of bytes copied so far.
+	:param _totalFileSize: The total size of the file, in bytes.
+	:param totalBytesTransferred: The number of bytes copied so far.
+	:return: :const:`winBindings.kernel32.PROGRESS.CONTINUE`.
+	"""
+	onProgress(totalBytesTransferred)
+	return winBindings.kernel32.PROGRESS.CONTINUE
+
+
 def tryCopyFile(
 	sourceFilePath: str,
 	destFilePath: str,
 	numRetries: int = 6,
 	retryInterval: float = 0.5,
+	onProgress: Callable[[int], None] | None = None,
 ) -> None:
 	"""Copy a file, retrying initial-copy failures before using the overwrite fallback.
 
@@ -852,6 +871,7 @@ def tryCopyFile(
 	:param destFilePath: The destination path for the copied file.
 	:param numRetries: The maximum number of initial copy attempts.
 	:param retryInterval: The time in seconds between initial copy attempts.
+	:param onProgress: Called during the copy with the number of bytes copied so far.
 	:raises OSError: If the file cannot be copied after all attempts.
 	:raises RetriableFailure: If an existing destination cannot be renamed.
 	"""
@@ -859,9 +879,12 @@ def tryCopyFile(
 		sourceFilePath = "\\\\?\\" + sourceFilePath
 	if not destFilePath.startswith("\\\\"):
 		destFilePath = "\\\\?\\" + destFilePath
+	progressRoutine = winBindings.kernel32.LPPROGRESS_ROUTINE(
+		0 if onProgress is None else partial(_copyProgressRoutine, onProgress),
+	)
 
 	for attempt in range(numRetries):
-		if winBindings.kernel32.CopyFile(sourceFilePath, destFilePath, False) != 0:
+		if winBindings.kernel32.CopyFileEx(sourceFilePath, destFilePath, progressRoutine, None, None, 0) != 0:
 			return
 
 		errorCode = ctypes.GetLastError()
@@ -882,7 +905,7 @@ def tryCopyFile(
 		log.exception(f"Failed to rename {destFilePath} after failed overwrite")
 		raise RetriableFailure(f"Failed to rename {destFilePath} after failed overwrite")
 	winKernel.moveFileEx(tempPath, None, winKernel.MOVEFILE_DELAY_UNTIL_REBOOT)
-	if winBindings.kernel32.CopyFile(sourceFilePath, destFilePath, False) == 0:
+	if winBindings.kernel32.CopyFileEx(sourceFilePath, destFilePath, progressRoutine, None, None, 0) == 0:
 		errorCode = ctypes.GetLastError()
 		raise OSError(
 			f"Unable to copy file {sourceFilePath} to {destFilePath}, error {errorCode}",

@@ -10,7 +10,7 @@ import pathlib
 import tempfile
 import unittest
 from typing import NamedTuple
-from unittest.mock import MagicMock, PropertyMock, call, patch
+from unittest.mock import ANY, MagicMock, PropertyMock, call, patch
 
 import installer
 import psutil
@@ -26,21 +26,38 @@ class Test_tryCopyFile(unittest.TestCase):
 	_qualifiedDestPath = rf"\\?\{_destPath}"
 
 	@patch("installer.time.sleep")
-	@patch("installer.winBindings.kernel32.CopyFile", return_value=1)
+	@patch("installer.winBindings.kernel32.CopyFileEx", return_value=1)
 	def test_successDoesNotRetry(self, copyFileMock: MagicMock, sleepMock: MagicMock):
 		installer.tryCopyFile(self._sourcePath, self._destPath)
 
 		copyFileMock.assert_called_once_with(
 			self._qualifiedSourcePath,
 			self._qualifiedDestPath,
-			False,
+			ANY,
+			None,
+			None,
+			0,
 		)
 		sleepMock.assert_not_called()
+
+	def test_onProgress_reportsBytesCopied(self):
+		size = 3 << 20
+		tempDir = self.enterContext(tempfile.TemporaryDirectory())
+		_createFiles(tempDir, {"source.bin": size})
+		reports: list[int] = []
+		installer.tryCopyFile(
+			os.path.join(tempDir, "source.bin"),
+			os.path.join(tempDir, "dest.bin"),
+			onProgress=reports.append,
+		)
+		self.assertEqual(os.path.getsize(os.path.join(tempDir, "dest.bin")), size)
+		self.assertEqual(reports, sorted(reports))
+		self.assertEqual(reports[-1], size)
 
 	def test_temporaryFailuresAreRetried(self):
 		with (
 			patch(
-				"installer.winBindings.kernel32.CopyFile",
+				"installer.winBindings.kernel32.CopyFileEx",
 				side_effect=(0, 0, 1),
 			) as copyFileMock,
 			patch("installer.ctypes.GetLastError", return_value=33),
@@ -63,7 +80,7 @@ class Test_tryCopyFile(unittest.TestCase):
 	def test_exhaustedRetriesRaiseOriginalError(self):
 		with (
 			patch(
-				"installer.winBindings.kernel32.CopyFile",
+				"installer.winBindings.kernel32.CopyFileEx",
 				return_value=0,
 			) as copyFileMock,
 			patch("installer.ctypes.GetLastError", return_value=33),
@@ -88,7 +105,7 @@ class Test_tryCopyFile(unittest.TestCase):
 		tempPath = r"C:\temporary.txt"
 		with (
 			patch(
-				"installer.winBindings.kernel32.CopyFile",
+				"installer.winBindings.kernel32.CopyFileEx",
 				side_effect=(0, 1),
 			) as copyFileMock,
 			patch("installer.ctypes.GetLastError", return_value=5),
@@ -106,16 +123,8 @@ class Test_tryCopyFile(unittest.TestCase):
 		self.assertEqual(
 			copyFileMock.call_args_list,
 			[
-				call(
-					self._qualifiedSourcePath,
-					self._qualifiedDestPath,
-					False,
-				),
-				call(
-					self._qualifiedSourcePath,
-					self._qualifiedDestPath,
-					False,
-				),
+				call(self._qualifiedSourcePath, self._qualifiedDestPath, ANY, None, None, 0),
+				call(self._qualifiedSourcePath, self._qualifiedDestPath, ANY, None, None, 0),
 			],
 		)
 		createTempFileMock.assert_called_once()
@@ -786,6 +795,14 @@ class Test_validatePortableDirectory(unittest.TestCase):
 				installerGui._validatePortableDirectory("%NVDA_TEST_PORTABLE_DIR%\\NVDA"),
 				"D:\\portable\\NVDA",
 			)
+
+
+def _createFiles(root: str, sizes: dict[str, int]) -> None:
+	"""Create files of the given sizes below a directory, with their parent directories."""
+	for relPath, size in sizes.items():
+		path = pathlib.Path(root, relPath)
+		path.parent.mkdir(parents=True, exist_ok=True)
+		path.write_bytes(b"x" * size)
 
 
 class Test_walkProgramFiles(unittest.TestCase):

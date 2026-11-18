@@ -1,5 +1,5 @@
 # A part of NonVisual Desktop Access (NVDA)
-# Copyright (C) 2025-2026 NV Access Limited
+# Copyright (C) 2025-2026 NV Access Limited, Leonard de Ruijter
 # This file may be used under the terms of the GNU General Public License, version 2 or later, as modified by the NVDA license.
 # For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
@@ -62,6 +62,7 @@ __all__ = (
 	"CancelWaitableTimer",
 	"CloseHandle",
 	"CopyFile",
+	"CopyFileEx",
 	"CreateEvent",
 	"CreateFile",
 	"CreateMutex",
@@ -753,6 +754,51 @@ CopyFile.argtypes = (
 	BOOL,  # bFailIfExists: If TRUE, the function fails if the new file already exists
 )
 CopyFile.restype = BOOL
+
+
+class PROGRESS(IntEnum):
+	"""Possible return values of a copy progress routine."""
+
+	CONTINUE = 0
+	"""Continue the copy operation."""
+
+
+LPPROGRESS_ROUTINE = WINFUNCTYPE(
+	DWORD,
+	LARGE_INTEGER,  # TotalFileSize: The total size of the file, in bytes
+	LARGE_INTEGER,  # TotalBytesTransferred: The number of bytes transferred since the copy began
+	LARGE_INTEGER,  # StreamSize: The total size of the current file stream, in bytes
+	LARGE_INTEGER,  # StreamBytesTransferred: The number of bytes in the current stream transferred so far
+	DWORD,  # dwStreamNumber: The number of the current stream
+	DWORD,  # dwCallbackReason: The reason the routine was called
+	HANDLE,  # hSourceFile: A handle to the source file
+	HANDLE,  # hDestinationFile: A handle to the destination file
+	LPVOID,  # lpData: The argument passed to CopyFileEx
+)
+"""
+An application-defined callback function used with CopyFileEx.
+It is called when a portion of a copy is completed.
+
+.. seealso::
+	https://learn.microsoft.com/en-us/windows/win32/api/winbase/nc-winbase-lpprogress_routine
+"""
+
+CopyFileEx = WINFUNCTYPE(None)(("CopyFileExW", dll))
+"""
+Copies an existing file to a new file, notifying the application of its progress through a callback function.
+
+.. seealso::
+	https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-copyfileexw
+"""
+CopyFileEx.argtypes = (
+	LPCWSTR,  # lpExistingFileName: The name of an existing file
+	LPCWSTR,  # lpNewFileName: The name of the new file
+	LPPROGRESS_ROUTINE,  # lpProgressRoutine: An optional callback for each copied portion
+	LPVOID,  # lpData: An optional argument passed to the callback
+	PBOOL,  # pbCancel: An optional flag that cancels the copy when set to TRUE
+	DWORD,  # dwCopyFlags: Flags that specify how the file is copied
+)
+CopyFileEx.restype = BOOL
 
 
 GetLocaleInfo = WINFUNCTYPE(None)(("GetLocaleInfoW", dll))
