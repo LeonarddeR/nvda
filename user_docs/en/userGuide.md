@@ -4415,6 +4415,24 @@ The [modern engine](https://pypi.org/project/regex/) has better support for non-
 This option allows you to configure the number of milliseconds NVDA will wait for the caret (insertion point) to move in editable text controls.
 If you find that NVDA seems to be incorrectly tracking the caret E.g. it seems to be always one character behind or is repeating lines, then you may wish to try increasing this value.
 
+##### Speak typing using {#TypingEchoMode}
+
+This option controls the source NVDA uses to announce the words you type.
+It only has an effect when [Speak typed words](#KeyboardSettingsSpeakTypedWords) is not set to Off.
+The available options are:
+
+* Predicted text: NVDA announces typed words based on the keys you pressed.
+* Real text: In editable text where it is supported, NVDA announces typed words based on the actual text present in the document, rather than the keys you pressed.
+For example, typing over selected text no longer omits the first character of the announced word.
+Typing a space or punctuation mark, or pressing enter, directly after an existing word announces that word.
+Letters, combining marks, numbers and apostrophes form words.
+Any other character, such as a full stop, ends the typed word, even in applications (such as Notepad) that group it into a larger word.
+
+| . {.hideHeaderRow} |.|
+|---|---|
+| Options | Default (Real text), Predicted text, Real text |
+| Default | Real text |
+
 ##### Report transparency for colors {#ReportTransparentColors}
 
 This option enables reporting when colors are transparent, useful for addon/appModule developers gathering information to improve user experience with a 3rd party application.

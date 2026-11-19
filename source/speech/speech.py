@@ -10,7 +10,6 @@
 import itertools  # noqa: I001
 import typing
 import weakref
-import unicodedata
 import time
 import colors
 import api
@@ -25,7 +24,7 @@ import textInfos
 import speechDictHandler
 import characterProcessing
 import languageHandler
-from textUtils import unicodeNormalize
+from textUtils import isForcedWordSeparator, unicodeNormalize
 from textUtils.uniscribe import splitAtCharacterBoundaries
 from . import manager, languageHandling
 from .extensions import speechCanceled, post_speechPaused, pre_speechCanceled, pre_speech
@@ -1462,13 +1461,23 @@ def isFocusEditable() -> bool:
 	) and controlTypes.STATE_READONLY not in obj.states
 
 
+def _typingEchoApplies(setting: int) -> bool:
+	"""Whether a typing echo setting applies to the focus.
+
+	:param setting: A :class:`TypingEcho` value.
+	"""
+	return setting == TypingEcho.ALWAYS.value or (
+		setting == TypingEcho.EDIT_CONTROLS.value and isFocusEditable()
+	)
+
+
 def speakTypedCharacters(ch: str):
 	typingIsProtected = api.isTypingProtected()
 	if typingIsProtected:
 		realChar = PROTECTED_CHAR
 	else:
 		realChar = ch
-	if unicodedata.category(ch)[0] in "LMN":
+	if not isForcedWordSeparator(ch):
 		_curWordChars.append(realChar)
 	elif ch == "\b":
 		# Backspace, so remove the last character from our buffer.
@@ -1476,17 +1485,8 @@ def speakTypedCharacters(ch: str):
 	elif ch == "\u007f":
 		# delete character produced in some apps with control+backspace
 		return
-	elif len(_curWordChars) > 0:
-		typedWord = "".join(_curWordChars)
-		clearTypedWordBuffer()
-		if log.isEnabledFor(log.IO):
-			log.io("typed word: %s" % typedWord)  # noqa: UP031
-		typingEchoMode = config.conf["keyboard"]["speakTypedWords"]
-		if typingEchoMode != TypingEcho.OFF.value and not typingIsProtected:  # noqa: SIM102
-			if typingEchoMode == TypingEcho.ALWAYS.value or (
-				typingEchoMode == TypingEcho.EDIT_CONTROLS.value and isFocusEditable()
-			):
-				speakText(typedWord)
+	else:
+		speakPreviousWord(ch)
 	if _speechState._suppressSpeakTypedCharactersNumber > 0:
 		# We primarily suppress based on character count and still have characters to suppress.
 		# However, we time out after a short while just in case.
@@ -1499,12 +1499,36 @@ def speakTypedCharacters(ch: str):
 	else:
 		suppress = False
 
-	typingEchoMode = config.conf["keyboard"]["speakTypedCharacters"]
-	if not suppress and typingEchoMode != TypingEcho.OFF.value and ch >= FIRST_NONCONTROL_CHAR:  # noqa: SIM102
-		if typingEchoMode == TypingEcho.ALWAYS.value or (
-			typingEchoMode == TypingEcho.EDIT_CONTROLS.value and isFocusEditable()
-		):
-			speakSpelling(realChar)
+	if (
+		not suppress
+		and ch >= FIRST_NONCONTROL_CHAR
+		and _typingEchoApplies(config.conf["keyboard"]["speakTypedCharacters"])
+	):
+		speakSpelling(realChar)
+
+
+def speakPreviousWord(separator: str) -> None:
+	"""Speaks the word that a typed word separator just completed.
+
+	The word is fetched from the caret object (see :meth:`documentBase.TextContainerObject.getTypedWord`),
+	falling back to the predicted keystroke buffer.
+
+	:param separator: The typed word separator.
+	"""
+	predictedWord = "".join(_curWordChars)
+	clearTypedWordBuffer()
+	shouldSpeak = not api.isTypingProtected() and _typingEchoApplies(
+		config.conf["keyboard"]["speakTypedWords"],
+	)
+	word = predictedWord
+	if shouldSpeak:
+		word = api.getCaretObject().getTypedWord(separator) or predictedWord
+	if not word:
+		return
+	if log.isEnabledFor(log.IO):
+		log.io(f"typed word: {word!r} (predicted: {predictedWord!r})")
+	if shouldSpeak:
+		speakText(word)
 
 
 class SpeakTextInfoState:

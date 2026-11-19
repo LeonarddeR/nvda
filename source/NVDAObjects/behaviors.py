@@ -1,8 +1,8 @@
 # A part of NonVisual Desktop Access (NVDA)
-# This file is covered by the GNU General Public License.
-# See the file COPYING for more details.
-# Copyright (C) 2006-2025 NV Access Limited, Peter Vágner, Joseph Lee, Bill Dengler,
-# Burman's Computer and Education Ltd, Cary-rowen, Cyrille Bougot
+# Copyright (C) 2006-2026 NV Access Limited, Peter Vágner, Joseph Lee, Bill Dengler,
+# Burman's Computer and Education Ltd, Cary-rowen, Cyrille Bougot, Leonard de Ruijter
+# This file may be used under the terms of the GNU General Public License, version 2 or later, as modified by the NVDA license.
+# For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
 """Mix-in classes which provide common behaviour for particular types of controls across different APIs.
 Behaviors described in this mix-in include providing table navigation commands for certain table rows, terminal input and output support, announcing notifications and suggestion items and so on.
@@ -22,6 +22,7 @@ import config
 from . import NVDAObject, NVDAObjectTextInfo
 import textInfos
 import editableText
+from textUtils import getWordBeforeSeparator
 from logHandler import log
 from scriptHandler import script
 import api
@@ -36,6 +37,7 @@ from config.configFlags import (
 	TypingEcho,
 	ReportSpellingErrors,
 )
+from config.featureFlagEnums import TypingEchoModeFlag
 
 
 class ProgressBar(NVDAObject):
@@ -256,6 +258,50 @@ class EditableTextBase(editableText.EditableText, NVDAObject):
 		if eventHandler.isPendingEvents("gainFocus"):
 			return
 		super()._caretScriptPostMovedHelper(speakUnit, gesture, info)
+
+	def _useTextInfoForTypingEcho(self) -> bool:
+		"""Whether typed words should be announced from the real document text for this object."""
+		return (
+			config.conf["keyboard"]["speakTypedWords"] != TypingEcho.OFF.value
+			and config.conf["keyboard"]["typingEchoMode"].calculated() == TypingEchoModeFlag.REAL_TEXT
+			and self.caretMovementDetectionUsesEvents
+		)
+
+	_maxTypedWordLength: int = 100
+	"""The length of the longest word :meth:`getTypedWord` returns."""
+
+	def getTypedWord(self, separator: str) -> str | None:
+		if not self._useTextInfoForTypingEcho() or eventHandler.isPendingEvents("typedCharacter"):
+			return None
+		try:
+			if controlTypes.State.READONLY in self.states:
+				return None
+			caretInfo = self.makeTextInfo(textInfos.POSITION_CARET)
+			word = getWordBeforeSeparator(self._getTextBeforeCaret(caretInfo), separator)
+			if word is None:
+				# The application has not inserted the separator yet.
+				caretMoved, caretInfo = self._hasCaretMoved(
+					caretInfo.bookmark,
+					timeout=self._useEvents_maxTimeoutSec,
+				)
+				if not caretMoved or not caretInfo:
+					return None
+				word = getWordBeforeSeparator(self._getTextBeforeCaret(caretInfo), separator)
+		except Exception:
+			log.debug("Error fetching typed word", exc_info=True)
+			return None
+		if not word or len(word) > self._maxTypedWordLength:
+			return None
+		return word
+
+	def _getTextBeforeCaret(self, caretInfo: textInfos.TextInfo) -> str:
+		"""Returns enough text before the caret for the longest typed word, a line break and one more character.
+
+		:param caretInfo: The caret position.
+		"""
+		info = caretInfo.copy()
+		info.move(textInfos.UNIT_CHARACTER, -(self._maxTypedWordLength + 3), endPoint="start")
+		return info.text
 
 	def _reportErrorInPreviousWord(self):
 		try:

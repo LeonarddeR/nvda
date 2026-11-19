@@ -1,7 +1,7 @@
 # A part of NonVisual Desktop Access (NVDA)
-# This file is covered by the GNU General Public License.
-# See the file COPYING for more details.
-# Copyright (C) 2018-2026 NV Access Limited, Babbage B.V., Łukasz Golonka
+# Copyright (C) 2018-2026 NV Access Limited, Babbage B.V., Łukasz Golonka, Leonard de Ruijter
+# This file may be used under the terms of the GNU General Public License, version 2 or later, as modified by the NVDA license.
+# For full terms and any additional permissions, see the NVDA license file: https://github.com/nvaccess/nvda/blob/master/copying.txt
 
 """
 Classes and utilities to deal with offsets variable width encodings, particularly utf_16.
@@ -23,6 +23,41 @@ from .uniscribe import splitAtCharacterBoundaries
 WCHAR_ENCODING = "utf_16_le"
 UTF8_ENCODING = "utf-8"
 USER_ANSI_CODE_PAGE = locale.getpreferredencoding()
+
+
+def isForcedWordSeparator(ch: str) -> bool:
+	"""Whether a character ends a typed word.
+
+	Characters with a Letter, Mark or Number Unicode category and apostrophes are word characters.
+
+	:param ch: The character to classify.
+	:return: ``True`` if the character ends a word, ``False`` otherwise.
+	"""
+	return ch not in "'’" and unicodedata.category(ch)[0] not in "LMN"
+
+
+def getWordBeforeSeparator(text: str, separator: str) -> str | None:
+	"""Returns the word that ends at a separator at the end of ``text``.
+
+	Any whitespace matches a whitespace separator.
+	A carriage return followed by a line feed counts as one separator.
+
+	:param text: The text to search.
+	:param separator: The word separator.
+	:return: The word before the separator.
+		An empty string if a separator precedes it.
+		``None`` if ``text`` does not end with the separator.
+	"""
+	if not text:
+		return None
+	last = text[-1]
+	if last != separator and not (last.isspace() and separator.isspace()):
+		return None
+	end = len(text) - (2 if text.endswith("\r\n") else 1)
+	start = end
+	while start > 0 and not isForcedWordSeparator(text[start - 1]):
+		start -= 1
+	return text[start:end]
 
 
 class OffsetConverter(metaclass=ABCMeta):

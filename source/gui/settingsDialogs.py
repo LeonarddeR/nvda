@@ -4804,6 +4804,16 @@ class AdvancedPanelControls(
 			["editableText", "caretMoveTimeoutMs"],
 		)
 
+		# Translators: This is the label for a combo-box in the Advanced settings panel.
+		label = _("Speak typing using:")
+		self.typingEchoModeCombo: nvdaControls.FeatureFlagCombo = editableTextGroup.addLabeledControl(
+			labelText=label,
+			wxCtrlClass=nvdaControls.FeatureFlagCombo,
+			keyPath=["keyboard", "typingEchoMode"],
+			conf=config.conf,
+		)
+		self.bindHelpEvent("TypingEchoMode", self.typingEchoModeCombo)
+
 		# Translators: This is the label for a group of advanced options in the
 		# Advanced settings panel
 		label = _("Document Formatting")
@@ -4953,6 +4963,7 @@ class AdvancedPanelControls(
 			and self.speechDictsUseModernRegexCombo.isValueConfigSpecDefault()
 			and self.loadChromeVBufWhenBusyCombo.isValueConfigSpecDefault()
 			and self.caretMoveTimeoutSpinControl.GetValue() == self.caretMoveTimeoutSpinControl.defaultValue
+			and self.typingEchoModeCombo.isValueConfigSpecDefault()
 			and self.reportTransparentColorCheckBox.GetValue()
 			== self.reportTransparentColorCheckBox.defaultValue
 			and set(self.logCategoriesList.CheckedItems) == set(self.logCategoriesList.defaultCheckedItems)
@@ -4984,6 +4995,7 @@ class AdvancedPanelControls(
 		self.speechDictsUseModernRegexCombo.resetToConfigSpecDefault()
 		self.loadChromeVBufWhenBusyCombo.resetToConfigSpecDefault()
 		self.caretMoveTimeoutSpinControl.SetValue(self.caretMoveTimeoutSpinControl.defaultValue)
+		self.typingEchoModeCombo.resetToConfigSpecDefault()
 		self.reportTransparentColorCheckBox.SetValue(self.reportTransparentColorCheckBox.defaultValue)
 		self.logCategoriesList.CheckedItems = self.logCategoriesList.defaultCheckedItems
 		self.playErrorSoundCombo.SetSelection(self.playErrorSoundCombo.defaultValue)
@@ -5022,6 +5034,7 @@ class AdvancedPanelControls(
 		config.conf["terminals"]["diffAlgo"] = self.diffAlgoVals[diffAlgoChoice]
 		self.wtStrategyCombo.saveCurrentValueToConf()
 		config.conf["editableText"]["caretMoveTimeoutMs"] = self.caretMoveTimeoutSpinControl.GetValue()
+		self.typingEchoModeCombo.saveCurrentValueToConf()
 		config.conf["documentFormatting"]["reportTransparentColor"] = (
 			self.reportTransparentColorCheckBox.IsChecked()
 		)

@@ -9,6 +9,11 @@
 * A new setting in NVDA's Speech settings, "Speak selected text if it has fewer characters than", sets how long a selection NVDA speaks before it reports only the number of selected characters. (#21066, @cartertemm)
 * Added context menu and shortcuts support to the Symbol Pronunciation dialog. (#20692, @amirmahdifard)
 * In rich edit controls, NVDA now reports headings with their level and list items with their bullet or number. (#20982, @LeonarddeR)
+* When speaking typed words, NVDA now announces the real text present in the document rather than the keys you pressed. (#8065, @LeonarddeR)
+  * Typing a space or punctuation mark, or pressing enter, directly after an existing word announces that word.
+  * A non-word character such as a full stop always ends the typed word, even in applications (such as Notepad) that group it into a larger word.
+    Typing "example.com" announces "example", then "com".
+  * The new "Speak typing using" option in Advanced settings can be set to "Predicted text" to announce typed words based on the keys you pressed.
 
 ### Changes
 
@@ -25,6 +30,8 @@
   Users must still add compatible audio components to their Windows PE image for NVDA audio output. (#19537, @akash07k)
 * NVDA can now start when an architecture-specific remote helper loader fails or WTS session information is unavailable.
   If lock-state queries fail, NVDA treats the session as unlocked, so lock-screen restrictions cannot be applied. (#19537, @akash07k)
+* When typed words are announced from the real text, NVDA no longer omits the first character of a word typed over a selection. (#7812, @LeonarddeR)
+* When speaking typed words, NVDA now treats words containing apostrophes (such as "won't" and "aren't") as one word. (#6215, @LeonarddeR)
 
 #### Braille
 
@@ -47,6 +54,13 @@ Please refer to [the developer guide](https://download.nvaccess.org/documentatio
   which can be `None`.
   `SoundSplitState` remains available from `audio` without Sound Split dependencies. (#19537)
 * The WTS API binding exposes `WTSAPI32_AVAILABLE`; its function bindings remain callable and raise `OSError` when the API is unavailable. (#19537)
+* `documentBase.TextContainerObject.getTypedWord` returns the word that a typed word separator completed, from the text of the object. (#8065, @LeonarddeR)
+  * `NVDAObjects.behaviors.EditableTextBase` implements it.
+  * Other editable text objects can override it to announce typed words from their real text.
+* `speech.speech.speakPreviousWord` speaks the word that a typed word separator completed. (#8065, @LeonarddeR)
+* The new `textUtils.isForcedWordSeparator` function tells whether a character ends a typed word. (#8065, @LeonarddeR)
+* The new `textUtils.getWordBeforeSeparator` function returns the word before a typed word separator. (#8065, @LeonarddeR)
+* `config.conf["keyboard"]["typingEchoMode"]` stores the "Speak typing using" setting as a `config.featureFlagEnums.TypingEchoModeFlag`. (#8065, @LeonarddeR)
 
 #### Deprecations
 
