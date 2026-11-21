@@ -9,6 +9,9 @@
 * A new setting in NVDA's Speech settings, "Speak selected text if it has fewer characters than", sets how long a selection NVDA speaks before it reports only the number of selected characters. (#21066, @cartertemm)
 * Added context menu and shortcuts support to the Symbol Pronunciation dialog. (#20692, @amirmahdifard)
 * In rich edit controls, NVDA now reports headings with their level and list items with their bullet or number. (#20982, @LeonarddeR)
+* Two new unassigned commands have been added to open the NVDA Settings dialog in the Math and in the Document Navigation categories. (#21158, @CyrilleB79)
+* Small Caps has been added to Document Formatting settings.
+Currently this setting is only supported in Microsoft Word. (#20922, @burrm)
 
 ### Changes
 
@@ -58,6 +61,8 @@ Please refer to [the developer guide](https://download.nvaccess.org/documentatio
 
 ## 2027.1
 
+The NVDA interface is now translated to Turkmen.
+
 ### Important notes
 
 ### New Features
@@ -66,6 +71,7 @@ Please refer to [the developer guide](https://download.nvaccess.org/documentatio
 ### Changes
 
 * Update CLDR to version 49.0. (#21093, @OzancanKaratas)
+* The NVDA interface is now translated to Turkmen. (#21171)
 * The magnifier now follows what is being read when navigating in math expressions. (#20321, @CyrilleB79)
 * Windows OneCore voices now support spelling functionality. (#8237, #13596, #15301)
 * NVDA no longer supports Skype as it was discontinued by Microsoft in May 2025.
@@ -81,6 +87,7 @@ Skype for Business remains supported. (#19781, @josephsl)
 * Corrected the English pronunciation of Unicode braille characters ⡸, ⢸ and ⣸, and several mathematical symbols. (#20632)
 * When using Windows OneCore voices, numbers in keyboard shortcuts are no longer run together with numbers immediately following them, such as a menu item's position in its menu. (#20828)
 * Prevent adding a duplicate gesture for the same script. (#20890, @theshippeys)
+* NVDA no longer announces the old name of an item that gains focus while its name changes, such as a file in File Explorer after renaming it, or a message in Unigram. (#21116, @LeonarddeR)
 * MathCAT no longer reports a division by zero error when the speech rate is 0%, and its pauses now take eSpeak's rate boost into account. (#19894, #21019, @tareh7z)
 * When installing or updating NVDA while another copy of NVDA is running on this system, such as on the Windows sign-in screen while connected over Remote Desktop, NVDA now offers to end that copy instead of failing with a "File in Use" error. (#9178, @LeonarddeR)
 * The NVDA settings dialog can now be cancelled after changing the synthesizer or reverting the configuration while it is open, and the voice settings are no longer drawn on top of each other. (#6469, @akj)
