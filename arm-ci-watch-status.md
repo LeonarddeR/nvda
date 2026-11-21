@@ -1,3 +1,9 @@
+## 2026-11-21 09:41 (auto) -- windows-11-arm 20261115.219 (win11-vs2026-arm64 family)
+- Previously tested image: 20261112.217 (confirmed prod, served all 10 arm jobs cleanly on 2026-11-17 run 44104308638)
+- Release status at trigger time: prerelease=False, published 2026-11-17 22:22:40 UTC (3.43 days old at detection) -- already flagged as rolled out; no override needed.
+- Branch update: merged leonard/try-testOnArm (prek auto-fix mangled the log again; restored clean version); merged origin/master (advanced, large commit batch incl. UIAHandler/winword changes, speech.py change, settingsDialogs addition, locale updates)
+- CI run: pending (fill in after push)
+- Result: pending
 ## 2026-11-17 15:40 (manual, user-requested) -- windows-11-arm 20261112.217 (win11-vs2026-arm64 family)
 - Previously tested image: 20261101.203 (confirmed prod, served all 10 arm jobs cleanly on 2026-11-06 run 42248974511)
 - Release status at trigger time: prerelease=False, published 2026-11-13 10:47:10 UTC (3.86 days old at detection) -- already flagged as rolled out; no override needed. (On 2026-11-13 this release was only 1.88 hours old and still prerelease=True; the scheduled Friday check correctly skipped it then and it has since flipped to rolled-out.)
