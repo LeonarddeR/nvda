@@ -3,7 +3,10 @@
 - Release status at trigger time: prerelease=False, published 2026-11-13 10:47:10 UTC (3.86 days old at detection) -- already flagged as rolled out; no override needed. (On 2026-11-13 this release was only 1.88 hours old and still prerelease=True; the scheduled Friday check correctly skipped it then and it has since flipped to rolled-out.)
 - Branch update: merged leonard/try-testOnArm (prek auto-fix mangled the log again; restored clean version); merged origin/master (advanced, 29 commits)
 - CI run: https://github.com/LeonarddeR/nvda/actions/runs/44104308638
-- Result: pending
+- Result: failure (10 of 10 windows-11-arm suites failed; l10n cancelled)
+- Image served: win11-vs2026-arm64/20261112.217 for ALL 10 arm jobs (clean rollout, no mixed pool)
+- Per-suite arm results: chrome_misc_aria FAIL, installer FAIL, chrome_list FAIL, chrome_table FAIL, chrome_misc FAIL, chrome_annotations FAIL, chrome_link FAIL, startupShutdown FAIL, chrome_roleDescription FAIL, chrome_language FAIL, l10n CANCELLED
+- Assessment: #14069 and #14264 STILL APPLY -- both OPEN; same focus-theft signature persists on the new image 20261112.217: "Timed out waiting Welcome to NVDA to focus" / "Specific speech did not occur before timeout: Welcome to NVDA" (startupShutdown job, 2026-11-17T14:50:58Z onward). No change -- the VS2026 arm64 image line continues to carry the same underlying focus-theft problem.
 ## 2026-11-06 16:03 (auto) -- windows-11-arm 20261101.203 (win11-vs2026-arm64 family)
 - Previously tested image: 20261025.196 (unreleased/unpublished build; served ALL 10 arm jobs cleanly, l10n cancelled, on 2026-10-30 run 41058653164 -- that run had targeted 20261026.197)
 - Release status at trigger time: prerelease=False, published 2026-11-02 16:33:38 UTC (3.98 days old at detection) -- already flagged as rolled out, no override needed
